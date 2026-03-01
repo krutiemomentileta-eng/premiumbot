@@ -122,7 +122,6 @@
         }
       }
 
-      /* ══════ Draw Scene ══════ */
       #draw-scene {
         position: fixed;
         inset: 0;
@@ -220,7 +219,6 @@
         background: rgba(0, 0, 0, 0.12);
       }
 
-      /* Убери старый tap-scene из canvas-wrap */
       #tap-scene {
         position: fixed;
         inset: 0;
@@ -230,82 +228,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 16px;
-      }
-
-      #sticker-tap-area {
-        position: relative;
-        cursor: pointer;
-        touch-action: manipulation;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #sticker-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-
-      /* tap-ui внутри tap-scene fixed */
-      #tap-ui-overlay {
-        text-align: center;
-      }
-
-      #tap-ui {
-        text-align: center;
-        margin-top: 8px;
-        flex-shrink: 0;
-      }
-      #tap-hint {
-        font-size: 18px;
-        font-weight: 700;
-        color: #333;
-        letter-spacing: 1px;
-      }
-      .bounce-letter {
-        display: inline-block;
-        animation: letter-bounce 1.5s ease-in-out infinite;
-        animation-delay: calc(var(--d) * 0.08s);
-      }
-      @keyframes letter-bounce {
-        0%,
-        100% {
-          transform: translateY(0);
-        }
-        25% {
-          transform: translateY(-5px);
-        }
-      }
-      #tap-progress {
-        margin-top: 6px;
-      }
-      #tap-bar {
-        width: 140px;
-        height: 5px;
-        background: #e0e0e0;
-        border-radius: 3px;
-        overflow: hidden;
-        margin: 0 auto 4px;
-      }
-      #tap-fill {
-        height: 100%;
-        width: 0%;
-        border-radius: 3px;
-        transition: width 0.15s ease-out;
-      }
-      #tap-fill.gold {
-        background: linear-gradient(90deg, #ffd700, #ffa500);
-      }
-      #tap-fill.purple {
-        background: linear-gradient(90deg, #6b93ff, #976fff);
-      }
-      #tap-counter {
-        font-size: 12px;
-        color: #999;
-        font-weight: 600;
+        gap: 20px;
       }
 
       #btn-submit {
@@ -315,7 +238,6 @@
         flex-shrink: 0;
       }
 
-      /* ══════ Buttons ══════ */
       .btn-primary {
         position: relative;
         width: 100%;
@@ -379,7 +301,6 @@
         }
       }
 
-      /* ══════ Particles ══════ */
       .particle {
         position: fixed;
         pointer-events: none;
@@ -404,7 +325,7 @@
         font-weight: 900;
         color: #976fff;
         pointer-events: none;
-        z-index: 100;
+        z-index: 150;
         will-change: transform, opacity;
         animation: tap-fly 0.5s ease-out forwards;
       }
@@ -419,7 +340,6 @@
         }
       }
 
-      /* ══════ Sheets ══════ */
       .sheet-overlay {
         position: fixed;
         inset: 0;
@@ -452,7 +372,6 @@
         margin: 0 auto 18px;
       }
 
-      /* ══════ Prize Modal ══════ */
       .prize-label {
         font-size: 18px;
         color: #888;
@@ -488,7 +407,6 @@
         line-height: 1;
       }
 
-      /* ══════ Subscribe Modal ══════ */
       .sub-desc {
         font-size: 14px;
         color: #666;
@@ -578,7 +496,6 @@
         pointer-events: none;
       }
 
-      /* ══════ Final Modal ══════ */
       .final-sticker {
         width: 80px;
         height: 80px;
@@ -593,7 +510,6 @@
         color: #333;
         margin-bottom: 14px;
       }
-
       .timer-card {
         background: linear-gradient(135deg, #f8f9ff, #f0ecff);
         border-radius: 16px;
@@ -692,7 +608,6 @@
           opacity: 1;
         }
       }
-
       .progress-track {
         display: flex;
         align-items: center;
@@ -756,7 +671,6 @@
       .p-label.done-label {
         color: #4caf50;
       }
-
       .final-actions {
         display: flex;
         gap: 10px;
@@ -794,7 +708,6 @@
         flex-shrink: 0;
       }
 
-      /* ══════ Speedup ══════ */
       .speedup-header {
         display: flex;
         align-items: center;
@@ -953,7 +866,6 @@
         padding: 8px;
       }
 
-      /* ══════ Stars Modal ══════ */
       .modal-fs {
         position: fixed;
         inset: 0;
@@ -1099,28 +1011,11 @@
         <canvas id="draw-canvas"></canvas>
         <button id="btn-reset" title="Сброс">↻</button>
       </div>
-      <div id="tap-ui" class="hidden">
-        <div id="tap-hint">
-          <span class="bounce-letter" style="--d: 0">Т</span
-          ><span class="bounce-letter" style="--d: 1">а</span
-          ><span class="bounce-letter" style="--d: 2">п</span
-          ><span class="bounce-letter" style="--d: 3">а</span
-          ><span class="bounce-letter" style="--d: 4">й</span
-          ><span class="bounce-letter" style="--d: 5">!</span
-          ><span class="bounce-letter" style="--d: 6"> </span
-          ><span class="bounce-letter" style="--d: 7">👆</span>
-        </div>
-        <div id="tap-progress">
-          <div id="tap-bar"><div id="tap-fill"></div></div>
-          <span id="tap-counter">0 / 10</span>
-        </div>
-      </div>
       <button id="btn-submit" class="btn-primary" disabled>
         <span>Готово</span><span class="btn-shine"></span>
       </button>
     </div>
 
-    <!-- tap-scene теперь fixed поверх всего -->
     <div id="tap-scene" class="hidden"></div>
 
     <div id="modal-prize" class="sheet-overlay hidden">
@@ -1348,7 +1243,8 @@
         let wonPrize = null,
           appState = "loading",
           tapCount = 0;
-        let isCheckingSub = false;
+        let isCheckingSub = false,
+          savedWrapSize = 300;
 
         function calcSpeed(r) {
           return r >= 2 ? Math.pow(2, Math.floor(r / 2)) : 1;
@@ -1391,13 +1287,11 @@
           const pillEl = document.getElementById("speed-pill");
           const dotEl = document.getElementById("status-dot");
           const statusEl = document.getElementById("status-text");
-
           if (speedEl) speedEl.textContent = "x" + tSpeed;
           if (pillEl) {
             if (tSpeed > 1) pillEl.classList.add("fast");
             else pillEl.classList.remove("fast");
           }
-
           if (!t) {
             if (timeEl) {
               timeEl.textContent = "Готово!";
@@ -1406,9 +1300,9 @@
             if (dotEl) dotEl.classList.add("done");
             if (statusEl) statusEl.textContent = "Приз готов к выдаче!";
             const pd2 = document.getElementById("pd-2"),
-              pd3 = document.getElementById("pd-3");
-            const pl2 = document.getElementById("pl-2");
-            const plbl2 = document.getElementById("plbl-2"),
+              pd3 = document.getElementById("pd-3"),
+              pl2 = document.getElementById("pl-2"),
+              plbl2 = document.getElementById("plbl-2"),
               plbl3 = document.getElementById("plbl-3");
             if (pd2) {
               pd2.className = "p-dot done";
@@ -1787,10 +1681,10 @@
         function setupCanvas() {
           const totalH = window.innerHeight;
           const maxW = window.innerWidth - 48;
-          // title(28)+subtitle(20)+attempt(16)+score(48)+hint(18)+paddings(~50)+button(52) ≈ 240
           const availH = totalH - 240;
           canvasSize = Math.min(availH, maxW, 400);
           canvasSize = Math.max(canvasSize, 180);
+          savedWrapSize = canvasSize;
           canvasWrap.style.width = canvasSize + "px";
           canvasWrap.style.height = canvasSize + "px";
           const dpr = window.devicePixelRatio || 1;
@@ -1947,14 +1841,41 @@
             }
           });
 
+        /* ══════ Tap handler ══════ */
+        async function handleTap(e) {
+          if (appState !== "tapping") return;
+          e.preventDefault();
+          tapCount++;
+          haptic("medium");
+          const sc = document.getElementById("sticker-container");
+          const progress = tapCount / MAX_TAPS;
+          const newSize = savedWrapSize * (0.3 + 0.55 * progress);
+          gsap.to(sc, {
+            width: newSize,
+            height: newSize,
+            duration: 0.3,
+            ease: "back.out(1.5)",
+          });
+          document.getElementById("tap-fill").style.width =
+            progress * 100 + "%";
+          document.getElementById("tap-counter").textContent =
+            tapCount + " / " + MAX_TAPS;
+          showTapFx(e.clientX, e.clientY);
+          burst(e.clientX, e.clientY, 6);
+          if (tapCount >= MAX_TAPS) {
+            appState = "revealing";
+            await sleep(300);
+            await revealPrize();
+          }
+        }
+
+        /* ══════ Transform ══════ */
         async function animateTransform() {
           const canvas = document.getElementById("draw-canvas"),
             flash = document.getElementById("flash");
           const wrapRect = canvasWrap.getBoundingClientRect(),
             cx = wrapRect.left + wrapRect.width / 2,
-            cy = wrapRect.top + wrapRect.height / 2,
-            wrapSize = parseInt(canvasWrap.style.width);
-
+            cy = wrapRect.top + wrapRect.height / 2;
           gsap.to(
             [
               "#btn-submit",
@@ -1965,7 +1886,6 @@
             ],
             { opacity: 0, duration: 0.3 },
           );
-
           let shakeAmp = 0;
           const shakeLoop = () => {
             if (shakeAmp <= 0) return;
@@ -1985,7 +1905,6 @@
               },
             },
           );
-
           for (let i = 0; i < 6; i++) {
             await sleep(150);
             haptic("light");
@@ -2005,25 +1924,24 @@
           canvas.style.display = "none";
           canvasWrap.classList.remove("border-success");
 
-          // ── tap scene (fixed overlay) ──
-          const suspenseSize = Math.round(wrapSize * 0.35);
+          /* Build tap scene */
+          const suspenseSize = Math.round(savedWrapSize * 0.35);
           const tapScene = document.getElementById("tap-scene");
           tapScene.innerHTML = `
-    <div id="sticker-tap-area" style="cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center">
-      <div id="sticker-container" style="width:${suspenseSize}px;height:${suspenseSize}px;display:flex;align-items:center;justify-content:center">
-        <div id="suspense-text" style="font-size:55px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">❓</div>
-      </div>
-    </div>
-    <div id="tap-ui-inner" style="text-align:center;display:none">
-      <div style="font-size:18px;font-weight:700;color:#333;letter-spacing:1px">Тапай! 👆</div>
-      <div style="margin-top:6px">
-        <div style="width:140px;height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin:0 auto 4px">
-          <div id="tap-fill" style="height:100%;width:0%;border-radius:3px;transition:width .15s ease-out"></div>
+        <div id="sticker-tap-area" style="cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;position:absolute;inset:0">
+          <div id="sticker-container" style="width:${suspenseSize}px;height:${suspenseSize}px;display:flex;align-items:center;justify-content:center">
+            <div id="suspense-text" style="font-size:55px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">❓</div>
+          </div>
         </div>
-        <span id="tap-counter" style="font-size:12px;color:#999;font-weight:600">0 / ${MAX_TAPS}</span>
-      </div>
-    </div>
-  `;
+        <div id="tap-ui-inner" style="text-align:center;position:absolute;bottom:60px;left:0;right:0;display:none">
+          <div style="font-size:18px;font-weight:700;color:#333;letter-spacing:1px">Тапай! 👆</div>
+          <div style="margin-top:6px">
+            <div style="width:140px;height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin:0 auto 4px">
+              <div id="tap-fill" style="height:100%;width:0%;border-radius:3px;transition:width .15s ease-out"></div>
+            </div>
+            <span id="tap-counter" style="font-size:12px;color:#999;font-weight:600">0 / ${MAX_TAPS}</span>
+          </div>
+        </div>`;
           tapScene.classList.remove("hidden");
 
           const stickerContainer = document.getElementById("sticker-container");
@@ -2034,7 +1952,6 @@
           });
           await sleep(200);
 
-          // drum roll
           const emojis = [
             "❓",
             "🎁",
@@ -2053,7 +1970,7 @@
             drumAmp = 0;
           const drumLoop = () => {
             if (drumAmp <= 0) return;
-            canvasWrap.style.transform = `translate(${(Math.random() - 0.5) * drumAmp * 2}px,${(Math.random() - 0.5) * drumAmp * 2}px)`;
+            tapScene.style.transform = `translate(${(Math.random() - 0.5) * drumAmp * 2}px,${(Math.random() - 0.5) * drumAmp * 2}px)`;
             requestAnimationFrame(drumLoop);
           };
           drumAmp = 1;
@@ -2069,7 +1986,6 @@
               },
             },
           );
-
           for (let round = 0; round < 18; round++) {
             suspenseText.textContent = emojis[idx % emojis.length];
             gsap.fromTo(
@@ -2082,18 +1998,17 @@
             await sleep(spd);
             spd = Math.max(50, spd - 14);
           }
-
           drumAmp = 0;
-          canvasWrap.style.transform = "";
+          tapScene.style.transform = "";
+
           flash.style.transition = "opacity .08s";
           flash.style.opacity = "1";
           haptic("heavy");
           hapticN("success");
           await sleep(100);
 
-          // reveal prize sticker
           stickerContainer.innerHTML = "";
-          const startSize = Math.round(wrapSize * 0.3);
+          const startSize = Math.round(savedWrapSize * 0.3);
           stickerContainer.style.width = startSize + "px";
           stickerContainer.style.height = startSize + "px";
           await loadTGS(wonPrize.tgs);
@@ -2123,104 +2038,33 @@
           flash.style.opacity = "0";
           await sleep(1000);
 
-          // show tap ui
           const tapUiInner = document.getElementById("tap-ui-inner");
           tapUiInner.style.display = "block";
           gsap.from(tapUiInner, { opacity: 0, y: 10, duration: 0.3 });
 
-          // set fill color
           const tapFill = document.getElementById("tap-fill");
           tapFill.classList.remove("gold", "purple");
           tapFill.classList.add(wonPrize.fillClass);
-
           appState = "tapping";
           tapCount = 0;
           document.getElementById("tap-counter").textContent =
             "0 / " + MAX_TAPS;
           tapFill.style.width = "0%";
 
-          // re-bind tap listener since sticker-tap-area was recreated
           document
             .getElementById("sticker-tap-area")
             .addEventListener("pointerdown", handleTap);
         }
 
-        document
-          .getElementById("sticker-tap-area")
-          .addEventListener("pointerdown", async (e) => {
-            if (appState !== "tapping") return;
-            e.preventDefault();
-            tapCount++;
-            haptic("medium");
-            const stickerContainer =
-                document.getElementById("sticker-container"),
-              wrapSize = parseInt(canvasWrap.style.width);
-            const startSize = wrapSize * 0.3,
-              endSize = wrapSize * 0.85,
-              progress = tapCount / MAX_TAPS;
-            gsap.to(stickerContainer, {
-              width: startSize + (endSize - startSize) * progress,
-              height: startSize + (endSize - startSize) * progress,
-              duration: 0.3,
-              ease: "back.out(1.5)",
-            });
-            document.getElementById("tap-fill").style.width =
-              progress * 100 + "%";
-            document.getElementById("tap-counter").textContent =
-              tapCount + " / " + MAX_TAPS;
-            showTapFx(e.clientX, e.clientY);
-            burst(e.clientX, e.clientY, 6);
-            if (tapCount >= MAX_TAPS) {
-              appState = "revealing";
-              await sleep(300);
-              await revealPrize();
-            }
-          });
         async function revealPrize() {
           confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } });
           hapticN("success");
           await sleep(600);
-          // скрываем tap-ui-inner
-          const tapUiInner = document.getElementById("tap-ui-inner");
-          if (tapUiInner) gsap.to(tapUiInner, { opacity: 0, duration: 0.2 });
+          const ui = document.getElementById("tap-ui-inner");
+          if (ui) gsap.to(ui, { opacity: 0, duration: 0.2 });
           await sleep(300);
-          // скрываем tap-scene
           document.getElementById("tap-scene").classList.add("hidden");
           showPrizeModal();
-        }
-
-        async function handleTap(e) {
-          if (appState !== "tapping") return;
-          e.preventDefault();
-          tapCount++;
-          haptic("medium");
-          const stickerContainer = document.getElementById("sticker-container");
-          const startSize = wrapSize * 0.3; // ← это не работает, wrapSize недоступен
-          // поэтому берём из style:
-          const curSize = parseInt(stickerContainer.style.width) || 100;
-          const endSize = curSize * (0.85 / 0.3); // пересчитываем от стартового
-          const progress = tapCount / MAX_TAPS;
-          const newSize =
-            curSize +
-            (parseInt(canvasWrap.style.width) * 0.85 - curSize) *
-              (1 / MAX_TAPS);
-          gsap.to(stickerContainer, {
-            width: parseInt(canvasWrap.style.width) * (0.3 + 0.55 * progress),
-            height: parseInt(canvasWrap.style.width) * (0.3 + 0.55 * progress),
-            duration: 0.3,
-            ease: "back.out(1.5)",
-          });
-          document.getElementById("tap-fill").style.width =
-            progress * 100 + "%";
-          document.getElementById("tap-counter").textContent =
-            tapCount + " / " + MAX_TAPS;
-          showTapFx(e.clientX, e.clientY);
-          burst(e.clientX, e.clientY, 6);
-          if (tapCount >= MAX_TAPS) {
-            appState = "revealing";
-            await sleep(300);
-            await revealPrize();
-          }
         }
 
         async function showPrizeModal() {
@@ -2240,7 +2084,6 @@
           openSheet("modal-prize");
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           appState = "prize";
-
           for (let i = 3; i >= 1; i--) {
             cd.textContent = i;
             cd.style.color = "#976FFF";
@@ -2398,11 +2241,10 @@
           if (!claimedAt) claimedAt = US?.claimed_at || Date.now() / 1000;
           refCount = US?.referral_count || refCount || 0;
           tSpeed = calcSpeed(refCount);
-
           const pd2 = document.getElementById("pd-2"),
-            pd3 = document.getElementById("pd-3");
-          const pl2 = document.getElementById("pl-2");
-          const plbl2 = document.getElementById("plbl-2"),
+            pd3 = document.getElementById("pd-3"),
+            pl2 = document.getElementById("pl-2"),
+            plbl2 = document.getElementById("plbl-2"),
             plbl3 = document.getElementById("plbl-3");
           if (pd2) {
             pd2.className = "p-dot active";
@@ -2421,7 +2263,6 @@
             plbl3.className = "p-label";
             plbl3.textContent = "Выдача";
           }
-
           startTimer();
           openSheet("modal-final");
           confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
@@ -2555,7 +2396,6 @@
           try {
             Telegram.WebApp.ready();
           } catch (e) {}
-
           if (US?.state === "claimed") {
             wonPrize = US.prize_key === "stars" ? PRIZE_STARS : PRIZE_PREMIUM;
             showFinal();
@@ -2566,8 +2406,6 @@
             showSub();
             return;
           }
-
-          // Pre-hide elements before showing scene
           gsap.set(
             ["#draw-title", "#draw-subtitle", "#canvas-wrap", "#btn-submit"],
             { opacity: 0, y: 20 },
@@ -2576,8 +2414,6 @@
           setupCanvas();
           appState = "drawing";
           updateAttemptCounter();
-
-          // Animate in — no flash
           gsap.to("#draw-title", {
             y: 0,
             opacity: 1,
