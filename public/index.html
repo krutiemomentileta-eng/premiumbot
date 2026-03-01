@@ -308,6 +308,7 @@
         flex-shrink: 0;
       }
 
+      /* ══════ Buttons ══════ */
       .btn-primary {
         position: relative;
         width: 100%;
@@ -371,6 +372,7 @@
         }
       }
 
+      /* ══════ Particles ══════ */
       .particle {
         position: fixed;
         pointer-events: none;
@@ -410,6 +412,7 @@
         }
       }
 
+      /* ══════ Sheets ══════ */
       .sheet-overlay {
         position: fixed;
         inset: 0;
@@ -470,6 +473,12 @@
         align-items: center;
         justify-content: center;
         margin-bottom: 10px;
+      }
+      #claim-cd {
+        font-size: 42px;
+        font-weight: 900;
+        color: #976fff;
+        line-height: 1;
       }
 
       /* ══════ Subscribe Modal ══════ */
@@ -562,7 +571,7 @@
         pointer-events: none;
       }
 
-      /* ══════ Final Modal (CLEAN CARD) ══════ */
+      /* ══════ Final Modal ══════ */
       .final-sticker {
         width: 80px;
         height: 80px;
@@ -600,7 +609,6 @@
         );
         border-radius: 50%;
       }
-
       .timer-main {
         display: flex;
         align-items: center;
@@ -619,8 +627,9 @@
       .timer-time.done {
         color: #4caf50;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        font-size: 18px;
+        font-size: 20px;
         letter-spacing: 0;
+        font-weight: 800;
       }
       .timer-speed-pill {
         display: inline-flex;
@@ -646,10 +655,6 @@
           transform: scale(1.06);
         }
       }
-      .pill-icon {
-        font-size: 11px;
-      }
-
       .timer-status {
         display: flex;
         align-items: center;
@@ -687,11 +692,6 @@
         justify-content: center;
         gap: 0;
         margin-top: 14px;
-      }
-      .p-step {
-        display: flex;
-        align-items: center;
-        gap: 0;
       }
       .p-dot {
         width: 22px;
@@ -1082,7 +1082,6 @@
     <div id="edge-glow"></div>
     <div id="toast" class="toast"></div>
 
-    <!-- ══════ Draw Scene ══════ -->
     <div id="draw-scene" class="hidden">
       <div id="draw-title">Нарисуй звезду ⭐</div>
       <div id="draw-subtitle">и получи свой приз</div>
@@ -1117,7 +1116,6 @@
       </button>
     </div>
 
-    <!-- ══════ Prize Modal ══════ -->
     <div id="modal-prize" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
@@ -1125,24 +1123,13 @@
         <div class="prize-label">ВАМ ВЫПАЛО:</div>
         <div id="modal-prize-sticker" class="prize-sticker"></div>
         <p id="modal-prize-name" class="prize-name"></p>
-        <div class="claim-countdown-wrap">
-          <div
-            id="claim-cd"
-            style="
-              font-size: 42px;
-              font-weight: 900;
-              color: #976fff;
-              line-height: 1;
-            "
-          ></div>
-        </div>
+        <div class="claim-countdown-wrap"><div id="claim-cd"></div></div>
         <button id="btn-claim" class="btn-primary" disabled>
           <span>ЗАБРАТЬ</span><span class="btn-shine"></span>
         </button>
       </div>
     </div>
 
-    <!-- ══════ Subscribe Modal ══════ -->
     <div id="modal-subscribe" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
@@ -1160,37 +1147,29 @@
       </div>
     </div>
 
-    <!-- ══════ Final Modal ══════ -->
     <div id="modal-final" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div id="final-sticker" class="final-sticker"></div>
         <p id="final-prize-name" class="final-prize-name"></p>
-
         <div class="timer-card">
           <div class="timer-main">
             <div id="timer-time" class="timer-time">24:00:00</div>
             <div id="speed-pill" class="timer-speed-pill">
-              <span class="pill-icon">⚡</span><span id="speed-text">x1</span>
+              <span>⚡</span><span id="speed-text">x1</span>
             </div>
           </div>
           <div class="timer-status">
             <div id="status-dot" class="status-dot"></div>
-            <span id="status-text">Обработка заявки...</span>
+            <span id="status-text">Подготавливаем приз...</span>
           </div>
           <div class="progress-track">
-            <div class="p-step"><div id="pd-1" class="p-dot done">✓</div></div>
-            <div class="p-step"><div id="pl-1" class="p-line done"></div></div>
-            <div class="p-step">
-              <div id="pd-2" class="p-dot active">2</div>
-            </div>
-            <div class="p-step">
-              <div id="pl-2" class="p-line active"></div>
-            </div>
-            <div class="p-step">
-              <div id="pd-3" class="p-dot pending">3</div>
-            </div>
+            <div id="pd-1" class="p-dot done">✓</div>
+            <div id="pl-1" class="p-line done"></div>
+            <div id="pd-2" class="p-dot active">2</div>
+            <div id="pl-2" class="p-line active"></div>
+            <div id="pd-3" class="p-dot pending">3</div>
           </div>
           <div class="p-labels">
             <div id="plbl-1" class="p-label done-label">Получен</div>
@@ -1198,7 +1177,6 @@
             <div id="plbl-3" class="p-label">Выдача</div>
           </div>
         </div>
-
         <div class="final-actions">
           <button id="btn-speedup" class="btn-action purple">
             <span class="btn-action-icon">🚀</span><span>Ускорить</span>
@@ -1210,13 +1188,12 @@
       </div>
     </div>
 
-    <!-- ══════ Speedup Modal ══════ -->
     <div id="modal-speedup" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="speedup-header">
-          <div id="icon-rocket-title" class="header-icon">🚀</div>
+          <div class="header-icon">🚀</div>
           <div class="speedup-title">Ускорить вывод</div>
         </div>
         <p class="speedup-desc">
@@ -1273,7 +1250,6 @@
       </div>
     </div>
 
-    <!-- ══════ Stars Modal ══════ -->
     <div id="modal-stars" class="modal-fs hidden">
       <div class="modal-fs-header">
         <span class="modal-fs-title"
@@ -1391,7 +1367,6 @@
           } catch (e) {}
         }
 
-        /* ══════ Timer ══════ */
         function startTimer() {
           if (tInt) clearInterval(tInt);
           updTimer();
@@ -1421,14 +1396,8 @@
               timeEl.textContent = "Готово!";
               timeEl.classList.add("done");
             }
-            if (dotEl) {
-              dotEl.classList.add("done");
-            }
-            if (statusEl) statusEl.textContent = "ГОТОВО!";
-            if (dotEl) {
-              dotEl.classList.add("done");
-            }
-            // Update progress dots
+            if (dotEl) dotEl.classList.add("done");
+            if (statusEl) statusEl.textContent = "Приз готов к выдаче!";
             const pd2 = document.getElementById("pd-2"),
               pd3 = document.getElementById("pd-3");
             const pl2 = document.getElementById("pl-2");
@@ -1463,7 +1432,6 @@
           if (statusEl) statusEl.textContent = "Подготавливаем приз...";
         }
 
-        /* ══════ TGS / Lottie ══════ */
         const tgsCache = {},
           tgsStr = {};
         try {
@@ -1513,7 +1481,6 @@
           activeLotties = [];
         }
 
-        /* ══════ API ══════ */
         function gID() {
           try {
             return Telegram.WebApp.initData;
@@ -1541,7 +1508,6 @@
           setTimeout(() => el.classList.remove("show"), ms);
         }
 
-        /* ══════ Particles ══════ */
         const pPool = [],
           MP = 24,
           PC = [
@@ -1624,7 +1590,6 @@
           }
         }
 
-        /* ══════ Sheets ══════ */
         function openSheet(id) {
           const ov = document.getElementById(id),
             bg = ov.querySelector(".sheet-bg"),
@@ -1656,7 +1621,6 @@
           }
         }
 
-        /* ══════ Star scoring ══════ */
         function generateIdealStar(size) {
           const c = document.createElement("canvas");
           c.width = c.height = size;
@@ -1777,7 +1741,6 @@
           return Math.min(100, Math.round((cov * 0.55 + prec * 0.45) * 110));
         }
 
-        /* ══════ Canvas ══════ */
         const canvasEl = document.getElementById("draw-canvas"),
           canvasCtx = canvasEl.getContext("2d"),
           canvasWrap = document.getElementById("canvas-wrap");
@@ -1815,37 +1778,12 @@
         }
 
         function setupCanvas() {
-          // Measure actual available space
-          const scene = document.getElementById("draw-scene");
-          const title = document.getElementById("draw-title");
-          const subtitle = document.getElementById("draw-subtitle");
-          const attempt = document.getElementById("attempt-counter");
-          const scoreD = document.getElementById("score-display");
-          const scoreH = document.getElementById("score-hint");
-          const btn = document.getElementById("btn-submit");
-
-          // Force layout to measure
-          scene.classList.remove("hidden");
-
           const totalH = window.innerHeight;
-          const usedH =
-            title.offsetHeight +
-            subtitle.offsetHeight +
-            attempt.offsetHeight +
-            scoreD.offsetHeight +
-            scoreH.offsetHeight +
-            btn.offsetHeight +
-            12 +
-            2 +
-            2 +
-            6 +
-            8 +
-            16; // paddings/margins
-          const availH = totalH - usedH - 40; // extra safety
           const maxW = window.innerWidth - 48;
+          // title(28)+subtitle(20)+attempt(16)+score(48)+hint(18)+paddings(~50)+button(52) ≈ 240
+          const availH = totalH - 240;
           canvasSize = Math.min(availH, maxW, 400);
-          canvasSize = Math.max(canvasSize, 200); // minimum
-
+          canvasSize = Math.max(canvasSize, 180);
           canvasWrap.style.width = canvasSize + "px";
           canvasWrap.style.height = canvasSize + "px";
           const dpr = window.devicePixelRatio || 1;
@@ -1859,7 +1797,6 @@
           canvasCtx.lineCap = "round";
           canvasCtx.lineJoin = "round";
           drawGhostStar();
-          return canvasSize;
         }
 
         function getCanvasPos(e) {
@@ -1942,7 +1879,6 @@
             attemptCount > 0 ? "Попытка " + (attemptCount + 1) : "";
         }
 
-        /* ══════ Submit ══════ */
         document
           .getElementById("btn-submit")
           .addEventListener("click", async () => {
@@ -2004,7 +1940,6 @@
             }
           });
 
-        /* ══════ Transform ══════ */
         async function animateTransform() {
           const canvas = document.getElementById("draw-canvas"),
             flash = document.getElementById("flash");
@@ -2176,7 +2111,6 @@
           document.getElementById("tap-fill").style.width = "0%";
         }
 
-        /* ══════ Tapping ══════ */
         document
           .getElementById("sticker-tap-area")
           .addEventListener("pointerdown", async (e) => {
@@ -2217,7 +2151,6 @@
           showPrizeModal();
         }
 
-        /* ══════ Prize Modal ══════ */
         async function showPrizeModal() {
           killLotties();
           document.getElementById("modal-prize-name").textContent =
@@ -2265,7 +2198,6 @@
           document.getElementById("edge-glow").classList.remove("active");
         });
 
-        /* ══════ Subscribe ══════ */
         function updateSubProgress() {
           const done = document.querySelectorAll(
             ".channel-sub-btn.done",
@@ -2378,7 +2310,6 @@
             isCheckingSub = false;
           });
 
-        /* ══════ Final ══════ */
         function showFinal() {
           killLotties();
           const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
@@ -2396,7 +2327,6 @@
           refCount = US?.referral_count || refCount || 0;
           tSpeed = calcSpeed(refCount);
 
-          // Reset progress to default
           const pd2 = document.getElementById("pd-2"),
             pd3 = document.getElementById("pd-3");
           const pl2 = document.getElementById("pl-2");
@@ -2426,7 +2356,6 @@
           appState = "final";
         }
 
-        /* ══════ Speedup ══════ */
         document.getElementById("btn-speedup").addEventListener("click", () => {
           document.getElementById("su-ref-count").textContent = refCount;
           document.getElementById("su-speed").textContent = "x" + tSpeed;
@@ -2460,7 +2389,6 @@
           }
         });
 
-        /* ══════ Stars ══════ */
         document
           .getElementById("btn-earn-stars")
           .addEventListener("click", async () => {
@@ -2517,7 +2445,6 @@
             document.getElementById("stars-content").classList.remove("hidden");
           });
 
-        /* ══════ Init ══════ */
         async function init() {
           try {
             Telegram.WebApp.expand();
@@ -2556,6 +2483,7 @@
           try {
             Telegram.WebApp.ready();
           } catch (e) {}
+
           if (US?.state === "claimed") {
             wonPrize = US.prize_key === "stars" ? PRIZE_STARS : PRIZE_PREMIUM;
             showFinal();
@@ -2566,14 +2494,18 @@
             showSub();
             return;
           }
-          gsap.set("#draw-title", { y: 20, opacity: 0 });
-          gsap.set("#draw-subtitle", { y: 15, opacity: 0 });
-          gsap.set("#canvas-wrap", { scale: 0.8, opacity: 0 });
-          gsap.set("#btn-submit", { y: 20, opacity: 0 });
+
+          // Pre-hide elements before showing scene
+          gsap.set(
+            ["#draw-title", "#draw-subtitle", "#canvas-wrap", "#btn-submit"],
+            { opacity: 0, y: 20 },
+          );
           document.getElementById("draw-scene").classList.remove("hidden");
           setupCanvas();
           appState = "drawing";
           updateAttemptCounter();
+
+          // Animate in — no flash
           gsap.to("#draw-title", {
             y: 0,
             opacity: 1,
@@ -2584,14 +2516,14 @@
             y: 0,
             opacity: 1,
             duration: 0.3,
-            delay: 0.15,
+            delay: 0.1,
             clearProps: "all",
           });
           gsap.to("#canvas-wrap", {
-            scale: 1,
+            y: 0,
             opacity: 1,
             duration: 0.5,
-            delay: 0.3,
+            delay: 0.2,
             ease: "back.out(1.5)",
             clearProps: "all",
           });
@@ -2599,7 +2531,7 @@
             y: 0,
             opacity: 1,
             duration: 0.3,
-            delay: 0.5,
+            delay: 0.35,
             clearProps: "all",
           });
         }
