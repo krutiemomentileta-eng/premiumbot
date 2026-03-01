@@ -85,7 +85,6 @@
         transform: translateX(-50%) translateY(0);
       }
 
-      /* ══════ FLASH ══════ */
       #flash {
         position: fixed;
         inset: 0;
@@ -96,7 +95,6 @@
         transition: opacity 0.15s;
       }
 
-      /* ══════ EDGE GLOW ══════ */
       #edge-glow {
         position: fixed;
         inset: 0;
@@ -132,30 +130,30 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 20px 24px;
+        padding: 16px 24px;
         z-index: 2;
       }
       #draw-title {
         font-size: 22px;
         font-weight: 800;
         color: #333;
-        margin-top: 16px;
+        margin-top: 8px;
         text-align: center;
       }
       #draw-subtitle {
         font-size: 14px;
         color: #888;
-        margin-top: 6px;
+        margin-top: 4px;
         text-align: center;
       }
       #score-display {
-        margin-top: 16px;
+        margin-top: 10px;
         font-size: 48px;
         font-weight: 900;
         opacity: 0;
         transition: color 0.3s;
         text-align: center;
-        height: 56px;
+        height: 52px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -163,21 +161,29 @@
       #score-hint {
         font-size: 14px;
         font-weight: 600;
-        height: 20px;
-        margin-top: 4px;
+        height: 18px;
+        margin-top: 2px;
         text-align: center;
         opacity: 0;
         transition: opacity 0.3s;
       }
+
       #canvas-wrap {
         position: relative;
-        margin-top: 16px;
+        margin-top: 10px;
         border-radius: 16px;
         background: #f5f5f5;
-        border: 1.5px solid #333;
+        border: 2px solid #333;
         overflow: hidden;
         touch-action: none;
         will-change: transform;
+        transition: border-color 0.4s ease;
+      }
+      #canvas-wrap.border-success {
+        border-color: #4caf50;
+      }
+      #canvas-wrap.border-fail {
+        border-color: #ff4757;
       }
       #draw-canvas {
         display: block;
@@ -205,47 +211,42 @@
       #btn-reset:active {
         background: rgba(0, 0, 0, 0.12);
       }
-      #btn-submit {
-        margin-top: auto;
-        margin-bottom: 20px;
-        width: 100%;
-        max-width: 360px;
-      }
 
-      /* ══════ TAP SCENE ══════ */
+      /* ══════ TAP SCENE (inside canvas — clipped) ══════ */
       #tap-scene {
         position: absolute;
         inset: 0;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
         z-index: 6;
         background: #f5f5f5;
-        border-radius: 16px;
+        border-radius: 14px;
+        overflow: hidden;
       }
       #sticker-tap-area {
         position: relative;
         cursor: pointer;
         touch-action: manipulation;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        max-width: 100%;
+        max-height: 100%;
       }
       #sticker-container {
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
       }
-      #suspense-text {
-        font-size: 60px;
-        line-height: 1;
+
+      /* ══════ TAP UI (outside canvas) ══════ */
+      #tap-ui {
         text-align: center;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
+        margin-top: 12px;
       }
       #tap-hint {
-        margin-top: 12px;
         font-size: 18px;
         font-weight: 700;
         color: #333;
@@ -267,10 +268,9 @@
       }
       #tap-progress {
         margin-top: 8px;
-        text-align: center;
       }
       #tap-bar {
-        width: 120px;
+        width: 140px;
         height: 5px;
         background: #e0e0e0;
         border-radius: 3px;
@@ -293,6 +293,13 @@
         font-size: 12px;
         color: #999;
         font-weight: 600;
+      }
+
+      #btn-submit {
+        margin-top: auto;
+        margin-bottom: 20px;
+        width: 100%;
+        max-width: 360px;
       }
 
       .particle {
@@ -968,20 +975,23 @@
           <div id="sticker-tap-area">
             <div id="sticker-container"></div>
           </div>
-          <div id="tap-hint">
-            <span class="bounce-letter" style="--d: 0">Т</span
-            ><span class="bounce-letter" style="--d: 1">а</span
-            ><span class="bounce-letter" style="--d: 2">п</span
-            ><span class="bounce-letter" style="--d: 3">а</span
-            ><span class="bounce-letter" style="--d: 4">й</span
-            ><span class="bounce-letter" style="--d: 5">!</span
-            ><span class="bounce-letter" style="--d: 6"> </span
-            ><span class="bounce-letter" style="--d: 7">👆</span>
-          </div>
-          <div id="tap-progress">
-            <div id="tap-bar"><div id="tap-fill"></div></div>
-            <span id="tap-counter">0 / 10</span>
-          </div>
+        </div>
+      </div>
+      <!-- TAP UI — outside canvas -->
+      <div id="tap-ui" class="hidden">
+        <div id="tap-hint">
+          <span class="bounce-letter" style="--d: 0">Т</span
+          ><span class="bounce-letter" style="--d: 1">а</span
+          ><span class="bounce-letter" style="--d: 2">п</span
+          ><span class="bounce-letter" style="--d: 3">а</span
+          ><span class="bounce-letter" style="--d: 4">й</span
+          ><span class="bounce-letter" style="--d: 5">!</span
+          ><span class="bounce-letter" style="--d: 6"> </span
+          ><span class="bounce-letter" style="--d: 7">👆</span>
+        </div>
+        <div id="tap-progress">
+          <div id="tap-bar"><div id="tap-fill"></div></div>
+          <span id="tap-counter">0 / 10</span>
         </div>
       </div>
       <button id="btn-submit" class="btn-primary" disabled>
@@ -1619,6 +1629,7 @@
         /* ══════ CANVAS ══════ */
         const canvasEl = document.getElementById("draw-canvas");
         const canvasCtx = canvasEl.getContext("2d");
+        const canvasWrap = document.getElementById("canvas-wrap");
         let strokes = [],
           currentStroke = null,
           isDrawing = false,
@@ -1626,12 +1637,11 @@
           hapticCounter = 0;
 
         function setupCanvas() {
-          const wrap = document.getElementById("canvas-wrap");
-          const maxH = Math.floor(window.innerHeight * 0.3);
+          const maxH = Math.floor(window.innerHeight * 0.45);
           const maxW = window.innerWidth - 48;
           const sz = Math.min(maxH, maxW);
-          wrap.style.width = sz + "px";
-          wrap.style.height = sz + "px";
+          canvasWrap.style.width = sz + "px";
+          canvasWrap.style.height = sz + "px";
           const dpr = window.devicePixelRatio || 1;
           canvasEl.width = sz * dpr;
           canvasEl.height = sz * dpr;
@@ -1697,6 +1707,7 @@
           document.getElementById("btn-submit").disabled = true;
           document.getElementById("score-display").style.opacity = "0";
           document.getElementById("score-hint").style.opacity = "0";
+          canvasWrap.classList.remove("border-success", "border-fail");
         }
         document.getElementById("btn-reset").addEventListener("click", () => {
           if (appState !== "drawing") return;
@@ -1739,6 +1750,7 @@
               hintEl.textContent = "Отлично!";
               hintEl.style.color = "#4CAF50";
               gsap.to(hintEl, { opacity: 1, duration: 0.3 });
+              canvasWrap.classList.add("border-success");
               hapticN("success");
               wonPrize = Math.random() < 0.5 ? PRIZE_STARS : PRIZE_PREMIUM;
               api("check-subscription", {
@@ -1754,6 +1766,7 @@
               hintEl.textContent = "Попробуйте ещё раз";
               hintEl.style.color = "#FF4757";
               gsap.to(hintEl, { opacity: 1, duration: 0.3 });
+              canvasWrap.classList.add("border-fail");
               hapticN("error");
               await sleep(1500);
               clearCanvas();
@@ -1761,25 +1774,21 @@
             }
           });
 
-        /* ══════════════════════════════════════════
-       EPIC TRANSFORM ANIMATION
-       ══════════════════════════════════════════ */
+        /* ══════ EPIC TRANSFORM ══════ */
         async function animateTransform() {
           const canvas = document.getElementById("draw-canvas");
-          const canvasWrap = document.getElementById("canvas-wrap");
           const flash = document.getElementById("flash");
           const wrapRect = canvasWrap.getBoundingClientRect();
           const cx = wrapRect.left + wrapRect.width / 2;
           const cy = wrapRect.top + wrapRect.height / 2;
           const wrapSize = parseInt(canvasWrap.style.width);
 
-          // Hide UI
           gsap.to(
             ["#btn-submit", "#btn-reset", "#score-display", "#score-hint"],
             { opacity: 0, duration: 0.3 },
           );
 
-          // ── PHASE 1: Drawing shakes violently ──
+          // Phase 1: shake
           let shakeAmp = 0;
           const shakeLoop = () => {
             if (shakeAmp <= 0) return;
@@ -1801,14 +1810,12 @@
               },
             },
           );
-
-          // Build-up haptic
           for (let i = 0; i < 6; i++) {
             await sleep(150);
             haptic("light");
           }
 
-          // ── PHASE 2: Drawing implodes ──
+          // Phase 2: implode
           haptic("heavy");
           megaBurst(cx, cy);
           gsap.to(canvas, {
@@ -1822,8 +1829,9 @@
           canvas.style.transform = "";
           await sleep(400);
           canvas.style.display = "none";
+          canvasWrap.classList.remove("border-success");
 
-          // ── PHASE 3: Suspense — cycling emojis ──
+          // Phase 3: suspense emojis
           const tapScene = document.getElementById("tap-scene");
           const stickerContainer = document.getElementById("sticker-container");
           const suspenseSize = Math.round(wrapSize * 0.35);
@@ -1832,12 +1840,6 @@
           stickerContainer.innerHTML =
             '<div id="suspense-text" style="font-size:55px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">❓</div>';
           tapScene.classList.remove("hidden");
-
-          // Hide hint/progress during suspense
-          const tapHint = document.getElementById("tap-hint");
-          const tapProgress = document.getElementById("tap-progress");
-          tapHint.style.opacity = "0";
-          tapProgress.style.opacity = "0";
 
           gsap.from(stickerContainer, {
             scale: 0,
@@ -1862,7 +1864,6 @@
           let idx = 0,
             spd = 280;
 
-          // Drum roll: wrap shakes, emojis cycle faster and faster
           let drumAmp = 0;
           const drumLoop = () => {
             if (drumAmp <= 0) {
@@ -1901,38 +1902,31 @@
             spd = Math.max(50, spd - 14);
           }
 
-          // ── PHASE 4: THE REVEAL ──
+          // Phase 4: reveal
           drumAmp = 0;
           canvasWrap.style.transform = "";
-
-          // Flash
           flash.style.transition = "opacity .08s";
           flash.style.opacity = "1";
           haptic("heavy");
           hapticN("success");
           await sleep(100);
 
-          // Replace with actual sticker
           stickerContainer.innerHTML = "";
-          const startSize = Math.round(wrapSize / 3);
+          const startSize = Math.round(wrapSize * 0.3);
           stickerContainer.style.width = startSize + "px";
           stickerContainer.style.height = startSize + "px";
           await loadTGS(wonPrize.tgs);
           playLottie(stickerContainer, wonPrize.tgs);
 
-          // Sticker enters BIG then bounces to normal
           gsap.fromTo(
             stickerContainer,
-            { scale: 2.5, opacity: 0 },
+            { scale: 2, opacity: 0 },
             { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.8)" },
           );
 
-          // Edge glow
           const glowEl = document.getElementById("edge-glow");
           glowEl.style.setProperty("--glow-color", wonPrize.glowColor);
           glowEl.classList.add("active");
-
-          // Massive confetti from multiple origins
           confetti({ particleCount: 70, spread: 80, origin: { y: 0.4 } });
           confetti({
             particleCount: 35,
@@ -1946,17 +1940,15 @@
           });
           megaBurst(cx, cy);
 
-          // Flash fade
           flash.style.transition = "opacity .6s";
           flash.style.opacity = "0";
-
           await sleep(1000);
 
-          // ── PHASE 5: Show tap prompt ──
-          tapHint.style.opacity = "1";
-          tapProgress.style.opacity = "1";
-          gsap.from(tapHint, { opacity: 0, y: 10, duration: 0.3 });
-          gsap.from(tapProgress, {
+          // Phase 5: show tap UI (outside canvas)
+          const tapUI = document.getElementById("tap-ui");
+          tapUI.classList.remove("hidden");
+          gsap.from("#tap-hint", { opacity: 0, y: 10, duration: 0.3 });
+          gsap.from("#tap-progress", {
             opacity: 0,
             y: 10,
             duration: 0.3,
@@ -1983,15 +1975,14 @@
             haptic("medium");
             const stickerContainer =
               document.getElementById("sticker-container");
-            const wrapSize = parseInt(
-              document.getElementById("canvas-wrap").style.width,
-            );
-            const startSize = wrapSize / 3;
-            const endSize = wrapSize * 0.9;
+            const wrapSize = parseInt(canvasWrap.style.width);
+            const startSize = wrapSize * 0.3;
+            const endSize = wrapSize * 0.85;
             const progress = tapCount / MAX_TAPS;
+            const newSize = startSize + (endSize - startSize) * progress;
             gsap.to(stickerContainer, {
-              width: startSize + (endSize - startSize) * progress,
-              height: startSize + (endSize - startSize) * progress,
+              width: newSize,
+              height: newSize,
               duration: 0.3,
               ease: "back.out(1.5)",
             });
@@ -2008,15 +1999,11 @@
             }
           });
 
-        /* ══════ REVEAL (after taps) ══════ */
         async function revealPrize() {
           confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } });
           hapticN("success");
           await sleep(600);
-          gsap.to(["#tap-hint", "#tap-progress"], {
-            opacity: 0,
-            duration: 0.2,
-          });
+          gsap.to("#tap-ui", { opacity: 0, duration: 0.2 });
           await sleep(300);
           showPrizeModal();
         }
@@ -2272,6 +2259,9 @@
         async function init() {
           try {
             Telegram.WebApp.expand();
+            if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+              Telegram.WebApp.requestFullscreen();
+            }
             Telegram.WebApp.setHeaderColor("#ffffff");
             Telegram.WebApp.setBackgroundColor("#ffffff");
           } catch (e) {}
