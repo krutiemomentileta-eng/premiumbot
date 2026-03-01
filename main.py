@@ -25,6 +25,9 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 app = FastAPI()
 
 
+# ══════════════════════════════════════
+#  Supabase REST — fully async + pooled
+# ══════════════════════════════════════
 class SupabaseREST:
     def __init__(self, url, key):
         self.base = f"{url}/rest/v1"
@@ -34,41 +37,107 @@ class SupabaseREST:
             "Content-Type": "application/json",
             "Prefer": "return=representation",
         }
+        self.client: httpx.AsyncClient | None = None
 
-    def _req(self, method, table, params=None, data=None):
+    async def start(self):
+        self.client = httpx.AsyncClient(
+            headers=self.headers,
+            timeout=15,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        )
+
+    async def stop(self):
+        if self.client:
+            await self.client.aclose()
+
+    async def _req(self, method, table, params=None, data=None, headers_extra=None):
         url = f"{self.base}/{table}"
-        with httpx.Client() as c:
-            r = c.request(method, url, params=params, json=data,
-                          headers=self.headers, timeout=15)
+        h = {**self.headers, **(headers_extra or {})}
+        try:
+            r = await self.client.request(method, url, params=params, json=data, headers=h)
             if r.status_code >= 400:
                 print(f"DB error: {r.status_code} {r.text}")
                 return []
             try:
                 return r.json()
-            except:
+            except Exception:
                 return []
+        except Exception as e:
+            print(f"DB request error: {e}")
+            return []
 
-    def select(self, table, filters=None, order=None, limit=None):
+    async def select(self, table, filters=None, order=None, limit=None):
         p = {"select": "*"}
-        if filters: p.update(filters)
-        if order: p["order"] = order
-        if limit: p["limit"] = str(limit)
-        return self._req("GET", table, params=p)
+        if filters:
+            p.update(filters)
+        if order:
+            p["order"] = order
+        if limit:
+            p["limit"] = str(limit)
+        return await self._req("GET", table, params=p)
 
-    def insert(self, table, data):
-        return self._req("POST", table, data=data)
+    async def insert(self, table, data):
+        return await self._req("POST", table, data=data)
 
-    def update(self, table, data, filters):
-        return self._req("PATCH", table, params=filters, data=data)
+    async def update(self, table, data, filters):
+        return await self._req("PATCH", table, params=filters, data=data)
 
-    def select_eq(self, table, col, val):
-        return self.select(table, {col: f"eq.{val}"})
+    async def select_eq(self, table, col, val):
+        return await self.select(table, {col: f"eq.{val}"})
 
-    def update_eq(self, table, data, col, val):
-        return self.update(table, data, {col: f"eq.{val}"})
+    async def update_eq(self, table, data, col, val):
+        return await self.update(table, data, {col: f"eq.{val}"})
+
+    async def count(self, table, filters=None):
+        """HEAD request with count — no data transfer"""
+        p = {"select": "*"}
+        if filters:
+            p.update(filters)
+        h = {**self.headers, "Prefer": "count=exact", "Range": "0-0"}
+        try:
+            r = await self.client.head(f"{self.base}/{table}", params=p, headers=h)
+            cr = r.headers.get("content-range", "")
+            # format: "0-0/123" or "*/123"
+            if "/" in cr:
+                return int(cr.split("/")[1])
+            return 0
+        except Exception as e:
+            print(f"DB count error: {e}")
+            return 0
 
 
 db = SupabaseREST(SUPABASE_URL, SUPABASE_KEY)
+
+
+# ══════════════════════════════════════
+#  Lifecycle
+# ══════════════════════════════════════
+@app.on_event("startup")
+async def on_startup():
+    await db.start()
+    asyncio.create_task(background_worker())
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    await db.stop()
+
+
+# ══════════════════════════════════════
+#  Telegram helpers
+# ══════════════════════════════════════
+tg_client: httpx.AsyncClient | None = None
+
+
+async def get_tg_client():
+    global tg_client
+    if tg_client is None:
+        tg_client = httpx.AsyncClient(
+            base_url=f"https://api.telegram.org/bot{BOT_TOKEN}/",
+            timeout=15,
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+        )
+    return tg_client
 
 
 def parse_dt(s):
@@ -76,19 +145,18 @@ def parse_dt(s):
         return None
     try:
         return datetime.fromisoformat(s.replace("Z", "+00:00"))
-    except:
+    except Exception:
         return None
 
 
 async def tg(method, data=None):
-    async with httpx.AsyncClient() as c:
-        try:
-            r = await c.post(f"https://api.telegram.org/bot{BOT_TOKEN}/{method}",
-                             json=data or {}, timeout=15)
-            return r.json()
-        except Exception as e:
-            print(f"TG error [{method}]: {e}")
-            return {"ok": False}
+    try:
+        c = await get_tg_client()
+        r = await c.post(method, json=data or {})
+        return r.json()
+    except Exception as e:
+        print(f"TG error [{method}]: {e}")
+        return {"ok": False}
 
 
 async def send_msg(chat_id, text, markup=None):
@@ -118,15 +186,18 @@ async def download_file_b64(file_id):
             return ""
         path = r["result"]["file_path"]
         url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{path}"
-        async with httpx.AsyncClient() as c:
-            resp = await c.get(url)
-            b64 = base64.b64encode(resp.content).decode()
-            mime = "image/png" if path.endswith(".png") else "image/jpeg"
-            return f"data:{mime};base64,{b64}"
-    except:
+        c = await get_tg_client()
+        resp = await c.get(url)
+        b64 = base64.b64encode(resp.content).decode()
+        mime = "image/png" if path.endswith(".png") else "image/jpeg"
+        return f"data:{mime};base64,{b64}"
+    except Exception:
         return ""
 
 
+# ══════════════════════════════════════
+#  Channel / Bot parsing
+# ══════════════════════════════════════
 async def parse_channel(channel_input):
     channel_input = channel_input.strip()
     if "t.me/" in channel_input:
@@ -191,31 +262,32 @@ async def parse_bot(bot_input):
         }
 
     try:
-        async with httpx.AsyncClient(follow_redirects=True) as c:
-            resp = await c.get(f"https://t.me/{bot_input}",
-                               headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-            html = resp.text
-            m_title = re.search(r'<meta\s+property="og:title"\s+content="([^"]+)"', html)
-            title = m_title.group(1) if m_title else bot_input
-            avatar = ""
-            m_img = re.search(r'<meta\s+property="og:image"\s+content="([^"]+)"', html)
-            if m_img:
-                img_url = m_img.group(1)
-                if img_url and "telegram-logo" not in img_url and "telegram_logo" not in img_url:
-                    try:
-                        img_resp = await c.get(img_url, timeout=10)
-                        if img_resp.status_code == 200 and len(img_resp.content) > 100:
-                            b64 = base64.b64encode(img_resp.content).decode()
-                            mime = "image/png" if img_url.endswith(".png") else "image/jpeg"
-                            avatar = f"data:{mime};base64,{b64}"
-                    except:
-                        pass
-            uid = int(hashlib.md5(bot_input.encode()).hexdigest()[:15], 16)
-            return {
-                "channel_id": uid, "type": "bot", "title": title,
-                "username": bot_input, "invite_link": f"https://t.me/{bot_input}",
-                "avatar_base64": avatar, "member_count": 0,
-            }
+        c = await get_tg_client()
+        resp = await c.get(f"https://t.me/{bot_input}",
+                           headers={"User-Agent": "Mozilla/5.0"}, timeout=10,
+                           follow_redirects=True)
+        html = resp.text
+        m_title = re.search(r'<meta\s+property="og:title"\s+content="([^"]+)"', html)
+        title = m_title.group(1) if m_title else bot_input
+        avatar = ""
+        m_img = re.search(r'<meta\s+property="og:image"\s+content="([^"]+)"', html)
+        if m_img:
+            img_url = m_img.group(1)
+            if img_url and "telegram-logo" not in img_url and "telegram_logo" not in img_url:
+                try:
+                    img_resp = await c.get(img_url, timeout=10)
+                    if img_resp.status_code == 200 and len(img_resp.content) > 100:
+                        b64 = base64.b64encode(img_resp.content).decode()
+                        mime = "image/png" if img_url.endswith(".png") else "image/jpeg"
+                        avatar = f"data:{mime};base64,{b64}"
+                except Exception:
+                    pass
+        uid = int(hashlib.md5(bot_input.encode()).hexdigest()[:15], 16)
+        return {
+            "channel_id": uid, "type": "bot", "title": title,
+            "username": bot_input, "invite_link": f"https://t.me/{bot_input}",
+            "avatar_base64": avatar, "member_count": 0,
+        }
     except Exception as e:
         print(f"parse_bot error: {e}")
         uid = int(hashlib.md5(bot_input.encode()).hexdigest()[:15], 16)
@@ -233,6 +305,9 @@ async def check_member(channel_id, user_id):
     return False
 
 
+# ══════════════════════════════════════
+#  Auth
+# ══════════════════════════════════════
 def validate_init(raw):
     try:
         parsed = parse_qs(raw)
@@ -246,12 +321,15 @@ def validate_init(raw):
             return None
         user_raw = parsed.get("user", [None])[0]
         return {"user": json.loads(unquote(user_raw))} if user_raw else None
-    except:
+    except Exception:
         return None
 
 
-def get_or_create(tg_id, info=None):
-    rows = db.select_eq("users", "telegram_id", tg_id)
+# ══════════════════════════════════════
+#  DB helpers
+# ══════════════════════════════════════
+async def get_or_create(tg_id, info=None):
+    rows = await db.select_eq("users", "telegram_id", tg_id)
     if rows:
         return rows[0]
     u = {
@@ -261,23 +339,25 @@ def get_or_create(tg_id, info=None):
         "last_name": (info or {}).get("last_name", ""),
         "state": "new",
     }
-    result = db.insert("users", u)
+    result = await db.insert("users", u)
     return result[0] if result else u
 
 
-def get_sponsors():
-    return db.select("channels", {"is_active": "eq.true"}, order="added_at.asc")
+async def get_sponsors():
+    return await db.select("channels", {"is_active": "eq.true"}, order="added_at.asc")
 
 
-def get_prizes():
-    return db.select("prizes", {"is_active": "eq.true"}, order="sort_order.asc")
+async def get_prizes():
+    return await db.select("prizes", {"is_active": "eq.true"}, order="sort_order.asc")
 
 
-def count_referrals(tg_id):
-    refs = db.select("users", {"referred_by": f"eq.{tg_id}", "state": "eq.claimed"})
-    return len(refs)
+async def count_referrals(tg_id):
+    return await db.count("users", {"referred_by": f"eq.{tg_id}", "state": "eq.claimed"})
 
 
+# ══════════════════════════════════════
+#  API endpoints
+# ══════════════════════════════════════
 @app.post("/api/get-user")
 async def api_get_user(req: Request):
     body = await req.json()
@@ -285,10 +365,10 @@ async def api_get_user(req: Request):
     if not v:
         return JSONResponse({"error": "Invalid initData"}, 401)
 
-    user = get_or_create(v["user"]["id"], v["user"])
-    sponsors = get_sponsors()
-    prizes = get_prizes()
-    ref_count = count_referrals(user["telegram_id"])
+    user = await get_or_create(v["user"]["id"], v["user"])
+    sponsors = await get_sponsors()
+    prizes = await get_prizes()
+    ref_count = await count_referrals(user["telegram_id"])
 
     sponsors.sort(key=lambda x: (0 if x.get("type", "channel") == "channel" else 1))
 
@@ -340,13 +420,13 @@ async def api_check_sub(req: Request):
         return JSONResponse({"error": "Invalid initData"}, 401)
 
     tg_id = v["user"]["id"]
-    user = get_or_create(tg_id, v["user"])
+    user = await get_or_create(tg_id, v["user"])
     action = body.get("action", "check")
 
     if action == "save_roll":
         if user["state"] != "new":
             return JSONResponse({"error": "Already rolled"}, 400)
-        db.update_eq("users", {
+        await db.update_eq("users", {
             "state": "rolled",
             "prize_key": body.get("prize_key", ""),
             "prize_name": body.get("prize_name", ""),
@@ -357,37 +437,48 @@ async def api_check_sub(req: Request):
         bot_id = body.get("bot_id")
         if bot_id:
             bot_id_str = str(bot_id)
-            fresh = db.select_eq("users", "telegram_id", tg_id)
+            fresh = await db.select_eq("users", "telegram_id", tg_id)
             opened = json.loads(fresh[0].get("opened_bots") or "[]") if fresh else []
             if bot_id_str not in opened:
                 opened.append(bot_id_str)
-                db.update_eq("users", {"opened_bots": json.dumps(opened)},
-                             "telegram_id", tg_id)
+                await db.update_eq("users", {"opened_bots": json.dumps(opened)},
+                                   "telegram_id", tg_id)
         return {"ok": True}
 
     if action == "check":
-        sponsors = get_sponsors()
-        fresh = db.select_eq("users", "telegram_id", tg_id)
+        sponsors = await get_sponsors()
+        fresh = await db.select_eq("users", "telegram_id", tg_id)
         fresh_user = fresh[0] if fresh else user
         opened_bots = json.loads(fresh_user.get("opened_bots") or "[]")
 
         results = {}
         all_ok = True
+        checks = []
         for sp in sponsors:
             sp_type = sp.get("type", "channel")
             sp_id = str(sp["channel_id"])
             if sp_type == "bot":
                 ok = sp_id in opened_bots
+                results[sp_id] = ok
+                if not ok:
+                    all_ok = False
             else:
-                ok = await check_member(sp["channel_id"], tg_id)
-            results[sp_id] = ok
-            if not ok:
-                all_ok = False
+                checks.append((sp_id, sp["channel_id"]))
+
+        # Parallel channel checks
+        if checks:
+            tasks = [check_member(ch_id, tg_id) for _, ch_id in checks]
+            check_results = await asyncio.gather(*tasks, return_exceptions=True)
+            for (sp_id, _), result in zip(checks, check_results):
+                ok = result is True
+                results[sp_id] = ok
+                if not ok:
+                    all_ok = False
 
         new_state = fresh_user["state"]
         if all_ok and fresh_user["state"] == "rolled":
             now_iso = datetime.now(timezone.utc).isoformat()
-            db.update_eq("users", {
+            await db.update_eq("users", {
                 "state": "claimed",
                 "claimed_at": now_iso,
             }, "telegram_id", tg_id)
@@ -397,7 +488,7 @@ async def api_check_sub(req: Request):
             if referred_by:
                 asyncio.create_task(notify_referrer(int(referred_by)))
 
-        ref_count = count_referrals(tg_id)
+        ref_count = await count_referrals(tg_id)
         return {
             "ok": True, "all_subscribed": all_ok,
             "results": results, "state": new_state,
@@ -409,7 +500,7 @@ async def api_check_sub(req: Request):
 
 async def notify_referrer(referrer_id):
     try:
-        ref_count = count_referrals(referrer_id)
+        ref_count = await count_referrals(referrer_id)
         speed = 2 ** (ref_count // 2)
         await send_msg(referrer_id,
             f"🎉 <b>Ваш друг получил подарок!</b>\n\n"
@@ -428,7 +519,7 @@ async def notify_referrer(referrer_id):
 async def api_get_page(req: Request):
     body = await req.json()
     key = body.get("key", "")
-    rows = db.select_eq("pages", "key", key)
+    rows = await db.select_eq("pages", "key", key)
     return {"ok": True, "content": rows[0]["content"] if rows else ""}
 
 
@@ -440,14 +531,17 @@ async def api_save_page(req: Request):
         return JSONResponse({"error": "Forbidden"}, 403)
     key = body.get("key", "")
     content = body.get("content", "")
-    existing = db.select_eq("pages", "key", key)
+    existing = await db.select_eq("pages", "key", key)
     if existing:
-        db.update_eq("pages", {"content": content}, "key", key)
+        await db.update_eq("pages", {"content": content}, "key", key)
     else:
-        db.insert("pages", {"key": key, "content": content})
+        await db.insert("pages", {"key": key, "content": content})
     return {"ok": True}
 
 
+# ══════════════════════════════════════
+#  Webhook
+# ══════════════════════════════════════
 @app.post("/api/webhook")
 async def webhook(req: Request):
     body = await req.json()
@@ -469,14 +563,14 @@ async def handle_message(msg):
         if len(parts) > 1 and parts[1].startswith("ref_"):
             try:
                 ref_id = int(parts[1][4:])
-            except:
+            except Exception:
                 pass
 
         name = msg["from"].get("first_name", "Друг")
-        user = get_or_create(uid, msg["from"])
+        user = await get_or_create(uid, msg["from"])
 
         if ref_id and ref_id != uid and not user.get("referred_by"):
-            db.update_eq("users", {"referred_by": ref_id}, "telegram_id", uid)
+            await db.update_eq("users", {"referred_by": ref_id}, "telegram_id", uid)
 
         await send_msg(cid,
             f"✨ <b>Привет, {name}!</b>\n\n"
@@ -495,32 +589,31 @@ async def handle_message(msg):
         await show_admin_menu(cid)
 
     elif uid == ADMIN_ID:
-        user = get_or_create(ADMIN_ID)
+        user = await get_or_create(ADMIN_ID)
         st = user.get("admin_state", "")
         if st == "add_channel":
             await process_add_channel(cid, text)
-            db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
+            await db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
         elif st == "add_bot":
             await process_add_bot(cid, text)
-            db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
+            await db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
         elif st and st.startswith("edit_prize:"):
             key = st.split(":")[1]
-            db.update_eq("prizes", {"name": text}, "key", key)
-            db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
+            await db.update_eq("prizes", {"name": text}, "key", key)
+            await db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
             await send_msg(cid, f"✅ Приз переименован в: <b>{text}</b>")
         elif st == "broadcast_text":
-            db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
+            await db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
             await prepare_broadcast(cid, msg)
         elif st == "broadcast_confirm":
-            db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
+            await db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
             await send_msg(cid, "Отменено. /a")
 
 
 async def show_admin_menu(cid, msg_id=None):
-    sponsors = get_sponsors()
-    prs = get_prizes()
-    users = db.select("users")
-    total = len(users)
+    sponsors = await get_sponsors()
+    prs = await get_prizes()
+    total = await db.count("users")
     ch_count = sum(1 for s in sponsors if s.get("type", "channel") == "channel")
     bot_count = sum(1 for s in sponsors if s.get("type") == "bot")
 
@@ -550,7 +643,7 @@ async def process_add_channel(cid, text):
     info = await parse_channel(text)
     if not info:
         await send_msg(cid, "❌ Не удалось найти канал.\nОтправьте @username ещё раз:")
-        db.update_eq("users", {"admin_state": "add_channel"}, "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": "add_channel"}, "telegram_id", ADMIN_ID)
         return
     bot_info = await tg("getMe")
     bot_id = bot_info["result"]["id"] if bot_info.get("ok") else 0
@@ -558,11 +651,11 @@ async def process_add_channel(cid, text):
     if not bm.get("ok") or bm["result"]["status"] not in ("administrator", "creator"):
         await send_msg(cid, f"⚠️ Бот не админ в «{info['title']}».")
         return
-    existing = db.select_eq("channels", "channel_id", info["channel_id"])
+    existing = await db.select_eq("channels", "channel_id", info["channel_id"])
     if existing:
-        db.update_eq("channels", {**info, "is_active": True}, "channel_id", info["channel_id"])
+        await db.update_eq("channels", {**info, "is_active": True}, "channel_id", info["channel_id"])
     else:
-        db.insert("channels", info)
+        await db.insert("channels", info)
     await send_msg(cid, f"✅ Канал <b>{info['title']}</b> добавлен!")
 
 
@@ -571,16 +664,19 @@ async def process_add_bot(cid, text):
     info = await parse_bot(text)
     if not info:
         await send_msg(cid, "❌ Не удалось найти бота.\nОтправьте @username ещё раз:")
-        db.update_eq("users", {"admin_state": "add_bot"}, "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": "add_bot"}, "telegram_id", ADMIN_ID)
         return
-    existing = db.select_eq("channels", "channel_id", info["channel_id"])
+    existing = await db.select_eq("channels", "channel_id", info["channel_id"])
     if existing:
-        db.update_eq("channels", {**info, "is_active": True}, "channel_id", info["channel_id"])
+        await db.update_eq("channels", {**info, "is_active": True}, "channel_id", info["channel_id"])
     else:
-        db.insert("channels", info)
+        await db.insert("channels", info)
     await send_msg(cid, f"✅ Бот <b>{info['title']}</b> добавлен!")
 
 
+# ══════════════════════════════════════
+#  Broadcast
+# ══════════════════════════════════════
 broadcast_status = {"running": False, "total": 0, "sent": 0, "failed": 0, "blocked": 0}
 
 CONTENT_TYPE_NAMES = {
@@ -883,7 +979,6 @@ async def send_broadcast_msg(chat_id, content, mode="reconstruct"):
 
 async def prepare_broadcast(cid, msg):
     content = extract_broadcast_content(msg)
-
     content["_original_chat_id"] = cid
     content["_original_message_id"] = msg["message_id"]
     content["_send_mode"] = "reconstruct"
@@ -894,12 +989,12 @@ async def prepare_broadcast(cid, msg):
     if msg.get("forward_from"):
         content["_forward_from_user"] = msg["forward_from"].get("first_name", "")
 
-    db.update_eq("users", {
+    await db.update_eq("users", {
         "admin_state": "broadcast_confirm",
         "broadcast_data": json.dumps(content),
     }, "telegram_id", ADMIN_ID)
 
-    total = len(db.select("users"))
+    total = await db.count("users")
     type_name = CONTENT_TYPE_NAMES.get(content["type"], content["type"])
     preview = get_content_preview(content)
 
@@ -930,7 +1025,7 @@ async def prepare_broadcast(cid, msg):
 
 
 async def show_broadcast_confirm(cid, msg_id=None):
-    admin = db.select_eq("users", "telegram_id", ADMIN_ID)
+    admin = await db.select_eq("users", "telegram_id", ADMIN_ID)
     if not admin:
         return
     content = json.loads(admin[0].get("broadcast_data") or "{}")
@@ -941,7 +1036,7 @@ async def show_broadcast_confirm(cid, msg_id=None):
     mode_name = SEND_MODE_NAMES.get(mode, mode)
     type_name = CONTENT_TYPE_NAMES.get(content.get("type", ""), "")
     preview = get_content_preview(content)
-    total = len(db.select("users"))
+    total = await db.count("users")
 
     text = (
         f"📨 <b>Подтверждение рассылки</b>\n\n"
@@ -968,7 +1063,7 @@ async def do_broadcast(admin_cid):
     if broadcast_status["running"]:
         await send_msg(admin_cid, "⚠️ Рассылка уже идёт!")
         return
-    admin = db.select_eq("users", "telegram_id", ADMIN_ID)
+    admin = await db.select_eq("users", "telegram_id", ADMIN_ID)
     if not admin:
         return
     content = json.loads(admin[0].get("broadcast_data") or "{}")
@@ -978,7 +1073,7 @@ async def do_broadcast(admin_cid):
     mode = content.get("_send_mode", "reconstruct")
     mode_name = SEND_MODE_NAMES.get(mode, mode)
 
-    users = db.select("users")
+    users = await db.select("users")
     broadcast_status = {"running": True, "total": len(users),
                         "sent": 0, "failed": 0, "blocked": 0}
 
@@ -997,7 +1092,7 @@ async def do_broadcast(admin_cid):
                 broadcast_status["sent"] += 1
             else:
                 broadcast_status["blocked"] += 1
-        except:
+        except Exception:
             broadcast_status["failed"] += 1
 
         if sm_id and (i + 1) % 25 == 0:
@@ -1008,7 +1103,7 @@ async def do_broadcast(admin_cid):
                     f"🚫 {broadcast_status['blocked']}  "
                     f"❌ {broadcast_status['failed']}\n"
                     f"📊 {i+1}/{broadcast_status['total']}")
-            except:
+            except Exception:
                 pass
         await asyncio.sleep(0.05)
 
@@ -1023,10 +1118,13 @@ async def do_broadcast(admin_cid):
         await edit_msg(admin_cid, sm_id, final)
     else:
         await send_msg(admin_cid, final)
-    db.update_eq("users", {"admin_state": "", "broadcast_data": ""},
-                 "telegram_id", ADMIN_ID)
+    await db.update_eq("users", {"admin_state": "", "broadcast_data": ""},
+                       "telegram_id", ADMIN_ID)
 
 
+# ══════════════════════════════════════
+#  Admin callbacks
+# ══════════════════════════════════════
 async def handle_callback(cb):
     uid = cb["from"]["id"]
     data = cb["data"]
@@ -1042,7 +1140,7 @@ async def handle_callback(cb):
         await show_admin_menu(cid, mid)
 
     elif data == "adm_channels":
-        sponsors = get_sponsors()
+        sponsors = await get_sponsors()
         chs = [s for s in sponsors if s.get("type", "channel") == "channel"]
         text = "📢 <b>Каналы:</b>\n\n"
         if not chs:
@@ -1056,13 +1154,13 @@ async def handle_callback(cb):
         await edit_msg(cid, mid, text, {"inline_keyboard": btns})
 
     elif data == "adm_add_ch":
-        db.update_eq("users", {"admin_state": "add_channel"}, "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": "add_channel"}, "telegram_id", ADMIN_ID)
         await edit_msg(cid, mid, "📢 Отправьте @username канала\n⚠️ Бот должен быть админом!",
                        {"inline_keyboard": [[{"text": "← Отмена",
                                               "callback_data": "adm_channels"}]]})
 
     elif data == "adm_bots":
-        sponsors = get_sponsors()
+        sponsors = await get_sponsors()
         bots = [s for s in sponsors if s.get("type") == "bot"]
         text = "🤖 <b>Боты:</b>\n\n"
         if not bots:
@@ -1076,18 +1174,18 @@ async def handle_callback(cb):
         await edit_msg(cid, mid, text, {"inline_keyboard": btns})
 
     elif data == "adm_add_bot":
-        db.update_eq("users", {"admin_state": "add_bot"}, "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": "add_bot"}, "telegram_id", ADMIN_ID)
         await edit_msg(cid, mid, "🤖 Отправьте @username бота:",
                        {"inline_keyboard": [[{"text": "← Отмена",
                                               "callback_data": "adm_bots"}]]})
 
     elif data.startswith("adm_del_sp:"):
         sp_id = data.split(":")[1]
-        items = db.select_eq("channels", "channel_id", sp_id)
+        items = await db.select_eq("channels", "channel_id", sp_id)
         sp_type = items[0].get("type", "channel") if items else "channel"
-        db.update_eq("channels", {"is_active": False}, "channel_id", sp_id)
+        await db.update_eq("channels", {"is_active": False}, "channel_id", sp_id)
         if sp_type == "bot":
-            sponsors = get_sponsors()
+            sponsors = await get_sponsors()
             bots = [s for s in sponsors if s.get("type") == "bot"]
             text = "🤖 <b>Боты:</b>\n\n"
             for i, b in enumerate(bots, 1):
@@ -1099,7 +1197,7 @@ async def handle_callback(cb):
             btns.append([{"text": "➕ Добавить", "callback_data": "adm_add_bot"}])
             btns.append([{"text": "← Назад", "callback_data": "adm_menu"}])
         else:
-            sponsors = get_sponsors()
+            sponsors = await get_sponsors()
             chs = [s for s in sponsors if s.get("type", "channel") == "channel"]
             text = "📢 <b>Каналы:</b>\n\n"
             for i, c in enumerate(chs, 1):
@@ -1113,7 +1211,7 @@ async def handle_callback(cb):
         await edit_msg(cid, mid, text, {"inline_keyboard": btns})
 
     elif data == "adm_prizes":
-        prs = db.select("prizes", order="sort_order.asc")
+        prs = await db.select("prizes", order="sort_order.asc")
         text = "🎁 <b>Призы:</b>\n\n"
         for p in prs:
             s = "✅" if p["is_active"] else "❌"
@@ -1129,9 +1227,9 @@ async def handle_callback(cb):
 
     elif data.startswith("adm_edit_pr:"):
         key = data.split(":")[1]
-        db.update_eq("users", {"admin_state": f"edit_prize:{key}"},
-                     "telegram_id", ADMIN_ID)
-        p = db.select_eq("prizes", "key", key)
+        await db.update_eq("users", {"admin_state": f"edit_prize:{key}"},
+                           "telegram_id", ADMIN_ID)
+        p = await db.select_eq("prizes", "key", key)
         name = p[0]["name"] if p else key
         await edit_msg(cid, mid,
                        f"✏️ Текущее: <b>{name}</b>\nОтправьте новое название:",
@@ -1140,10 +1238,10 @@ async def handle_callback(cb):
 
     elif data.startswith("adm_toggle_pr:"):
         key = data.split(":")[1]
-        p = db.select_eq("prizes", "key", key)
+        p = await db.select_eq("prizes", "key", key)
         if p:
-            db.update_eq("prizes", {"is_active": not p[0]["is_active"]}, "key", key)
-        prs = db.select("prizes", order="sort_order.asc")
+            await db.update_eq("prizes", {"is_active": not p[0]["is_active"]}, "key", key)
+        prs = await db.select("prizes", order="sort_order.asc")
         text = "🎁 <b>Призы:</b>\n\n"
         for p in prs:
             s = "✅" if p["is_active"] else "❌"
@@ -1158,13 +1256,12 @@ async def handle_callback(cb):
         await edit_msg(cid, mid, text, {"inline_keyboard": btns})
 
     elif data == "adm_stats":
-        users = db.select("users")
-        total = len(users)
-        new = sum(1 for u in users if u["state"] == "new")
-        rolled = sum(1 for u in users if u["state"] == "rolled")
-        claimed = sum(1 for u in users if u["state"] == "claimed")
-        with_ref = sum(1 for u in users if u.get("referred_by"))
-        recent = db.select("users", order="created_at.desc", limit=5)
+        total = await db.count("users")
+        new = await db.count("users", {"state": "eq.new"})
+        rolled = await db.count("users", {"state": "eq.rolled"})
+        claimed = await db.count("users", {"state": "eq.claimed"})
+        with_ref = await db.count("users", {"referred_by": "neq.null"})
+        recent = await db.select("users", order="created_at.desc", limit=5)
 
         text = (
             f"📊 <b>Статистика</b>\n\n"
@@ -1192,7 +1289,7 @@ async def handle_callback(cb):
                                               "callback_data": "adm_menu"}]]})
 
     elif data == "adm_refresh":
-        sponsors = get_sponsors()
+        sponsors = await get_sponsors()
         for s in sponsors:
             if s.get("type") == "bot":
                 info = await parse_bot(
@@ -1200,7 +1297,7 @@ async def handle_callback(cb):
             else:
                 info = await parse_channel(str(s["channel_id"]))
             if info:
-                db.update_eq("channels", {
+                await db.update_eq("channels", {
                     "title": info["title"], "username": info["username"],
                     "invite_link": info["invite_link"],
                     "avatar_base64": info["avatar_base64"],
@@ -1220,8 +1317,8 @@ async def handle_callback(cb):
                 {"inline_keyboard": [[{"text": "← Назад",
                                        "callback_data": "adm_menu"}]]})
             return
-        db.update_eq("users", {"admin_state": "broadcast_text"},
-                     "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": "broadcast_text"},
+                           "telegram_id", ADMIN_ID)
         await edit_msg(cid, mid,
             "📨 <b>Рассылка</b>\n\n"
             "Отправьте <b>любое</b> сообщение:\n\n"
@@ -1239,16 +1336,16 @@ async def handle_callback(cb):
 
     elif data.startswith("adm_bmode_"):
         mode = data.replace("adm_bmode_", "")
-        admin = db.select_eq("users", "telegram_id", ADMIN_ID)
+        admin = await db.select_eq("users", "telegram_id", ADMIN_ID)
         if admin and admin[0].get("broadcast_data"):
             content = json.loads(admin[0]["broadcast_data"])
             content["_send_mode"] = mode
-            db.update_eq("users", {"broadcast_data": json.dumps(content)},
-                         "telegram_id", ADMIN_ID)
+            await db.update_eq("users", {"broadcast_data": json.dumps(content)},
+                               "telegram_id", ADMIN_ID)
         await show_broadcast_confirm(cid, mid)
 
     elif data == "adm_broadcast_chmode":
-        admin = db.select_eq("users", "telegram_id", ADMIN_ID)
+        admin = await db.select_eq("users", "telegram_id", ADMIN_ID)
         if not admin or not admin[0].get("broadcast_data"):
             await show_admin_menu(cid, mid)
             return
@@ -1281,7 +1378,7 @@ async def handle_callback(cb):
         await show_broadcast_confirm(cid, mid)
 
     elif data == "adm_broadcast_test":
-        admin = db.select_eq("users", "telegram_id", ADMIN_ID)
+        admin = await db.select_eq("users", "telegram_id", ADMIN_ID)
         if admin and admin[0].get("broadcast_data"):
             content = json.loads(admin[0]["broadcast_data"])
             mode = content.get("_send_mode", "reconstruct")
@@ -1303,20 +1400,18 @@ async def handle_callback(cb):
                 ]})
 
     elif data == "adm_broadcast_go":
-        db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
         asyncio.create_task(do_broadcast(cid))
 
     elif data == "adm_broadcast_cancel":
-        db.update_eq("users", {"admin_state": "", "broadcast_data": ""},
-                     "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": "", "broadcast_data": ""},
+                           "telegram_id", ADMIN_ID)
         await show_admin_menu(cid, mid)
 
 
-@app.on_event("startup")
-async def on_startup():
-    asyncio.create_task(background_worker())
-
-
+# ══════════════════════════════════════
+#  Background worker
+# ══════════════════════════════════════
 async def background_worker():
     await asyncio.sleep(60)
     while True:
@@ -1332,7 +1427,7 @@ async def background_worker():
 
 
 async def check_reactivation():
-    users = db.select("users", {"state": "eq.new", "notified_1h": "eq.false"})
+    users = await db.select("users", {"state": "eq.new", "notified_1h": "eq.false"})
     now = datetime.now(timezone.utc)
     for u in users:
         created = parse_dt(u.get("created_at"))
@@ -1348,15 +1443,15 @@ async def check_reactivation():
                      "web_app": {"url": WEBAPP_URL}}
                 ]]}
             )
-        except:
+        except Exception:
             pass
-        db.update_eq("users", {"notified_1h": True},
-                     "telegram_id", u["telegram_id"])
+        await db.update_eq("users", {"notified_1h": True},
+                           "telegram_id", u["telegram_id"])
         await asyncio.sleep(0.1)
 
 
 async def check_antifraud():
-    users = db.select("users", {"state": "eq.claimed", "notified_unsub": "eq.false"})
+    users = await db.select("users", {"state": "eq.claimed", "notified_unsub": "eq.false"})
     if not users:
         return
     now = datetime.now(timezone.utc)
@@ -1364,7 +1459,7 @@ async def check_antifraud():
         claimed = parse_dt(u.get("claimed_at"))
         if not claimed:
             continue
-        ref_count = count_referrals(u["telegram_id"])
+        ref_count = await count_referrals(u["telegram_id"])
         speed = 2 ** (ref_count // 2) if ref_count >= 2 else 1
         effective_duration = 86400 / speed
         elapsed = (now - claimed).total_seconds()
@@ -1384,13 +1479,16 @@ async def check_antifraud():
                      "web_app": {"url": WEBAPP_URL}}
                 ]]}
             )
-        except:
+        except Exception:
             pass
-        db.update_eq("users", {"notified_unsub": True},
-                     "telegram_id", u["telegram_id"])
+        await db.update_eq("users", {"notified_unsub": True},
+                           "telegram_id", u["telegram_id"])
         await asyncio.sleep(0.1)
 
 
+# ══════════════════════════════════════
+#  Static files
+# ══════════════════════════════════════
 app.mount("/assets", StaticFiles(directory="public/assets"), name="assets")
 
 
