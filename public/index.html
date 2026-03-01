@@ -232,14 +232,13 @@
         overflow: hidden;
       }
       #sticker-tap-area {
-        position: relative;
+        position: absolute;
+        inset: 0;
         cursor: pointer;
         touch-action: manipulation;
         display: flex;
         align-items: center;
         justify-content: center;
-        max-width: 100%;
-        max-height: 100%;
       }
       #sticker-container {
         display: flex;
@@ -466,42 +465,11 @@
         margin-bottom: 10px;
       }
       .claim-countdown-wrap {
-        height: 80px;
+        height: 60px;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
         margin-bottom: 10px;
-        position: relative;
-      }
-      .claim-number {
-        font-size: 48px;
-        font-weight: 900;
-        color: #976fff;
-        line-height: 1;
-      }
-      .claim-ready {
-        font-size: 28px;
-        font-weight: 900;
-        color: #4caf50;
-        line-height: 1;
-        opacity: 0;
-      }
-      .claim-status {
-        font-size: 13px;
-        color: #999;
-        font-weight: 600;
-        margin-top: 6px;
-        opacity: 0;
-      }
-      @keyframes status-pulse {
-        0%,
-        100% {
-          opacity: 0.5;
-        }
-        50% {
-          opacity: 1;
-        }
       }
 
       /* ══════ Subscribe Modal ══════ */
@@ -1116,8 +1084,8 @@
 
     <!-- ══════ Draw Scene ══════ -->
     <div id="draw-scene" class="hidden">
-      <div id="draw-title">⭐ Нарисуйте звезду</div>
-      <div id="draw-subtitle">чтобы получить приз</div>
+      <div id="draw-title">Нарисуй звезду ⭐</div>
+      <div id="draw-subtitle">и получи свой приз</div>
       <div id="attempt-counter"></div>
       <div id="score-display"></div>
       <div id="score-hint"></div>
@@ -1158,11 +1126,15 @@
         <div id="modal-prize-sticker" class="prize-sticker"></div>
         <p id="modal-prize-name" class="prize-name"></p>
         <div class="claim-countdown-wrap">
-          <div id="claim-number" class="claim-number"></div>
-          <div id="claim-ready" class="claim-ready">ГОТОВО!</div>
-          <div id="claim-status" class="claim-status">
-            Подготавливаем приз...
-          </div>
+          <div
+            id="claim-cd"
+            style="
+              font-size: 42px;
+              font-weight: 900;
+              color: #976fff;
+              line-height: 1;
+            "
+          ></div>
         </div>
         <button id="btn-claim" class="btn-primary" disabled>
           <span>ЗАБРАТЬ</span><span class="btn-shine"></span>
@@ -2258,43 +2230,32 @@
           const claimBtn = document.getElementById("btn-claim");
           claimBtn.disabled = true;
           claimBtn.classList.remove("pulse-active");
-
-          const numEl = document.getElementById("claim-number");
-          const readyEl = document.getElementById("claim-ready");
-          const statusEl = document.getElementById("claim-status");
-          gsap.set(numEl, { opacity: 1, scale: 1 });
-          gsap.set(readyEl, { opacity: 0, scale: 0.5 });
-          gsap.set(statusEl, { opacity: 0 });
-
+          const cd = document.getElementById("claim-cd");
+          cd.textContent = "";
           openSheet("modal-prize");
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           appState = "prize";
 
-          // 3 → 2 → 1
           for (let i = 3; i >= 1; i--) {
-            numEl.textContent = i;
+            cd.textContent = i;
+            cd.style.color = "#976FFF";
             gsap.fromTo(
-              numEl,
-              { scale: 1.5, opacity: 0 },
+              cd,
+              { scale: 1.4, opacity: 0 },
               { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" },
             );
             haptic("light");
             await sleep(1000);
           }
-
-          // Число исчезает → ГОТОВО! появляется и ОСТАЁТСЯ
-          gsap.to(numEl, { opacity: 0, scale: 0.5, duration: 0.2 });
-          await sleep(200);
-          gsap.to(readyEl, {
-            opacity: 1,
-            scale: 1,
-            duration: 0.4,
-            ease: "back.out(2)",
-          });
+          cd.textContent = "ГОТОВО!";
+          cd.style.color = "#4CAF50";
+          gsap.fromTo(
+            cd,
+            { scale: 1.4, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2)" },
+          );
           hapticN("success");
           await sleep(1200);
-
-          // Кнопка активна, ГОТОВО! остаётся
           claimBtn.disabled = false;
           claimBtn.classList.add("pulse-active");
         }
@@ -2605,27 +2566,38 @@
             showSub();
             return;
           }
+          gsap.set("#draw-title", { y: 20, opacity: 0 });
+          gsap.set("#draw-subtitle", { y: 15, opacity: 0 });
+          gsap.set("#canvas-wrap", { scale: 0.8, opacity: 0 });
+          gsap.set("#btn-submit", { y: 20, opacity: 0 });
           document.getElementById("draw-scene").classList.remove("hidden");
           setupCanvas();
           appState = "drawing";
           updateAttemptCounter();
-          gsap.from("#draw-title", { y: 20, opacity: 0, duration: 0.4 });
-          gsap.from("#draw-subtitle", {
-            y: 15,
-            opacity: 0,
+          gsap.to("#draw-title", {
+            y: 0,
+            opacity: 1,
+            duration: 0.4,
+            clearProps: "all",
+          });
+          gsap.to("#draw-subtitle", {
+            y: 0,
+            opacity: 1,
             duration: 0.3,
             delay: 0.15,
+            clearProps: "all",
           });
-          gsap.from("#canvas-wrap", {
-            scale: 0.8,
-            opacity: 0,
+          gsap.to("#canvas-wrap", {
+            scale: 1,
+            opacity: 1,
             duration: 0.5,
             delay: 0.3,
             ease: "back.out(1.5)",
+            clearProps: "all",
           });
-          gsap.from("#btn-submit", {
-            y: 20,
-            opacity: 0,
+          gsap.to("#btn-submit", {
+            y: 0,
+            opacity: 1,
             duration: 0.3,
             delay: 0.5,
             clearProps: "all",
