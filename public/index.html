@@ -2259,9 +2259,7 @@
         async function init() {
           try {
             Telegram.WebApp.expand();
-            if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-              Telegram.WebApp.requestFullscreen();
-            }
+            Telegram.WebApp.disableVerticalSwipes();
             Telegram.WebApp.setHeaderColor("#ffffff");
             Telegram.WebApp.setBackgroundColor("#ffffff");
           } catch (e) {}
