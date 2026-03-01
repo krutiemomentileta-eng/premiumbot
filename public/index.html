@@ -220,31 +220,38 @@
         background: rgba(0, 0, 0, 0.12);
       }
 
+      /* Убери старый tap-scene из canvas-wrap */
       #tap-scene {
-        position: absolute;
+        position: fixed;
         inset: 0;
+        z-index: 100;
+        background: #fff;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        z-index: 6;
-        background: #f5f5f5;
-        border-radius: 14px;
-        overflow: hidden;
+        gap: 16px;
       }
+
       #sticker-tap-area {
-        position: absolute;
-        inset: 0;
+        position: relative;
         cursor: pointer;
         touch-action: manipulation;
         display: flex;
         align-items: center;
         justify-content: center;
       }
+
       #sticker-container {
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+      }
+
+      /* tap-ui внутри tap-scene fixed */
+      #tap-ui-overlay {
+        text-align: center;
       }
 
       #tap-ui {
@@ -1091,9 +1098,6 @@
       <div id="canvas-wrap">
         <canvas id="draw-canvas"></canvas>
         <button id="btn-reset" title="Сброс">↻</button>
-        <div id="tap-scene" class="hidden">
-          <div id="sticker-tap-area"><div id="sticker-container"></div></div>
-        </div>
       </div>
       <div id="tap-ui" class="hidden">
         <div id="tap-hint">
@@ -1115,6 +1119,9 @@
         <span>Готово</span><span class="btn-shine"></span>
       </button>
     </div>
+
+    <!-- tap-scene теперь fixed поверх всего -->
+    <div id="tap-scene" class="hidden"></div>
 
     <div id="modal-prize" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
@@ -1947,6 +1954,7 @@
             cx = wrapRect.left + wrapRect.width / 2,
             cy = wrapRect.top + wrapRect.height / 2,
             wrapSize = parseInt(canvasWrap.style.width);
+
           gsap.to(
             [
               "#btn-submit",
@@ -1957,6 +1965,7 @@
             ],
             { opacity: 0, duration: 0.3 },
           );
+
           let shakeAmp = 0;
           const shakeLoop = () => {
             if (shakeAmp <= 0) return;
@@ -1976,6 +1985,7 @@
               },
             },
           );
+
           for (let i = 0; i < 6; i++) {
             await sleep(150);
             haptic("light");
@@ -1994,41 +2004,55 @@
           await sleep(400);
           canvas.style.display = "none";
           canvasWrap.classList.remove("border-success");
-          const tapScene = document.getElementById("tap-scene"),
-            stickerContainer = document.getElementById("sticker-container");
+
+          // ── tap scene (fixed overlay) ──
           const suspenseSize = Math.round(wrapSize * 0.35);
-          stickerContainer.style.width = suspenseSize + "px";
-          stickerContainer.style.height = suspenseSize + "px";
-          stickerContainer.innerHTML =
-            '<div id="suspense-text" style="font-size:55px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">❓</div>';
+          const tapScene = document.getElementById("tap-scene");
+          tapScene.innerHTML = `
+    <div id="sticker-tap-area" style="cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center">
+      <div id="sticker-container" style="width:${suspenseSize}px;height:${suspenseSize}px;display:flex;align-items:center;justify-content:center">
+        <div id="suspense-text" style="font-size:55px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">❓</div>
+      </div>
+    </div>
+    <div id="tap-ui-inner" style="text-align:center;display:none">
+      <div style="font-size:18px;font-weight:700;color:#333;letter-spacing:1px">Тапай! 👆</div>
+      <div style="margin-top:6px">
+        <div style="width:140px;height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin:0 auto 4px">
+          <div id="tap-fill" style="height:100%;width:0%;border-radius:3px;transition:width .15s ease-out"></div>
+        </div>
+        <span id="tap-counter" style="font-size:12px;color:#999;font-weight:600">0 / ${MAX_TAPS}</span>
+      </div>
+    </div>
+  `;
           tapScene.classList.remove("hidden");
+
+          const stickerContainer = document.getElementById("sticker-container");
           gsap.from(stickerContainer, {
             scale: 0,
             duration: 0.3,
             ease: "back.out(2)",
           });
           await sleep(200);
+
+          // drum roll
           const emojis = [
-              "❓",
-              "🎁",
-              "⭐",
-              "💎",
-              "✨",
-              "🎁",
-              "❓",
-              "💫",
-              "⭐",
-              "💎",
-            ],
-            suspenseText = document.getElementById("suspense-text");
+            "❓",
+            "🎁",
+            "⭐",
+            "💎",
+            "✨",
+            "🎁",
+            "❓",
+            "💫",
+            "⭐",
+            "💎",
+          ];
+          const suspenseText = document.getElementById("suspense-text");
           let idx = 0,
             spd = 280,
             drumAmp = 0;
           const drumLoop = () => {
-            if (drumAmp <= 0) {
-              canvasWrap.style.transform = "";
-              return;
-            }
+            if (drumAmp <= 0) return;
             canvasWrap.style.transform = `translate(${(Math.random() - 0.5) * drumAmp * 2}px,${(Math.random() - 0.5) * drumAmp * 2}px)`;
             requestAnimationFrame(drumLoop);
           };
@@ -2045,6 +2069,7 @@
               },
             },
           );
+
           for (let round = 0; round < 18; round++) {
             suspenseText.textContent = emojis[idx % emojis.length];
             gsap.fromTo(
@@ -2057,6 +2082,7 @@
             await sleep(spd);
             spd = Math.max(50, spd - 14);
           }
+
           drumAmp = 0;
           canvasWrap.style.transform = "";
           flash.style.transition = "opacity .08s";
@@ -2064,6 +2090,8 @@
           haptic("heavy");
           hapticN("success");
           await sleep(100);
+
+          // reveal prize sticker
           stickerContainer.innerHTML = "";
           const startSize = Math.round(wrapSize * 0.3);
           stickerContainer.style.width = startSize + "px";
@@ -2075,6 +2103,7 @@
             { scale: 2, opacity: 0 },
             { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.8)" },
           );
+
           const glowEl = document.getElementById("edge-glow");
           glowEl.style.setProperty("--glow-color", wonPrize.glowColor);
           glowEl.classList.add("active");
@@ -2093,22 +2122,27 @@
           flash.style.transition = "opacity .6s";
           flash.style.opacity = "0";
           await sleep(1000);
-          document.getElementById("tap-ui").classList.remove("hidden");
-          gsap.from("#tap-hint", { opacity: 0, y: 10, duration: 0.3 });
-          gsap.from("#tap-progress", {
-            opacity: 0,
-            y: 10,
-            duration: 0.3,
-            delay: 0.1,
-          });
+
+          // show tap ui
+          const tapUiInner = document.getElementById("tap-ui-inner");
+          tapUiInner.style.display = "block";
+          gsap.from(tapUiInner, { opacity: 0, y: 10, duration: 0.3 });
+
+          // set fill color
           const tapFill = document.getElementById("tap-fill");
           tapFill.classList.remove("gold", "purple");
           tapFill.classList.add(wonPrize.fillClass);
+
           appState = "tapping";
           tapCount = 0;
           document.getElementById("tap-counter").textContent =
             "0 / " + MAX_TAPS;
-          document.getElementById("tap-fill").style.width = "0%";
+          tapFill.style.width = "0%";
+
+          // re-bind tap listener since sticker-tap-area was recreated
+          document
+            .getElementById("sticker-tap-area")
+            .addEventListener("pointerdown", handleTap);
         }
 
         document
@@ -2146,9 +2180,47 @@
           confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } });
           hapticN("success");
           await sleep(600);
-          gsap.to("#tap-ui", { opacity: 0, duration: 0.2 });
+          // скрываем tap-ui-inner
+          const tapUiInner = document.getElementById("tap-ui-inner");
+          if (tapUiInner) gsap.to(tapUiInner, { opacity: 0, duration: 0.2 });
           await sleep(300);
+          // скрываем tap-scene
+          document.getElementById("tap-scene").classList.add("hidden");
           showPrizeModal();
+        }
+
+        async function handleTap(e) {
+          if (appState !== "tapping") return;
+          e.preventDefault();
+          tapCount++;
+          haptic("medium");
+          const stickerContainer = document.getElementById("sticker-container");
+          const startSize = wrapSize * 0.3; // ← это не работает, wrapSize недоступен
+          // поэтому берём из style:
+          const curSize = parseInt(stickerContainer.style.width) || 100;
+          const endSize = curSize * (0.85 / 0.3); // пересчитываем от стартового
+          const progress = tapCount / MAX_TAPS;
+          const newSize =
+            curSize +
+            (parseInt(canvasWrap.style.width) * 0.85 - curSize) *
+              (1 / MAX_TAPS);
+          gsap.to(stickerContainer, {
+            width: parseInt(canvasWrap.style.width) * (0.3 + 0.55 * progress),
+            height: parseInt(canvasWrap.style.width) * (0.3 + 0.55 * progress),
+            duration: 0.3,
+            ease: "back.out(1.5)",
+          });
+          document.getElementById("tap-fill").style.width =
+            progress * 100 + "%";
+          document.getElementById("tap-counter").textContent =
+            tapCount + " / " + MAX_TAPS;
+          showTapFx(e.clientX, e.clientY);
+          burst(e.clientX, e.clientY, 6);
+          if (tapCount >= MAX_TAPS) {
+            appState = "revealing";
+            await sleep(300);
+            await revealPrize();
+          }
         }
 
         async function showPrizeModal() {

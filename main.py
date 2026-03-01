@@ -705,7 +705,7 @@ async def handle_message(msg):
             log.info(f"User {uid} referred by {ref_id}")
 
         await log_event(uid, "start", {"ref": ref_id})
-
+    
         await tg("sendMessage", {
     "chat_id": cid,
     "text": (
