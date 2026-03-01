@@ -33,7 +33,6 @@
         display: none !important;
       }
 
-      /* Loading */
       #loading-screen {
         position: fixed;
         inset: 0;
@@ -63,7 +62,6 @@
         margin-top: 14px;
       }
 
-      /* Toast */
       .toast {
         position: fixed;
         top: 20px;
@@ -88,7 +86,6 @@
         transform: translateX(-50%) translateY(0);
       }
 
-      /* Flash & Glow */
       #flash {
         position: fixed;
         inset: 0;
@@ -127,10 +124,8 @@
 
       /* ══════ Draw Scene ══════ */
       #draw-scene {
-        position: relative;
-        width: 100%;
-        height: 100vh;
-        height: 100dvh;
+        position: fixed;
+        inset: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -142,7 +137,6 @@
         font-size: 22px;
         font-weight: 800;
         color: #333;
-        margin-top: 4px;
         text-align: center;
         flex-shrink: 0;
       }
@@ -160,7 +154,7 @@
         text-align: center;
         font-weight: 600;
         flex-shrink: 0;
-        min-height: 16px;
+        height: 16px;
       }
       #score-display {
         font-size: 44px;
@@ -178,7 +172,6 @@
         font-size: 14px;
         font-weight: 600;
         height: 18px;
-        margin-top: 1px;
         text-align: center;
         opacity: 0;
         transition: opacity 0.3s;
@@ -194,8 +187,7 @@
         touch-action: none;
         will-change: transform;
         transition: border-color 0.4s ease;
-        flex-shrink: 1;
-        min-height: 0;
+        flex-shrink: 0;
         margin-top: 6px;
       }
       #canvas-wrap.border-success {
@@ -206,9 +198,6 @@
       }
       #draw-canvas {
         display: block;
-        width: 100%;
-        height: 100%;
-        will-change: transform;
       }
       #btn-reset {
         position: absolute;
@@ -315,13 +304,11 @@
 
       #btn-submit {
         margin-top: auto;
-        margin-bottom: 12px;
         width: 100%;
         max-width: 360px;
         flex-shrink: 0;
       }
 
-      /* ══════ Buttons ══════ */
       .btn-primary {
         position: relative;
         width: 100%;
@@ -385,7 +372,6 @@
         }
       }
 
-      /* ══════ Particles ══════ */
       .particle {
         position: fixed;
         pointer-events: none;
@@ -425,7 +411,6 @@
         }
       }
 
-      /* ══════ Sheet (shared) ══════ */
       .sheet-overlay {
         position: fixed;
         inset: 0;
@@ -480,8 +465,6 @@
         color: #333;
         margin-bottom: 10px;
       }
-
-      /* Countdown area — fixed height to prevent jumping */
       .claim-countdown-wrap {
         height: 80px;
         display: flex;
@@ -496,28 +479,25 @@
         font-weight: 900;
         color: #976fff;
         line-height: 1;
-        position: absolute;
       }
       .claim-ready {
         font-size: 28px;
         font-weight: 900;
         color: #4caf50;
         line-height: 1;
-        position: absolute;
         opacity: 0;
       }
       .claim-status {
         font-size: 13px;
         color: #999;
         font-weight: 600;
-        position: absolute;
-        bottom: 0;
+        margin-top: 6px;
         opacity: 0;
       }
       @keyframes status-pulse {
         0%,
         100% {
-          opacity: 0.6;
+          opacity: 0.5;
         }
         50% {
           opacity: 1;
@@ -614,11 +594,11 @@
         pointer-events: none;
       }
 
-      /* ══════ Final Modal (NEW) ══════ */
+      /* ══════ Final Modal (CLEAN CARD) ══════ */
       .final-sticker {
         width: 80px;
         height: 80px;
-        margin: 0 auto 6px;
+        margin: 0 auto 4px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -627,100 +607,52 @@
         font-size: 20px;
         font-weight: 800;
         color: #333;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
       }
 
       .timer-card {
         background: linear-gradient(135deg, #f8f9ff, #f0ecff);
         border-radius: 16px;
-        padding: 20px 16px;
-        margin-bottom: 16px;
+        padding: 20px;
+        margin-bottom: 14px;
         position: relative;
         overflow: hidden;
       }
       .timer-card::before {
         content: "";
         position: absolute;
-        top: -30%;
-        right: -20%;
+        top: -40px;
+        right: -40px;
         width: 120px;
         height: 120px;
         background: radial-gradient(
           circle,
-          rgba(151, 111, 255, 0.08),
+          rgba(151, 111, 255, 0.06),
           transparent 70%
         );
         border-radius: 50%;
       }
 
-      .timer-ring-wrap {
+      .timer-main {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 20px;
-        margin-bottom: 14px;
+        gap: 12px;
+        margin-bottom: 12px;
       }
-      .timer-ring-container {
-        position: relative;
-        width: 100px;
-        height: 100px;
-        flex-shrink: 0;
-      }
-      .timer-ring-svg {
-        width: 100%;
-        height: 100%;
-        transform: rotate(-90deg);
-      }
-      .timer-ring-bg {
-        fill: none;
-        stroke: #e8e4f3;
-        stroke-width: 6;
-      }
-      .timer-ring-fg {
-        fill: none;
-        stroke: url(#timerGrad);
-        stroke-width: 6;
-        stroke-linecap: round;
-        transition: stroke-dashoffset 0.5s linear;
-      }
-      .timer-ring-fg.done {
-        stroke: #4caf50;
-      }
-      .timer-ring-text {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-      .timer-ring-time {
+      .timer-time {
         font-family: "Orbitron", sans-serif;
-        font-size: 15px;
+        font-size: 28px;
         font-weight: 900;
         color: #333;
-        letter-spacing: 1px;
+        letter-spacing: 2px;
         line-height: 1;
       }
-      .timer-ring-time.done {
+      .timer-time.done {
         color: #4caf50;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        font-size: 13px;
+        font-size: 18px;
         letter-spacing: 0;
-      }
-      .timer-ring-label {
-        font-size: 9px;
-        color: #aaa;
-        text-transform: uppercase;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        margin-top: 3px;
-      }
-
-      .timer-info {
-        flex: 1;
-        text-align: left;
-        min-width: 0;
       }
       .timer-speed-pill {
         display: inline-flex;
@@ -729,10 +661,10 @@
         background: linear-gradient(135deg, #6b93ff, #976fff);
         color: #fff;
         font-weight: 800;
-        padding: 4px 10px;
+        padding: 5px 11px;
         border-radius: 20px;
         font-size: 12px;
-        margin-bottom: 8px;
+        flex-shrink: 0;
       }
       .timer-speed-pill.fast {
         animation: pill-pulse 1s ease-in-out infinite;
@@ -746,94 +678,108 @@
           transform: scale(1.06);
         }
       }
-      .timer-speed-pill .pill-icon {
-        width: 12px;
-        height: 12px;
+      .pill-icon {
+        font-size: 11px;
+      }
+
+      .timer-status {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
+        gap: 6px;
+        font-size: 13px;
+        color: #888;
+        font-weight: 600;
+      }
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #976fff;
+        animation: dot-blink 1.5s ease-in-out infinite;
+        flex-shrink: 0;
+      }
+      .status-dot.done {
+        background: #4caf50;
+        animation: none;
+      }
+      @keyframes dot-blink {
+        0%,
+        100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 1;
+        }
       }
 
-      /* Progress steps */
-      .progress-steps {
+      .progress-track {
         display: flex;
-        flex-direction: column;
-        gap: 0;
-        margin-top: 4px;
-      }
-      .progress-step {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        position: relative;
-      }
-      .step-indicator {
-        display: flex;
-        flex-direction: column;
         align-items: center;
-        flex-shrink: 0;
-        width: 24px;
+        justify-content: center;
+        gap: 0;
+        margin-top: 14px;
       }
-      .step-dot {
-        width: 20px;
-        height: 20px;
+      .p-step {
+        display: flex;
+        align-items: center;
+        gap: 0;
+      }
+      .p-dot {
+        width: 22px;
+        height: 22px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 700;
         color: #fff;
         flex-shrink: 0;
+        transition: background 0.3s;
       }
-      .step-dot.completed {
+      .p-dot.done {
         background: #4caf50;
       }
-      .step-dot.active {
+      .p-dot.active {
         background: linear-gradient(135deg, #6b93ff, #976fff);
-        animation: dot-glow 2s ease-in-out infinite;
       }
-      @keyframes dot-glow {
-        0%,
-        100% {
-          box-shadow: 0 0 0 0 rgba(151, 111, 255, 0.3);
-        }
-        50% {
-          box-shadow: 0 0 0 6px rgba(151, 111, 255, 0.1);
-        }
-      }
-      .step-dot.pending {
+      .p-dot.pending {
         background: #ddd;
       }
-      .step-line {
-        width: 2px;
-        height: 16px;
-        background: #e0e0e0;
-        margin: 2px 0;
+      .p-line {
+        width: 40px;
+        height: 3px;
+        border-radius: 2px;
+        transition: background 0.3s;
       }
-      .step-line.completed {
+      .p-line.done {
         background: #4caf50;
       }
-      .step-line.active {
-        background: linear-gradient(to bottom, #976fff, #e0e0e0);
+      .p-line.active {
+        background: linear-gradient(90deg, #976fff, #ddd);
       }
-      .step-content {
-        padding: 2px 0 14px;
-        min-width: 0;
+      .p-line.pending {
+        background: #e8e8e8;
       }
-      .step-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #333;
+      .p-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        padding: 0 4px;
       }
-      .step-title.dimmed {
-        color: #bbb;
-      }
-      .step-sub {
-        font-size: 11px;
+      .p-label {
+        font-size: 10px;
         color: #aaa;
-        margin-top: 1px;
+        font-weight: 600;
+        text-align: center;
+        width: 60px;
+      }
+      .p-label.active-label {
+        color: #976fff;
+      }
+      .p-label.done-label {
+        color: #4caf50;
       }
 
       .final-actions {
@@ -869,16 +815,11 @@
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
       }
       .btn-action-icon {
-        width: 22px;
-        height: 22px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         font-size: 17px;
         flex-shrink: 0;
       }
 
-      /* ══════ Speedup Modal ══════ */
+      /* ══════ Speedup ══════ */
       .speedup-header {
         display: flex;
         align-items: center;
@@ -1018,13 +959,7 @@
         transform: scale(0.95);
       }
       .share-icon {
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         font-size: 16px;
-        flex-shrink: 0;
       }
       .ref-hint {
         font-size: 12px;
@@ -1069,13 +1004,7 @@
         gap: 6px;
       }
       .header-icon-inline {
-        width: 22px;
-        height: 22px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         font-size: 17px;
-        flex-shrink: 0;
       }
       .modal-fs-close {
         width: 32px;
@@ -1259,7 +1188,7 @@
       </div>
     </div>
 
-    <!-- ══════ Final Modal (REDESIGNED) ══════ -->
+    <!-- ══════ Final Modal ══════ -->
     <div id="modal-final" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
@@ -1268,91 +1197,42 @@
         <p id="final-prize-name" class="final-prize-name"></p>
 
         <div class="timer-card">
-          <div class="timer-ring-wrap">
-            <div class="timer-ring-container">
-              <svg class="timer-ring-svg" viewBox="0 0 120 120">
-                <defs>
-                  <linearGradient
-                    id="timerGrad"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="100%"
-                  >
-                    <stop offset="0%" stop-color="#6B93FF" />
-                    <stop offset="100%" stop-color="#E46ACE" />
-                  </linearGradient>
-                </defs>
-                <circle class="timer-ring-bg" cx="60" cy="60" r="52" />
-                <circle
-                  id="timer-ring-fg"
-                  class="timer-ring-fg"
-                  cx="60"
-                  cy="60"
-                  r="52"
-                  stroke-dasharray="326.73"
-                  stroke-dashoffset="0"
-                />
-              </svg>
-              <div class="timer-ring-text">
-                <div id="timer-ring-time" class="timer-ring-time">24:00:00</div>
-                <div id="timer-ring-label" class="timer-ring-label">
-                  осталось
-                </div>
-              </div>
+          <div class="timer-main">
+            <div id="timer-time" class="timer-time">24:00:00</div>
+            <div id="speed-pill" class="timer-speed-pill">
+              <span class="pill-icon">⚡</span><span id="speed-text">x1</span>
             </div>
-            <div class="timer-info">
-              <div id="speed-pill" class="timer-speed-pill">
-                <span id="pill-icon" class="pill-icon"></span
-                ><span id="speed-text">x1</span>
-              </div>
-              <div class="progress-steps">
-                <div class="progress-step">
-                  <div class="step-indicator">
-                    <div class="step-dot completed">✓</div>
-                    <div class="step-line completed"></div>
-                  </div>
-                  <div class="step-content">
-                    <div class="step-title">Приз получен</div>
-                    <div class="step-sub">Звезда нарисована</div>
-                  </div>
-                </div>
-                <div class="progress-step">
-                  <div class="step-indicator">
-                    <div id="step-dot-2" class="step-dot active">2</div>
-                    <div id="step-line-2" class="step-line active"></div>
-                  </div>
-                  <div class="step-content">
-                    <div id="step-title-2" class="step-title">
-                      Обработка заявки
-                    </div>
-                    <div id="step-sub-2" class="step-sub">Ожидайте...</div>
-                  </div>
-                </div>
-                <div class="progress-step">
-                  <div class="step-indicator">
-                    <div id="step-dot-3" class="step-dot pending">3</div>
-                  </div>
-                  <div class="step-content">
-                    <div id="step-title-3" class="step-title dimmed">
-                      Выдача приза
-                    </div>
-                    <div id="step-sub-3" class="step-sub">Скоро</div>
-                  </div>
-                </div>
-              </div>
+          </div>
+          <div class="timer-status">
+            <div id="status-dot" class="status-dot"></div>
+            <span id="status-text">Обработка заявки...</span>
+          </div>
+          <div class="progress-track">
+            <div class="p-step"><div id="pd-1" class="p-dot done">✓</div></div>
+            <div class="p-step"><div id="pl-1" class="p-line done"></div></div>
+            <div class="p-step">
+              <div id="pd-2" class="p-dot active">2</div>
             </div>
+            <div class="p-step">
+              <div id="pl-2" class="p-line active"></div>
+            </div>
+            <div class="p-step">
+              <div id="pd-3" class="p-dot pending">3</div>
+            </div>
+          </div>
+          <div class="p-labels">
+            <div id="plbl-1" class="p-label done-label">Получен</div>
+            <div id="plbl-2" class="p-label active-label">Обработка</div>
+            <div id="plbl-3" class="p-label">Выдача</div>
           </div>
         </div>
 
         <div class="final-actions">
           <button id="btn-speedup" class="btn-action purple">
-            <div id="icon-rocket-btn" class="btn-action-icon"></div>
-            <span>Ускорить</span>
+            <span class="btn-action-icon">🚀</span><span>Ускорить</span>
           </button>
           <button id="btn-earn-stars" class="btn-action dark">
-            <div id="icon-star-btn" class="btn-action-icon"></div>
-            <span>Заработать ⭐</span>
+            <span class="btn-action-icon">⭐</span><span>Заработать</span>
           </button>
         </div>
       </div>
@@ -1364,7 +1244,7 @@
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="speedup-header">
-          <div id="icon-rocket-title" class="header-icon"></div>
+          <div id="icon-rocket-title" class="header-icon">🚀</div>
           <div class="speedup-title">Ускорить вывод</div>
         </div>
         <p class="speedup-desc">
@@ -1412,8 +1292,7 @@
           </div>
         </div>
         <button id="btn-share" class="btn-share">
-          <div id="icon-invite" class="share-icon"></div>
-          <span>Пригласить друга</span>
+          <span class="share-icon">📤</span><span>Пригласить друга</span>
         </button>
         <p class="ref-hint">
           Ваша реферальная ссылка будет прикреплена автоматически
@@ -1426,8 +1305,7 @@
     <div id="modal-stars" class="modal-fs hidden">
       <div class="modal-fs-header">
         <span class="modal-fs-title"
-          ><span id="icon-star-title" class="header-icon-inline"></span
-          >Заработать звёзды</span
+          ><span class="header-icon-inline">⭐</span>Заработать звёзды</span
         ><button id="btn-close-stars" class="modal-fs-close">✕</button>
       </div>
       <div id="stars-content" class="modal-fs-body"></div>
@@ -1488,7 +1366,6 @@
           MAX_TAPS = 10,
           T_SEC = 86400,
           SCORE_THRESHOLD = 80;
-        const RING_CIRCUMFERENCE = 2 * Math.PI * 52; // ~326.73
         const PRIZE_STARS = {
           key: "stars",
           name: "500 Stars",
@@ -1516,7 +1393,7 @@
         let wonPrize = null,
           appState = "loading",
           tapCount = 0;
-        let isCheckingSub = false; // prevent double-check
+        let isCheckingSub = false;
 
         function calcSpeed(r) {
           return r >= 2 ? Math.pow(2, Math.floor(r / 2)) : 1;
@@ -1555,66 +1432,51 @@
             T_SEC - (Date.now() / 1000 - claimedAt) * tSpeed,
           );
           const t = fmtT(rem);
-          const ringEl = document.getElementById("timer-ring-fg");
-          const timeEl = document.getElementById("timer-ring-time");
-          const labelEl = document.getElementById("timer-ring-label");
+          const timeEl = document.getElementById("timer-time");
           const speedEl = document.getElementById("speed-text");
           const pillEl = document.getElementById("speed-pill");
-          const pillIcon = document.getElementById("pill-icon");
+          const dotEl = document.getElementById("status-dot");
+          const statusEl = document.getElementById("status-text");
 
-          // Speed pill
           if (speedEl) speedEl.textContent = "x" + tSpeed;
           if (pillEl) {
             if (tSpeed > 1) pillEl.classList.add("fast");
             else pillEl.classList.remove("fast");
           }
-          if (pillIcon && !pillIcon.dataset.ic) pillIcon.textContent = "⚡";
-
-          // Ring progress
-          const progress = rem / T_SEC;
-          if (ringEl)
-            ringEl.setAttribute(
-              "stroke-dashoffset",
-              String(RING_CIRCUMFERENCE * (1 - progress)),
-            );
 
           if (!t) {
-            // Timer done
             if (timeEl) {
               timeEl.textContent = "Готово!";
               timeEl.classList.add("done");
             }
-            if (labelEl) labelEl.textContent = "";
-            if (ringEl) {
-              ringEl.classList.add("done");
-              ringEl.setAttribute("stroke-dashoffset", "0");
+            if (dotEl) {
+              dotEl.classList.add("done");
             }
-            // Update steps
-            const dot2 = document.getElementById("step-dot-2"),
-              dot3 = document.getElementById("step-dot-3");
-            const line2 = document.getElementById("step-line-2");
-            const title2 = document.getElementById("step-title-2"),
-              title3 = document.getElementById("step-title-3");
-            const sub2 = document.getElementById("step-sub-2"),
-              sub3 = document.getElementById("step-sub-3");
-            if (dot2) {
-              dot2.className = "step-dot completed";
-              dot2.textContent = "✓";
+            if (statusEl) statusEl.textContent = "Приз готов к выдаче!";
+            // Update progress dots
+            const pd2 = document.getElementById("pd-2"),
+              pd3 = document.getElementById("pd-3");
+            const pl2 = document.getElementById("pl-2");
+            const plbl2 = document.getElementById("plbl-2"),
+              plbl3 = document.getElementById("plbl-3");
+            if (pd2) {
+              pd2.className = "p-dot done";
+              pd2.textContent = "✓";
             }
-            if (dot3) {
-              dot3.className = "step-dot completed";
-              dot3.textContent = "✓";
+            if (pd3) {
+              pd3.className = "p-dot done";
+              pd3.textContent = "✓";
             }
-            if (line2) {
-              line2.className = "step-line completed";
+            if (pl2) pl2.className = "p-line done";
+            if (plbl2) {
+              plbl2.className = "p-label done-label";
+              plbl2.textContent = "Готово";
             }
-            if (title2) title2.classList.remove("dimmed");
-            if (title3) {
-              title3.classList.remove("dimmed");
-              title3.textContent = "Приз выдан!";
+            if (plbl3) {
+              plbl3.className = "p-label done-label";
+              plbl3.textContent = "Выдан";
             }
-            if (sub2) sub2.textContent = "Завершено";
-            if (sub3) sub3.textContent = "Проверьте бота";
+            if (pillEl) pillEl.style.display = "none";
             clearInterval(tInt);
             return;
           }
@@ -1622,7 +1484,8 @@
             timeEl.textContent = t;
             timeEl.classList.remove("done");
           }
-          if (labelEl) labelEl.textContent = "осталось";
+          if (dotEl) dotEl.classList.remove("done");
+          if (statusEl) statusEl.textContent = "Обработка заявки...";
         }
 
         /* ══════ TGS / Lottie ══════ */
@@ -1673,54 +1536,6 @@
             } catch (e) {}
           });
           activeLotties = [];
-        }
-
-        // Icons — tracked separately so killLotties doesn't break them
-        let iconLotties = [];
-        function playIcon(c, u, em) {
-          if (!c || c.dataset.ic) return;
-          c.dataset.ic = "1";
-          c.innerHTML = "";
-          const d = cloneTGS(u);
-          if (d) {
-            try {
-              const a = lottie.loadAnimation({
-                container: c,
-                renderer: "svg",
-                loop: true,
-                autoplay: true,
-                animationData: d,
-              });
-              a.setSubframe(false);
-              iconLotties.push(a);
-              return;
-            } catch (e) {}
-          }
-          c.textContent = em || "";
-        }
-        function initIcons() {
-          playIcon(document.getElementById("pill-icon"), TGS_LIGHTNING, "⚡");
-          playIcon(
-            document.getElementById("icon-rocket-btn"),
-            TGS_ROCKET,
-            "🚀",
-          );
-          playIcon(
-            document.getElementById("icon-star-btn"),
-            TGS_STAR_ICON,
-            "⭐",
-          );
-          playIcon(
-            document.getElementById("icon-rocket-title"),
-            TGS_ROCKET,
-            "🚀",
-          );
-          playIcon(document.getElementById("icon-invite"), TGS_INVITE, "📤");
-          playIcon(
-            document.getElementById("icon-star-title"),
-            TGS_STAR_ICON,
-            "⭐",
-          );
         }
 
         /* ══════ API ══════ */
@@ -1834,7 +1649,7 @@
           }
         }
 
-        /* ══════ Sheet animations ══════ */
+        /* ══════ Sheets ══════ */
         function openSheet(id) {
           const ov = document.getElementById(id),
             bg = ov.querySelector(".sheet-bg"),
@@ -1866,7 +1681,7 @@
           }
         }
 
-        /* ══════ Star drawing & scoring ══════ */
+        /* ══════ Star scoring ══════ */
         function generateIdealStar(size) {
           const c = document.createElement("canvas");
           c.width = c.height = size;
@@ -2025,11 +1840,37 @@
         }
 
         function setupCanvas() {
-          // Reserve space for header (~120px) + button (~60px) + padding
-          const reserved = 190;
-          const maxH = Math.floor(window.innerHeight - reserved);
+          // Measure actual available space
+          const scene = document.getElementById("draw-scene");
+          const title = document.getElementById("draw-title");
+          const subtitle = document.getElementById("draw-subtitle");
+          const attempt = document.getElementById("attempt-counter");
+          const scoreD = document.getElementById("score-display");
+          const scoreH = document.getElementById("score-hint");
+          const btn = document.getElementById("btn-submit");
+
+          // Force layout to measure
+          scene.classList.remove("hidden");
+
+          const totalH = window.innerHeight;
+          const usedH =
+            title.offsetHeight +
+            subtitle.offsetHeight +
+            attempt.offsetHeight +
+            scoreD.offsetHeight +
+            scoreH.offsetHeight +
+            btn.offsetHeight +
+            12 +
+            2 +
+            2 +
+            6 +
+            8 +
+            16; // paddings/margins
+          const availH = totalH - usedH - 40; // extra safety
           const maxW = window.innerWidth - 48;
-          canvasSize = Math.min(maxH, maxW, 400); // cap at 400px
+          canvasSize = Math.min(availH, maxW, 400);
+          canvasSize = Math.max(canvasSize, 200); // minimum
+
           canvasWrap.style.width = canvasSize + "px";
           canvasWrap.style.height = canvasSize + "px";
           const dpr = window.devicePixelRatio || 1;
@@ -2126,7 +1967,7 @@
             attemptCount > 0 ? "Попытка " + (attemptCount + 1) : "";
         }
 
-        /* ══════ Submit drawing ══════ */
+        /* ══════ Submit ══════ */
         document
           .getElementById("btn-submit")
           .addEventListener("click", async () => {
@@ -2188,7 +2029,7 @@
             }
           });
 
-        /* ══════ Transform animation ══════ */
+        /* ══════ Transform ══════ */
         async function animateTransform() {
           const canvas = document.getElementById("draw-canvas"),
             flash = document.getElementById("flash");
@@ -2415,7 +2256,6 @@
           claimBtn.disabled = true;
           claimBtn.classList.remove("pulse-active");
 
-          // Reset countdown elements
           const numEl = document.getElementById("claim-number");
           const readyEl = document.getElementById("claim-ready");
           const statusEl = document.getElementById("claim-status");
@@ -2427,7 +2267,7 @@
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           appState = "prize";
 
-          // Countdown: 3 → 2 → 1 → ГОТОВО! → Подготавливаем...
+          // 3 → 2 → 1
           for (let i = 3; i >= 1; i--) {
             numEl.textContent = i;
             gsap.fromTo(
@@ -2439,7 +2279,7 @@
             await sleep(1000);
           }
 
-          // Fade number → show ГОТОВО!
+          // Number fades → ГОТОВО! appears (stays!)
           gsap.to(numEl, { opacity: 0, scale: 0.5, duration: 0.2 });
           await sleep(200);
           gsap.to(readyEl, {
@@ -2449,18 +2289,14 @@
             ease: "back.out(2)",
           });
           hapticN("success");
-          await sleep(600);
+          await sleep(400);
 
-          // Show status text
+          // Status text appears (stays!)
           gsap.to(statusEl, { opacity: 1, duration: 0.3 });
           statusEl.style.animation = "status-pulse 2s ease-in-out infinite";
           await sleep(1500);
 
-          // Enable claim button
-          statusEl.style.animation = "";
-          gsap.to(statusEl, { opacity: 0, duration: 0.2 });
-          gsap.to(readyEl, { opacity: 0, duration: 0.2 });
-          await sleep(200);
+          // Enable button — ГОТОВО and status STAY visible
           claimBtn.disabled = false;
           claimBtn.classList.add("pulse-active");
         }
@@ -2475,9 +2311,8 @@
           const done = document.querySelectorAll(
             ".channel-sub-btn.done",
           ).length;
-          const total = CHANNELS.length;
           document.getElementById("sub-progress").textContent =
-            `Подписано ${done} из ${total}`;
+            `Подписано ${done} из ${CHANNELS.length}`;
         }
 
         function showSub() {
@@ -2536,12 +2371,10 @@
           appState = "subscribe";
         }
 
-        // NO auto-check on visibilitychange — only manual button
-
         document
           .getElementById("btn-check-sub")
           .addEventListener("click", async () => {
-            if (isCheckingSub) return; // prevent double-click
+            if (isCheckingSub) return;
             isCheckingSub = true;
             const btn = document.getElementById("btn-check-sub");
             btn.disabled = true;
@@ -2586,7 +2419,7 @@
             isCheckingSub = false;
           });
 
-        /* ══════ Final Modal ══════ */
+        /* ══════ Final ══════ */
         function showFinal() {
           killLotties();
           const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
@@ -2604,41 +2437,40 @@
           refCount = US?.referral_count || refCount || 0;
           tSpeed = calcSpeed(refCount);
 
-          // Reset progress steps to default
-          const dot2 = document.getElementById("step-dot-2"),
-            dot3 = document.getElementById("step-dot-3");
-          const line2 = document.getElementById("step-line-2");
-          const title3 = document.getElementById("step-title-3"),
-            sub2 = document.getElementById("step-sub-2"),
-            sub3 = document.getElementById("step-sub-3");
-          if (dot2) {
-            dot2.className = "step-dot active";
-            dot2.textContent = "2";
+          // Reset progress to default
+          const pd2 = document.getElementById("pd-2"),
+            pd3 = document.getElementById("pd-3");
+          const pl2 = document.getElementById("pl-2");
+          const plbl2 = document.getElementById("plbl-2"),
+            plbl3 = document.getElementById("plbl-3");
+          if (pd2) {
+            pd2.className = "p-dot active";
+            pd2.textContent = "2";
           }
-          if (dot3) {
-            dot3.className = "step-dot pending";
-            dot3.textContent = "3";
+          if (pd3) {
+            pd3.className = "p-dot pending";
+            pd3.textContent = "3";
           }
-          if (line2) line2.className = "step-line active";
-          if (title3) {
-            title3.className = "step-title dimmed";
-            title3.textContent = "Выдача приза";
+          if (pl2) pl2.className = "p-line active";
+          if (plbl2) {
+            plbl2.className = "p-label active-label";
+            plbl2.textContent = "Обработка";
           }
-          if (sub2) sub2.textContent = "Ожидайте...";
-          if (sub3) sub3.textContent = "Скоро";
+          if (plbl3) {
+            plbl3.className = "p-label";
+            plbl3.textContent = "Выдача";
+          }
 
-          initIcons();
           startTimer();
           openSheet("modal-final");
           confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
           appState = "final";
         }
 
-        /* ══════ Speedup Modal ══════ */
+        /* ══════ Speedup ══════ */
         document.getElementById("btn-speedup").addEventListener("click", () => {
           document.getElementById("su-ref-count").textContent = refCount;
           document.getElementById("su-speed").textContent = "x" + tSpeed;
-          // Update milestones
           [2, 4, 6, 8].forEach((n) => {
             const ms = document.getElementById("ms-" + n);
             if (ms) {
@@ -2646,15 +2478,13 @@
               else ms.classList.remove("reached");
             }
           });
-          const fillPct = Math.min(100, (refCount / 8) * 100);
-          document.getElementById("ref-fill").style.width = fillPct + "%";
+          document.getElementById("ref-fill").style.width =
+            Math.min(100, (refCount / 8) * 100) + "%";
           openSheet("modal-speedup");
         });
         document
           .getElementById("btn-back-speedup")
-          .addEventListener("click", () => {
-            closeSheet("modal-speedup");
-          });
+          .addEventListener("click", () => closeSheet("modal-speedup"));
         document.getElementById("btn-share").addEventListener("click", () => {
           const uid = US?.telegram_id || "";
           const link = `https://t.me/${BOT}?start=ref_${uid}`;
@@ -2671,7 +2501,7 @@
           }
         });
 
-        /* ══════ Stars Modal ══════ */
+        /* ══════ Stars ══════ */
         document
           .getElementById("btn-earn-stars")
           .addEventListener("click", async () => {
@@ -2701,12 +2531,11 @@
         document
           .getElementById("btn-edit-stars")
           .addEventListener("click", () => {
-            const content = document.getElementById("stars-content");
-            const editWrap = document.getElementById("stars-edit-wrap");
-            const textarea = document.getElementById("stars-textarea");
-            textarea.value = content.innerText || "";
-            content.classList.add("hidden");
-            editWrap.classList.remove("hidden");
+            const c = document.getElementById("stars-content"),
+              e = document.getElementById("stars-edit-wrap");
+            document.getElementById("stars-textarea").value = c.innerText || "";
+            c.classList.add("hidden");
+            e.classList.remove("hidden");
           });
         document
           .getElementById("btn-cancel-edit")
@@ -2717,10 +2546,10 @@
         document
           .getElementById("btn-save-stars")
           .addEventListener("click", async () => {
-            const text = document.getElementById("stars-textarea").value;
+            const t = document.getElementById("stars-textarea").value;
             try {
-              await api("save-stars-content", { content: text });
-              document.getElementById("stars-content").innerHTML = text;
+              await api("save-stars-content", { content: t });
+              document.getElementById("stars-content").innerHTML = t;
               toast("Сохранено!", "success");
             } catch (e) {
               toast("Ошибка сохранения");
