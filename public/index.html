@@ -1452,7 +1452,10 @@
             if (dotEl) {
               dotEl.classList.add("done");
             }
-            if (statusEl) statusEl.textContent = "Приз готов к выдаче!";
+            if (statusEl) statusEl.textContent = "ГОТОВО!";
+            if (dotEl) {
+              dotEl.classList.add("done");
+            }
             // Update progress dots
             const pd2 = document.getElementById("pd-2"),
               pd3 = document.getElementById("pd-3");
@@ -1485,7 +1488,7 @@
             timeEl.classList.remove("done");
           }
           if (dotEl) dotEl.classList.remove("done");
-          if (statusEl) statusEl.textContent = "Обработка заявки...";
+          if (statusEl) statusEl.textContent = "Подготавливаем приз...";
         }
 
         /* ══════ TGS / Lottie ══════ */
@@ -2279,7 +2282,7 @@
             await sleep(1000);
           }
 
-          // Number fades → ГОТОВО! appears (stays!)
+          // Число исчезает → ГОТОВО! появляется и ОСТАЁТСЯ
           gsap.to(numEl, { opacity: 0, scale: 0.5, duration: 0.2 });
           await sleep(200);
           gsap.to(readyEl, {
@@ -2289,14 +2292,9 @@
             ease: "back.out(2)",
           });
           hapticN("success");
-          await sleep(400);
+          await sleep(1200);
 
-          // Status text appears (stays!)
-          gsap.to(statusEl, { opacity: 1, duration: 0.3 });
-          statusEl.style.animation = "status-pulse 2s ease-in-out infinite";
-          await sleep(1500);
-
-          // Enable button — ГОТОВО and status STAY visible
+          // Кнопка активна, ГОТОВО! остаётся
           claimBtn.disabled = false;
           claimBtn.classList.add("pulse-active");
         }
@@ -2630,6 +2628,7 @@
             opacity: 0,
             duration: 0.3,
             delay: 0.5,
+            clearProps: "all",
           });
         }
         init();
