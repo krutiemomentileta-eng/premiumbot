@@ -5,6 +5,9 @@ import hashlib
 import base64
 import re
 import asyncio
+import time
+import logging
+from collections import defaultdict
 from urllib.parse import parse_qs, unquote
 from datetime import datetime, timezone
 
@@ -12,21 +15,113 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# ══════════════════════════════════════
+#  Config & validation
+# ══════════════════════════════════════
 BOT_TOKEN    = os.getenv("BOT_TOKEN", "")
 WEBAPP_URL   = os.getenv("WEBAPP_URL", "")
 ADMIN_ID     = int(os.getenv("ADMIN_ID", "0"))
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
+def validate_env():
+    required = ["BOT_TOKEN", "WEBAPP_URL", "ADMIN_ID", "SUPABASE_URL", "SUPABASE_KEY"]
+    missing = [k for k in required if not os.getenv(k)]
+    if missing:
+        raise RuntimeError(f"Missing env vars: {', '.join(missing)}")
+
+validate_env()
+
+# ══════════════════════════════════════
+#  Logging
+# ══════════════════════════════════════
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+log = logging.getLogger("bot")
+
+# ══════════════════════════════════════
+#  App & middleware
+# ══════════════════════════════════════
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class ErrorMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as e:
+            log.error(f"Unhandled error: {e}", exc_info=True)
+            return JSONResponse({"error": "Internal server error"}, 500)
+
+
+app.add_middleware(ErrorMiddleware)
+
+# ══════════════════════════════════════
+#  Rate limiting
+# ══════════════════════════════════════
+rate_limits = defaultdict(list)
+RATE_LIMIT = 30
+RATE_WINDOW = 60
+
+
+def check_rate_limit(user_id: int) -> bool:
+    now = time.time()
+    rate_limits[user_id] = [t for t in rate_limits[user_id] if now - t < RATE_WINDOW]
+    if len(rate_limits[user_id]) >= RATE_LIMIT:
+        log.warning(f"Rate limited: {user_id}")
+        return False
+    rate_limits[user_id].append(now)
+    return True
+
+
+# Cleanup old entries every 5 min
+async def rate_limit_cleanup():
+    while True:
+        await asyncio.sleep(300)
+        now = time.time()
+        expired = [uid for uid, ts in rate_limits.items() if not ts or now - ts[-1] > RATE_WINDOW]
+        for uid in expired:
+            del rate_limits[uid]
 
 
 # ══════════════════════════════════════
-#  Supabase REST — fully async + pooled
+#  Cache
+# ══════════════════════════════════════
+_cache = {}
+CACHE_TTL = 60
+
+
+async def get_cached(key, fetcher):
+    if key in _cache and time.time() - _cache[key]["ts"] < CACHE_TTL:
+        return _cache[key]["data"]
+    data = await fetcher()
+    _cache[key] = {"data": data, "ts": time.time()}
+    return data
+
+
+def invalidate_cache():
+    _cache.clear()
+    log.info("Cache invalidated")
+
+
+# ══════════════════════════════════════
+#  Supabase REST — async + pooled
 # ══════════════════════════════════════
 class SupabaseREST:
     def __init__(self, url, key):
@@ -45,10 +140,12 @@ class SupabaseREST:
             timeout=15,
             limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
         )
+        log.info("DB client started")
 
     async def stop(self):
         if self.client:
             await self.client.aclose()
+            log.info("DB client stopped")
 
     async def _req(self, method, table, params=None, data=None, headers_extra=None):
         url = f"{self.base}/{table}"
@@ -56,14 +153,14 @@ class SupabaseREST:
         try:
             r = await self.client.request(method, url, params=params, json=data, headers=h)
             if r.status_code >= 400:
-                print(f"DB error: {r.status_code} {r.text}")
+                log.error(f"DB {method} {table}: {r.status_code} {r.text}")
                 return []
             try:
                 return r.json()
             except Exception:
                 return []
         except Exception as e:
-            print(f"DB request error: {e}")
+            log.error(f"DB request error: {e}")
             return []
 
     async def select(self, table, filters=None, order=None, limit=None):
@@ -89,7 +186,6 @@ class SupabaseREST:
         return await self.update(table, data, {col: f"eq.{val}"})
 
     async def count(self, table, filters=None):
-        """HEAD request with count — no data transfer"""
         p = {"select": "*"}
         if filters:
             p.update(filters)
@@ -97,12 +193,11 @@ class SupabaseREST:
         try:
             r = await self.client.head(f"{self.base}/{table}", params=p, headers=h)
             cr = r.headers.get("content-range", "")
-            # format: "0-0/123" or "*/123"
             if "/" in cr:
                 return int(cr.split("/")[1])
             return 0
         except Exception as e:
-            print(f"DB count error: {e}")
+            log.error(f"DB count error: {e}")
             return 0
 
 
@@ -110,21 +205,7 @@ db = SupabaseREST(SUPABASE_URL, SUPABASE_KEY)
 
 
 # ══════════════════════════════════════
-#  Lifecycle
-# ══════════════════════════════════════
-@app.on_event("startup")
-async def on_startup():
-    await db.start()
-    asyncio.create_task(background_worker())
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    await db.stop()
-
-
-# ══════════════════════════════════════
-#  Telegram helpers
+#  Telegram client — pooled
 # ══════════════════════════════════════
 tg_client: httpx.AsyncClient | None = None
 
@@ -155,7 +236,7 @@ async def tg(method, data=None):
         r = await c.post(method, json=data or {})
         return r.json()
     except Exception as e:
-        print(f"TG error [{method}]: {e}")
+        log.error(f"TG error [{method}]: {e}")
         return {"ok": False}
 
 
@@ -289,7 +370,7 @@ async def parse_bot(bot_input):
             "avatar_base64": avatar, "member_count": 0,
         }
     except Exception as e:
-        print(f"parse_bot error: {e}")
+        log.error(f"parse_bot error: {e}")
         uid = int(hashlib.md5(bot_input.encode()).hexdigest()[:15], 16)
         return {
             "channel_id": uid, "type": "bot", "title": bot_input,
@@ -340,6 +421,7 @@ async def get_or_create(tg_id, info=None):
         "state": "new",
     }
     result = await db.insert("users", u)
+    log.info(f"New user: {tg_id} @{u['username']}")
     return result[0] if result else u
 
 
@@ -347,8 +429,16 @@ async def get_sponsors():
     return await db.select("channels", {"is_active": "eq.true"}, order="added_at.asc")
 
 
+async def get_sponsors_cached():
+    return await get_cached("sponsors", get_sponsors)
+
+
 async def get_prizes():
     return await db.select("prizes", {"is_active": "eq.true"}, order="sort_order.asc")
+
+
+async def get_prizes_cached():
+    return await get_cached("prizes", get_prizes)
 
 
 async def count_referrals(tg_id):
@@ -356,8 +446,35 @@ async def count_referrals(tg_id):
 
 
 # ══════════════════════════════════════
+#  Event logging
+# ══════════════════════════════════════
+async def log_event(telegram_id, event, data=None):
+    try:
+        await db.insert("events", {
+            "telegram_id": telegram_id,
+            "event": event,
+            "data": json.dumps(data or {}),
+        })
+    except Exception as e:
+        log.error(f"Event log error: {e}")
+
+
+# ══════════════════════════════════════
 #  API endpoints
 # ══════════════════════════════════════
+@app.get("/api/health")
+async def health():
+    r = await tg("getMe")
+    db_ok = bool(await db.select("users", limit=1))
+    return {
+        "bot": r.get("ok", False),
+        "bot_username": r.get("result", {}).get("username", ""),
+        "db": db_ok,
+        "broadcast_running": broadcast_status["running"],
+        "cache_keys": list(_cache.keys()),
+    }
+
+
 @app.post("/api/get-user")
 async def api_get_user(req: Request):
     body = await req.json()
@@ -365,12 +482,16 @@ async def api_get_user(req: Request):
     if not v:
         return JSONResponse({"error": "Invalid initData"}, 401)
 
-    user = await get_or_create(v["user"]["id"], v["user"])
-    sponsors = await get_sponsors()
-    prizes = await get_prizes()
+    tg_id = v["user"]["id"]
+    if not check_rate_limit(tg_id):
+        return JSONResponse({"error": "Too many requests"}, 429)
+
+    user = await get_or_create(tg_id, v["user"])
+    sponsors = await get_sponsors_cached()
+    prizes = await get_prizes_cached()
     ref_count = await count_referrals(user["telegram_id"])
 
-    sponsors.sort(key=lambda x: (0 if x.get("type", "channel") == "channel" else 1))
+    sponsors_sorted = sorted(sponsors, key=lambda x: (0 if x.get("type", "channel") == "channel" else 1))
 
     claimed_at = user.get("claimed_at")
     claimed_at_unix = None
@@ -402,7 +523,7 @@ async def api_get_user(req: Request):
                         else c["invite_link"],
                 "avatar": c.get("avatar_base64", ""),
             }
-            for c in sponsors
+            for c in sponsors_sorted
         ],
         "prizes": [
             {"key": p["key"], "tgs": p["tgs_file"],
@@ -420,17 +541,24 @@ async def api_check_sub(req: Request):
         return JSONResponse({"error": "Invalid initData"}, 401)
 
     tg_id = v["user"]["id"]
+    if not check_rate_limit(tg_id):
+        return JSONResponse({"error": "Too many requests"}, 429)
+
     user = await get_or_create(tg_id, v["user"])
     action = body.get("action", "check")
 
     if action == "save_roll":
         if user["state"] != "new":
             return JSONResponse({"error": "Already rolled"}, 400)
+        prize_key = body.get("prize_key", "")
+        prize_name = body.get("prize_name", "")
         await db.update_eq("users", {
             "state": "rolled",
-            "prize_key": body.get("prize_key", ""),
-            "prize_name": body.get("prize_name", ""),
+            "prize_key": prize_key,
+            "prize_name": prize_name,
         }, "telegram_id", tg_id)
+        log.info(f"User {tg_id} rolled: {prize_key}")
+        await log_event(tg_id, "roll", {"prize_key": prize_key, "prize_name": prize_name})
         return {"ok": True, "state": "rolled"}
 
     if action == "mark_bot_opened":
@@ -446,14 +574,15 @@ async def api_check_sub(req: Request):
         return {"ok": True}
 
     if action == "check":
-        sponsors = await get_sponsors()
+        sponsors = await get_sponsors_cached()
         fresh = await db.select_eq("users", "telegram_id", tg_id)
         fresh_user = fresh[0] if fresh else user
         opened_bots = json.loads(fresh_user.get("opened_bots") or "[]")
 
         results = {}
         all_ok = True
-        checks = []
+        channel_checks = []
+
         for sp in sponsors:
             sp_type = sp.get("type", "channel")
             sp_id = str(sp["channel_id"])
@@ -463,13 +592,12 @@ async def api_check_sub(req: Request):
                 if not ok:
                     all_ok = False
             else:
-                checks.append((sp_id, sp["channel_id"]))
+                channel_checks.append((sp_id, sp["channel_id"]))
 
-        # Parallel channel checks
-        if checks:
-            tasks = [check_member(ch_id, tg_id) for _, ch_id in checks]
+        if channel_checks:
+            tasks = [check_member(ch_id, tg_id) for _, ch_id in channel_checks]
             check_results = await asyncio.gather(*tasks, return_exceptions=True)
-            for (sp_id, _), result in zip(checks, check_results):
+            for (sp_id, _), result in zip(channel_checks, check_results):
                 ok = result is True
                 results[sp_id] = ok
                 if not ok:
@@ -483,6 +611,8 @@ async def api_check_sub(req: Request):
                 "claimed_at": now_iso,
             }, "telegram_id", tg_id)
             new_state = "claimed"
+            log.info(f"User {tg_id} claimed prize: {fresh_user.get('prize_key')}")
+            await log_event(tg_id, "claim", {"prize_key": fresh_user.get("prize_key")})
 
             referred_by = fresh_user.get("referred_by")
             if referred_by:
@@ -511,8 +641,9 @@ async def notify_referrer(referrer_id):
                 {"text": "🎁 Открыть", "web_app": {"url": WEBAPP_URL}}
             ]]}
         )
+        log.info(f"Notified referrer {referrer_id}: {ref_count} refs, x{speed}")
     except Exception as e:
-        print(f"notify_referrer error: {e}")
+        log.error(f"notify_referrer error: {e}")
 
 
 @app.post("/api/get-page")
@@ -571,22 +702,47 @@ async def handle_message(msg):
 
         if ref_id and ref_id != uid and not user.get("referred_by"):
             await db.update_eq("users", {"referred_by": ref_id}, "telegram_id", uid)
+            log.info(f"User {uid} referred by {ref_id}")
 
-        await send_msg(cid,
-            f"✨ <b>Привет, {name}!</b>\n\n"
-            f"🎁 У нас для тебя особенный подарок — "
-            f"<b>500 Telegram Stars</b> или <b>Telegram Premium</b>!\n\n"
-            f"⭐ Всё что нужно — просто нарисовать звезду!\n\n"
-            f"Чем точнее нарисуешь — тем быстрее получишь приз. "
-            f"Это <b>бесплатно</b> и займёт меньше минуты!\n\n"
-            f"Жми на кнопку ниже 👇",
-            {"inline_keyboard": [[
-                {"text": "⭐ Нарисовать звезду!", "web_app": {"url": WEBAPP_URL}}
-            ]]}
-        )
+        await log_event(uid, "start", {"ref": ref_id})
+
+        await tg("sendMessage", {
+    "chat_id": cid,
+    "text": (
+        f"✨ <b>Привет, {name}!</b>\n\n"
+        f"🎁 У нас для тебя особенный подарок — "
+        f"<b>500 Telegram Stars</b> или <b>Telegram Premium</b>!\n\n"
+        f"⭐ Всё что нужно — просто нарисовать звезду!\n\n"
+        f"Чем точнее нарисуешь — тем быстрее получишь приз. "
+        f"Это <b>бесплатно</b> и займёт меньше минуты!\n\n"
+        f"Жми на кнопку ниже 👇"
+    ),
+    "parse_mode": "HTML",
+    "message_effect_id": "5104841245755180586",
+    "reply_markup": {"inline_keyboard": [[
+        {"text": "⭐ Нарисовать звезду!", "web_app": {"url": WEBAPP_URL}}
+    ]]}
+})
 
     elif text == "/a" and uid == ADMIN_ID:
         await show_admin_menu(cid)
+
+    elif text.startswith("/reset ") and uid == ADMIN_ID:
+        try:
+            target_id = int(text.split()[1])
+            await db.update_eq("users", {
+                "state": "new",
+                "prize_key": None,
+                "prize_name": None,
+                "claimed_at": None,
+                "opened_bots": "[]",
+                "notified_1h": False,
+                "notified_unsub": False,
+            }, "telegram_id", target_id)
+            await send_msg(cid, f"✅ Юзер <code>{target_id}</code> сброшен")
+            log.info(f"Admin reset user {target_id}")
+        except Exception:
+            await send_msg(cid, "❌ Использование: <code>/reset 123456789</code>")
 
     elif uid == ADMIN_ID:
         user = await get_or_create(ADMIN_ID)
@@ -602,6 +758,7 @@ async def handle_message(msg):
             await db.update_eq("prizes", {"name": text}, "key", key)
             await db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
             await send_msg(cid, f"✅ Приз переименован в: <b>{text}</b>")
+            invalidate_cache()
         elif st == "broadcast_text":
             await db.update_eq("users", {"admin_state": ""}, "telegram_id", ADMIN_ID)
             await prepare_broadcast(cid, msg)
@@ -611,8 +768,8 @@ async def handle_message(msg):
 
 
 async def show_admin_menu(cid, msg_id=None):
-    sponsors = await get_sponsors()
-    prs = await get_prizes()
+    sponsors = await get_sponsors_cached()
+    prs = await get_prizes_cached()
     total = await db.count("users")
     ch_count = sum(1 for s in sponsors if s.get("type", "channel") == "channel")
     bot_count = sum(1 for s in sponsors if s.get("type") == "bot")
@@ -656,6 +813,8 @@ async def process_add_channel(cid, text):
         await db.update_eq("channels", {**info, "is_active": True}, "channel_id", info["channel_id"])
     else:
         await db.insert("channels", info)
+    invalidate_cache()
+    log.info(f"Channel added: {info['title']}")
     await send_msg(cid, f"✅ Канал <b>{info['title']}</b> добавлен!")
 
 
@@ -671,6 +830,8 @@ async def process_add_bot(cid, text):
         await db.update_eq("channels", {**info, "is_active": True}, "channel_id", info["channel_id"])
     else:
         await db.insert("channels", info)
+    invalidate_cache()
+    log.info(f"Bot added: {info['title']}")
     await send_msg(cid, f"✅ Бот <b>{info['title']}</b> добавлен!")
 
 
@@ -968,12 +1129,12 @@ async def send_broadcast_msg(chat_id, content, mode="reconstruct"):
                 "user is deactivated", "chat not found",
             ]):
                 return False
-            print(f"Broadcast error [{mode}]: {desc}")
+            log.warning(f"Broadcast error [{mode}]: {desc}")
             return False
         return True
 
     except Exception as e:
-        print(f"Broadcast exception [{mode}]: {e}")
+        log.error(f"Broadcast exception [{mode}]: {e}")
         return False
 
 
@@ -1078,6 +1239,8 @@ async def do_broadcast(admin_cid):
                         "sent": 0, "failed": 0, "blocked": 0}
 
     type_name = CONTENT_TYPE_NAMES.get(content.get("type", ""), "")
+    log.info(f"Broadcast started: {type_name} [{mode}] → {len(users)} users")
+
     sm = await send_msg(admin_cid,
         f"🚀 Рассылка запущена!\n"
         f"📦 {type_name}\n"
@@ -1108,6 +1271,9 @@ async def do_broadcast(admin_cid):
         await asyncio.sleep(0.05)
 
     broadcast_status["running"] = False
+    log.info(f"Broadcast done: sent={broadcast_status['sent']} "
+             f"blocked={broadcast_status['blocked']} failed={broadcast_status['failed']}")
+
     final = (f"✅ <b>Рассылка завершена!</b>\n\n"
              f"📤 Режим: {mode_name}\n"
              f"✅ Доставлено: {broadcast_status['sent']}\n"
@@ -1120,6 +1286,11 @@ async def do_broadcast(admin_cid):
         await send_msg(admin_cid, final)
     await db.update_eq("users", {"admin_state": "", "broadcast_data": ""},
                        "telegram_id", ADMIN_ID)
+
+    await log_event(ADMIN_ID, "broadcast", {
+        "mode": mode, "sent": broadcast_status["sent"],
+        "blocked": broadcast_status["blocked"], "failed": broadcast_status["failed"],
+    })
 
 
 # ══════════════════════════════════════
@@ -1140,7 +1311,7 @@ async def handle_callback(cb):
         await show_admin_menu(cid, mid)
 
     elif data == "adm_channels":
-        sponsors = await get_sponsors()
+        sponsors = await get_sponsors_cached()
         chs = [s for s in sponsors if s.get("type", "channel") == "channel"]
         text = "📢 <b>Каналы:</b>\n\n"
         if not chs:
@@ -1160,7 +1331,7 @@ async def handle_callback(cb):
                                               "callback_data": "adm_channels"}]]})
 
     elif data == "adm_bots":
-        sponsors = await get_sponsors()
+        sponsors = await get_sponsors_cached()
         bots = [s for s in sponsors if s.get("type") == "bot"]
         text = "🤖 <b>Боты:</b>\n\n"
         if not bots:
@@ -1184,6 +1355,8 @@ async def handle_callback(cb):
         items = await db.select_eq("channels", "channel_id", sp_id)
         sp_type = items[0].get("type", "channel") if items else "channel"
         await db.update_eq("channels", {"is_active": False}, "channel_id", sp_id)
+        invalidate_cache()
+
         if sp_type == "bot":
             sponsors = await get_sponsors()
             bots = [s for s in sponsors if s.get("type") == "bot"]
@@ -1241,6 +1414,7 @@ async def handle_callback(cb):
         p = await db.select_eq("prizes", "key", key)
         if p:
             await db.update_eq("prizes", {"is_active": not p[0]["is_active"]}, "key", key)
+        invalidate_cache()
         prs = await db.select("prizes", order="sort_order.asc")
         text = "🎁 <b>Призы:</b>\n\n"
         for p in prs:
@@ -1303,6 +1477,7 @@ async def handle_callback(cb):
                     "avatar_base64": info["avatar_base64"],
                     "member_count": info.get("member_count", 0),
                 }, "channel_id", s["channel_id"])
+        invalidate_cache()
         await show_admin_menu(cid, mid)
 
     elif data == "adm_broadcast":
@@ -1410,6 +1585,51 @@ async def handle_callback(cb):
 
 
 # ══════════════════════════════════════
+#  Lifecycle
+# ══════════════════════════════════════
+@app.on_event("startup")
+async def on_startup():
+    await db.start()
+
+    # Auto webhook
+    webhook_url = f"{WEBAPP_URL}/api/webhook"
+    r = await tg("setWebhook", {
+        "url": webhook_url,
+        "allowed_updates": ["message", "callback_query"],
+        "drop_pending_updates": False,
+    })
+    if r.get("ok"):
+        log.info(f"Webhook set: {webhook_url}")
+    else:
+        log.error(f"Webhook error: {r}")
+
+    # Pre-warm cache
+    await get_sponsors_cached()
+    await get_prizes_cached()
+    log.info("Cache pre-warmed")
+
+    asyncio.create_task(background_worker())
+    asyncio.create_task(rate_limit_cleanup())
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    if broadcast_status["running"]:
+        log.warning("Broadcast running during shutdown, waiting...")
+        for _ in range(30):
+            if not broadcast_status["running"]:
+                break
+            await asyncio.sleep(1)
+
+    await db.stop()
+    global tg_client
+    if tg_client:
+        await tg_client.aclose()
+        tg_client = None
+    log.info("Shutdown complete")
+
+
+# ══════════════════════════════════════
 #  Background worker
 # ══════════════════════════════════════
 async def background_worker():
@@ -1418,17 +1638,18 @@ async def background_worker():
         try:
             await check_reactivation()
         except Exception as e:
-            print(f"[bg reactivation] {e}")
+            log.error(f"[bg reactivation] {e}")
         try:
             await check_antifraud()
         except Exception as e:
-            print(f"[bg antifraud] {e}")
+            log.error(f"[bg antifraud] {e}")
         await asyncio.sleep(300)
 
 
 async def check_reactivation():
     users = await db.select("users", {"state": "eq.new", "notified_1h": "eq.false"})
     now = datetime.now(timezone.utc)
+    notified = 0
     for u in users:
         created = parse_dt(u.get("created_at"))
         if not created or (now - created).total_seconds() < 3600:
@@ -1443,11 +1664,14 @@ async def check_reactivation():
                      "web_app": {"url": WEBAPP_URL}}
                 ]]}
             )
+            notified += 1
         except Exception:
             pass
         await db.update_eq("users", {"notified_1h": True},
                            "telegram_id", u["telegram_id"])
         await asyncio.sleep(0.1)
+    if notified:
+        log.info(f"Reactivation: notified {notified} users")
 
 
 async def check_antifraud():
@@ -1455,6 +1679,7 @@ async def check_antifraud():
     if not users:
         return
     now = datetime.now(timezone.utc)
+    notified = 0
     for u in users:
         claimed = parse_dt(u.get("claimed_at"))
         if not claimed:
@@ -1479,11 +1704,14 @@ async def check_antifraud():
                      "web_app": {"url": WEBAPP_URL}}
                 ]]}
             )
+            notified += 1
         except Exception:
             pass
         await db.update_eq("users", {"notified_unsub": True},
                            "telegram_id", u["telegram_id"])
         await asyncio.sleep(0.1)
+    if notified:
+        log.info(f"Antifraud: notified {notified} users")
 
 
 # ══════════════════════════════════════
