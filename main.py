@@ -4,12 +4,13 @@ import hmac
 import hashlib
 import base64
 import re
+import random
 import asyncio
 import time
 import logging
 from collections import defaultdict
 from urllib.parse import parse_qs, unquote
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import httpx
 from fastapi import FastAPI, Request
@@ -90,7 +91,6 @@ def check_rate_limit(user_id: int) -> bool:
     return True
 
 
-# Cleanup old entries every 5 min
 async def rate_limit_cleanup():
     while True:
         await asyncio.sleep(300)
@@ -442,7 +442,7 @@ async def get_prizes_cached():
 
 
 async def count_referrals(tg_id):
-    return await db.count("users", {"referred_by": f"eq.{tg_id}", "state": "eq.claimed"})
+    return await db.count("users", {"referred_by": f"eq.{tg_id}", "state": "neq.new"})
 
 
 # ══════════════════════════════════════
@@ -488,7 +488,6 @@ async def api_get_user(req: Request):
 
     user = await get_or_create(tg_id, v["user"])
     sponsors = await get_sponsors_cached()
-    prizes = await get_prizes_cached()
     ref_count = await count_referrals(user["telegram_id"])
 
     sponsors_sorted = sorted(sponsors, key=lambda x: (0 if x.get("type", "channel") == "channel" else 1))
@@ -511,7 +510,6 @@ async def api_get_user(req: Request):
             "claimed_at": claimed_at_unix,
             "referral_count": ref_count,
             "is_admin": user["telegram_id"] == ADMIN_ID,
-            "forced_prize": user.get("forced_prize"),
         },
         "channels": [
             {
@@ -525,16 +523,11 @@ async def api_get_user(req: Request):
             }
             for c in sponsors_sorted
         ],
-        "prizes": [
-            {"key": p["key"], "tgs": p["tgs_file"],
-             "name": p["name"], "emoji": p["emoji"]}
-            for p in prizes
-        ],
     }
 
 
-@app.post("/api/check-subscription")
-async def api_check_sub(req: Request):
+@app.post("/api/process-action")
+async def api_process_action(req: Request):
     body = await req.json()
     v = validate_init(body.get("initData", ""))
     if not v:
@@ -545,22 +538,36 @@ async def api_check_sub(req: Request):
         return JSONResponse({"error": "Too many requests"}, 429)
 
     user = await get_or_create(tg_id, v["user"])
-    action = body.get("action", "check")
+    action = body.get("action", "")
 
-    if action == "save_roll":
+    # ── ACTION: complete_draw ──────────────────────
+    # Server chooses the prize. Client only says "I drew a star".
+    if action == "complete_draw":
         if user["state"] != "new":
-            return JSONResponse({"error": "Already rolled"}, 400)
-        prize_key = body.get("prize_key", "")
-        prize_name = body.get("prize_name", "")
+            return JSONResponse({"error": "Already played"}, 400)
+
+        prizes = await get_prizes_cached()
+        if not prizes:
+            return JSONResponse({"error": "No prizes configured"}, 500)
+
+        chosen = random.choice(prizes)
+
         await db.update_eq("users", {
             "state": "rolled",
-            "prize_key": prize_key,
-            "prize_name": prize_name,
+            "prize_key": chosen["key"],
+            "prize_name": chosen["name"],
         }, "telegram_id", tg_id)
-        log.info(f"User {tg_id} rolled: {prize_key}")
-        await log_event(tg_id, "roll", {"prize_key": prize_key, "prize_name": prize_name})
-        return {"ok": True, "state": "rolled"}
 
+        log.info(f"User {tg_id} rolled: {chosen['key']} ({chosen['name']})")
+        await log_event(tg_id, "roll", {"prize_key": chosen["key"], "prize_name": chosen["name"]})
+
+        return {
+            "ok": True,
+            "state": "rolled",
+            "prize": {"key": chosen["key"], "name": chosen["name"]},
+        }
+
+    # ── ACTION: mark_bot_opened ───────────────────
     if action == "mark_bot_opened":
         bot_id = body.get("bot_id")
         if bot_id:
@@ -573,7 +580,8 @@ async def api_check_sub(req: Request):
                                    "telegram_id", tg_id)
         return {"ok": True}
 
-    if action == "check":
+    # ── ACTION: check_subscriptions ───────────────
+    if action == "check_subscriptions":
         sponsors = await get_sponsors_cached()
         fresh = await db.select_eq("users", "telegram_id", tg_id)
         fresh_user = fresh[0] if fresh else user
@@ -604,6 +612,9 @@ async def api_check_sub(req: Request):
                     all_ok = False
 
         new_state = fresh_user["state"]
+        claimed_at_unix = None
+
+        # Only transition rolled → claimed when ALL subscriptions are confirmed
         if all_ok and fresh_user["state"] == "rolled":
             now_iso = datetime.now(timezone.utc).isoformat()
             await db.update_eq("users", {
@@ -611,6 +622,7 @@ async def api_check_sub(req: Request):
                 "claimed_at": now_iso,
             }, "telegram_id", tg_id)
             new_state = "claimed"
+            claimed_at_unix = int(datetime.now(timezone.utc).timestamp())
             log.info(f"User {tg_id} claimed prize: {fresh_user.get('prize_key')}")
             await log_event(tg_id, "claim", {"prize_key": fresh_user.get("prize_key")})
 
@@ -620,10 +632,35 @@ async def api_check_sub(req: Request):
 
         ref_count = await count_referrals(tg_id)
         return {
-            "ok": True, "all_subscribed": all_ok,
-            "results": results, "state": new_state,
+            "ok": True,
+            "all_subscribed": all_ok,
+            "results": results,
+            "state": new_state,
             "referral_count": ref_count,
+            "claimed_at": claimed_at_unix,
         }
+
+    # ── ACTION: finalize_claim ────────────────────
+    if action == "finalize_claim":
+        if user["state"] != "claimed":
+            return JSONResponse({"error": "Not ready for finalization"}, 400)
+
+        # Check timer has actually elapsed
+        claimed_at = parse_dt(user.get("claimed_at"))
+        if claimed_at:
+            ref_count = await count_referrals(tg_id)
+            speed = 2 ** (ref_count // 2) if ref_count >= 2 else 1
+            elapsed = (datetime.now(timezone.utc) - claimed_at).total_seconds()
+            effective_elapsed = elapsed * speed
+            if effective_elapsed < 86400:
+                remaining = int((86400 - effective_elapsed) / speed)
+                return JSONResponse({"error": f"Timer not done. {remaining}s remaining."}, 400)
+
+        await db.update_eq("users", {"state": "completed"}, "telegram_id", tg_id)
+        log.info(f"User {tg_id} finalized prize: {user.get('prize_name')}")
+        await log_event(tg_id, "finalize", {"prize_key": user.get("prize_key")})
+
+        return {"ok": True, "state": "completed"}
 
     return JSONResponse({"error": "Unknown action"}, 400)
 
@@ -705,24 +742,23 @@ async def handle_message(msg):
             log.info(f"User {uid} referred by {ref_id}")
 
         await log_event(uid, "start", {"ref": ref_id})
-    
+
         await tg("sendMessage", {
-    "chat_id": cid,
-    "text": (
-        f"✨ <b>Привет, {name}!</b>\n\n"
-        f"🎁 У нас для тебя особенный подарок — "
-        f"<b>500 Telegram Stars</b> или <b>Telegram Premium</b>!\n\n"
-        f"⭐ Всё что нужно — просто нарисовать звезду!\n\n"
-        f"Чем точнее нарисуешь — тем быстрее получишь приз. "
-        f"Это <b>бесплатно</b> и займёт меньше минуты!\n\n"
-        f"Жми на кнопку ниже 👇"
-    ),
-    "parse_mode": "HTML",
-    "message_effect_id": "5104841245755180586",
-    "reply_markup": {"inline_keyboard": [[
-        {"text": "⭐ Нарисовать звезду!", "web_app": {"url": WEBAPP_URL}}
-    ]]}
-})
+            "chat_id": cid,
+            "text": (
+                f"✨ <b>Привет, {name}!</b>\n\n"
+                f"🎁 У нас для тебя особенный подарок — "
+                f"<b>500 Telegram Stars</b> или <b>Telegram Premium</b>!\n\n"
+                f"⭐ Всё что нужно — просто нарисовать звезду!\n\n"
+                f"Чем точнее нарисуешь — тем быстрее получишь приз. "
+                f"Это <b>бесплатно</b> и займёт меньше минуты!\n\n"
+                f"Жми на кнопку ниже 👇"
+            ),
+            "parse_mode": "HTML",
+            "reply_markup": {"inline_keyboard": [[
+                {"text": "⭐ Нарисовать звезду!", "web_app": {"url": WEBAPP_URL}}
+            ]]}
+        })
 
     elif text == "/a" and uid == ADMIN_ID:
         await show_admin_menu(cid)
@@ -737,7 +773,7 @@ async def handle_message(msg):
                 "claimed_at": None,
                 "opened_bots": "[]",
                 "notified_1h": False,
-                "notified_unsub": False,
+                "notified_payout": False,
             }, "telegram_id", target_id)
             await send_msg(cid, f"✅ Юзер <code>{target_id}</code> сброшен")
             log.info(f"Admin reset user {target_id}")
@@ -767,6 +803,9 @@ async def handle_message(msg):
             await send_msg(cid, "Отменено. /a")
 
 
+# ══════════════════════════════════════
+#  Admin panel helpers
+# ══════════════════════════════════════
 async def show_admin_menu(cid, msg_id=None):
     sponsors = await get_sponsors_cached()
     prs = await get_prizes_cached()
@@ -857,119 +896,40 @@ SEND_MODE_NAMES = {
 
 def extract_broadcast_content(msg):
     content = {}
-
     if msg.get("photo"):
-        content = {
-            "type": "photo", "file_id": msg["photo"][-1]["file_id"],
-            "caption": msg.get("caption", ""),
-            "caption_entities": msg.get("caption_entities", []),
-            "has_spoiler": msg.get("has_media_spoiler", False),
-            "show_caption_above_media": msg.get("show_caption_above_media", False),
-        }
+        content = {"type": "photo", "file_id": msg["photo"][-1]["file_id"], "caption": msg.get("caption", ""), "caption_entities": msg.get("caption_entities", []), "has_spoiler": msg.get("has_media_spoiler", False), "show_caption_above_media": msg.get("show_caption_above_media", False)}
     elif msg.get("video"):
-        content = {
-            "type": "video", "file_id": msg["video"]["file_id"],
-            "caption": msg.get("caption", ""),
-            "caption_entities": msg.get("caption_entities", []),
-            "has_spoiler": msg.get("has_media_spoiler", False),
-            "show_caption_above_media": msg.get("show_caption_above_media", False),
-            "duration": msg["video"].get("duration"),
-            "width": msg["video"].get("width"),
-            "height": msg["video"].get("height"),
-            "supports_streaming": msg["video"].get("supports_streaming", True),
-        }
+        content = {"type": "video", "file_id": msg["video"]["file_id"], "caption": msg.get("caption", ""), "caption_entities": msg.get("caption_entities", []), "has_spoiler": msg.get("has_media_spoiler", False), "show_caption_above_media": msg.get("show_caption_above_media", False), "duration": msg["video"].get("duration"), "width": msg["video"].get("width"), "height": msg["video"].get("height"), "supports_streaming": msg["video"].get("supports_streaming", True)}
     elif msg.get("animation"):
-        content = {
-            "type": "animation", "file_id": msg["animation"]["file_id"],
-            "caption": msg.get("caption", ""),
-            "caption_entities": msg.get("caption_entities", []),
-            "has_spoiler": msg.get("has_media_spoiler", False),
-            "show_caption_above_media": msg.get("show_caption_above_media", False),
-        }
+        content = {"type": "animation", "file_id": msg["animation"]["file_id"], "caption": msg.get("caption", ""), "caption_entities": msg.get("caption_entities", []), "has_spoiler": msg.get("has_media_spoiler", False), "show_caption_above_media": msg.get("show_caption_above_media", False)}
     elif msg.get("sticker"):
-        content = {
-            "type": "sticker", "file_id": msg["sticker"]["file_id"],
-            "emoji": msg["sticker"].get("emoji", ""),
-        }
+        content = {"type": "sticker", "file_id": msg["sticker"]["file_id"], "emoji": msg["sticker"].get("emoji", "")}
     elif msg.get("document"):
-        content = {
-            "type": "document", "file_id": msg["document"]["file_id"],
-            "caption": msg.get("caption", ""),
-            "caption_entities": msg.get("caption_entities", []),
-            "file_name": msg["document"].get("file_name", ""),
-        }
+        content = {"type": "document", "file_id": msg["document"]["file_id"], "caption": msg.get("caption", ""), "caption_entities": msg.get("caption_entities", []), "file_name": msg["document"].get("file_name", "")}
     elif msg.get("voice"):
-        content = {
-            "type": "voice", "file_id": msg["voice"]["file_id"],
-            "caption": msg.get("caption", ""),
-            "caption_entities": msg.get("caption_entities", []),
-            "duration": msg["voice"].get("duration"),
-        }
+        content = {"type": "voice", "file_id": msg["voice"]["file_id"], "caption": msg.get("caption", ""), "caption_entities": msg.get("caption_entities", []), "duration": msg["voice"].get("duration")}
     elif msg.get("video_note"):
-        content = {
-            "type": "video_note", "file_id": msg["video_note"]["file_id"],
-            "duration": msg["video_note"].get("duration"),
-            "length": msg["video_note"].get("length"),
-        }
+        content = {"type": "video_note", "file_id": msg["video_note"]["file_id"], "duration": msg["video_note"].get("duration"), "length": msg["video_note"].get("length")}
     elif msg.get("audio"):
-        content = {
-            "type": "audio", "file_id": msg["audio"]["file_id"],
-            "caption": msg.get("caption", ""),
-            "caption_entities": msg.get("caption_entities", []),
-            "duration": msg["audio"].get("duration"),
-            "performer": msg["audio"].get("performer", ""),
-            "title": msg["audio"].get("title", ""),
-        }
+        content = {"type": "audio", "file_id": msg["audio"]["file_id"], "caption": msg.get("caption", ""), "caption_entities": msg.get("caption_entities", []), "duration": msg["audio"].get("duration"), "performer": msg["audio"].get("performer", ""), "title": msg["audio"].get("title", "")}
     elif msg.get("contact"):
         c = msg["contact"]
-        content = {
-            "type": "contact", "phone_number": c["phone_number"],
-            "first_name": c.get("first_name", ""),
-            "last_name": c.get("last_name", ""),
-            "vcard": c.get("vcard", ""),
-        }
+        content = {"type": "contact", "phone_number": c["phone_number"], "first_name": c.get("first_name", ""), "last_name": c.get("last_name", ""), "vcard": c.get("vcard", "")}
     elif msg.get("location"):
         loc = msg["location"]
-        content = {
-            "type": "location", "latitude": loc["latitude"],
-            "longitude": loc["longitude"],
-            "horizontal_accuracy": loc.get("horizontal_accuracy"),
-        }
+        content = {"type": "location", "latitude": loc["latitude"], "longitude": loc["longitude"], "horizontal_accuracy": loc.get("horizontal_accuracy")}
     elif msg.get("venue"):
         v = msg["venue"]
-        content = {
-            "type": "venue",
-            "latitude": v["location"]["latitude"],
-            "longitude": v["location"]["longitude"],
-            "title": v["title"], "address": v["address"],
-            "foursquare_id": v.get("foursquare_id", ""),
-            "google_place_id": v.get("google_place_id", ""),
-        }
+        content = {"type": "venue", "latitude": v["location"]["latitude"], "longitude": v["location"]["longitude"], "title": v["title"], "address": v["address"], "foursquare_id": v.get("foursquare_id", ""), "google_place_id": v.get("google_place_id", "")}
     elif msg.get("poll"):
         poll = msg["poll"]
-        content = {
-            "type": "poll", "question": poll["question"],
-            "question_entities": poll.get("question_entities", []),
-            "options": [{"text": o["text"], "text_entities": o.get("text_entities", [])}
-                        for o in poll["options"]],
-            "is_anonymous": poll.get("is_anonymous", True),
-            "poll_type": poll.get("type", "regular"),
-            "allows_multiple_answers": poll.get("allows_multiple_answers", False),
-            "correct_option_id": poll.get("correct_option_id"),
-            "explanation": poll.get("explanation", ""),
-            "explanation_entities": poll.get("explanation_entities", []),
-        }
+        content = {"type": "poll", "question": poll["question"], "question_entities": poll.get("question_entities", []), "options": [{"text": o["text"], "text_entities": o.get("text_entities", [])} for o in poll["options"]], "is_anonymous": poll.get("is_anonymous", True), "poll_type": poll.get("type", "regular"), "allows_multiple_answers": poll.get("allows_multiple_answers", False), "correct_option_id": poll.get("correct_option_id"), "explanation": poll.get("explanation", ""), "explanation_entities": poll.get("explanation_entities", [])}
     elif msg.get("dice"):
         content = {"type": "dice", "emoji": msg["dice"].get("emoji", "🎲")}
     else:
-        content = {
-            "type": "text", "text": msg.get("text", ""),
-            "entities": msg.get("entities", []),
-        }
-
+        content = {"type": "text", "text": msg.get("text", ""), "entities": msg.get("entities", [])}
     if msg.get("reply_markup"):
         content["reply_markup"] = msg["reply_markup"]
-
     return content
 
 
@@ -977,22 +937,14 @@ def get_content_preview(content):
     t = content.get("type", "unknown")
     cap = content.get("caption", "") or content.get("text", "")
     short = cap[:150] + ("..." if len(cap) > 150 else "") if cap else ""
-
     previews = {
-        "text":       f"📝 {short}",
-        "photo":      f"🖼 Фото" + (f"\n{short}" if short else ""),
-        "video":      f"🎬 Видео" + (f"\n{short}" if short else ""),
-        "animation":  f"🎞 GIF" + (f"\n{short}" if short else ""),
-        "sticker":    f"🎭 Стикер {content.get('emoji', '')}",
-        "document":   f"📎 {content.get('file_name', 'файл')}" + (f"\n{short}" if short else ""),
-        "voice":      f"🎤 Голосовое ({content.get('duration', '?')}с)",
-        "video_note": f"⚪ Видеокружок ({content.get('duration', '?')}с)",
-        "audio":      f"🎵 {content.get('performer', '')} — {content.get('title', '')}",
-        "contact":    f"👤 {content.get('first_name', '')} ({content.get('phone_number', '')})",
-        "location":   f"📍 {content.get('latitude', '')}, {content.get('longitude', '')}",
-        "venue":      f"🏢 {content.get('title', '')}",
-        "poll":       f"📊 {content.get('question', '')[:100]}",
-        "dice":       f"🎲 {content.get('emoji', '🎲')}",
+        "text": f"📝 {short}", "photo": f"🖼 Фото" + (f"\n{short}" if short else ""),
+        "video": f"🎬 Видео" + (f"\n{short}" if short else ""), "animation": f"🎞 GIF" + (f"\n{short}" if short else ""),
+        "sticker": f"🎭 Стикер {content.get('emoji', '')}", "document": f"📎 {content.get('file_name', 'файл')}" + (f"\n{short}" if short else ""),
+        "voice": f"🎤 Голосовое ({content.get('duration', '?')}с)", "video_note": f"⚪ Видеокружок ({content.get('duration', '?')}с)",
+        "audio": f"🎵 {content.get('performer', '')} — {content.get('title', '')}", "contact": f"👤 {content.get('first_name', '')} ({content.get('phone_number', '')})",
+        "location": f"📍 {content.get('latitude', '')}, {content.get('longitude', '')}", "venue": f"🏢 {content.get('title', '')}",
+        "poll": f"📊 {content.get('question', '')[:100]}", "dice": f"🎲 {content.get('emoji', '🎲')}",
     }
     return previews.get(t, f"❓ {t}")
 
@@ -1002,137 +954,66 @@ async def send_reconstruct(chat_id, content):
     payload = {"chat_id": chat_id}
     if content.get("reply_markup"):
         payload["reply_markup"] = content["reply_markup"]
-
-    if t == "text":
-        payload["text"] = content["text"]
-        payload["entities"] = content.get("entities", [])
-        r = await tg("sendMessage", payload)
-    elif t == "photo":
-        payload["photo"] = content["file_id"]
-        payload["caption"] = content.get("caption", "")
-        payload["caption_entities"] = content.get("caption_entities", [])
-        if content.get("has_spoiler"): payload["has_spoiler"] = True
-        if content.get("show_caption_above_media"): payload["show_caption_above_media"] = True
-        r = await tg("sendPhoto", payload)
-    elif t == "video":
-        payload["video"] = content["file_id"]
-        payload["caption"] = content.get("caption", "")
-        payload["caption_entities"] = content.get("caption_entities", [])
-        if content.get("has_spoiler"): payload["has_spoiler"] = True
-        if content.get("show_caption_above_media"): payload["show_caption_above_media"] = True
-        if content.get("duration"): payload["duration"] = content["duration"]
-        if content.get("width"): payload["width"] = content["width"]
-        if content.get("height"): payload["height"] = content["height"]
-        if content.get("supports_streaming"): payload["supports_streaming"] = True
-        r = await tg("sendVideo", payload)
-    elif t == "animation":
-        payload["animation"] = content["file_id"]
-        payload["caption"] = content.get("caption", "")
-        payload["caption_entities"] = content.get("caption_entities", [])
-        if content.get("has_spoiler"): payload["has_spoiler"] = True
-        if content.get("show_caption_above_media"): payload["show_caption_above_media"] = True
-        r = await tg("sendAnimation", payload)
-    elif t == "sticker":
-        payload["sticker"] = content["file_id"]
-        r = await tg("sendSticker", payload)
-    elif t == "document":
-        payload["document"] = content["file_id"]
-        payload["caption"] = content.get("caption", "")
-        payload["caption_entities"] = content.get("caption_entities", [])
-        r = await tg("sendDocument", payload)
-    elif t == "voice":
-        payload["voice"] = content["file_id"]
-        payload["caption"] = content.get("caption", "")
-        payload["caption_entities"] = content.get("caption_entities", [])
-        if content.get("duration"): payload["duration"] = content["duration"]
-        r = await tg("sendVoice", payload)
-    elif t == "video_note":
-        payload["video_note"] = content["file_id"]
-        if content.get("duration"): payload["duration"] = content["duration"]
-        if content.get("length"): payload["length"] = content["length"]
-        r = await tg("sendVideoNote", payload)
-    elif t == "audio":
-        payload["audio"] = content["file_id"]
-        payload["caption"] = content.get("caption", "")
-        payload["caption_entities"] = content.get("caption_entities", [])
-        if content.get("duration"): payload["duration"] = content["duration"]
-        if content.get("performer"): payload["performer"] = content["performer"]
-        if content.get("title"): payload["title"] = content["title"]
-        r = await tg("sendAudio", payload)
+    method_map = {
+        "text": ("sendMessage", {"text": "text", "entities": "entities"}),
+        "photo": ("sendPhoto", {"photo": "file_id", "caption": "caption", "caption_entities": "caption_entities"}),
+        "video": ("sendVideo", {"video": "file_id", "caption": "caption", "caption_entities": "caption_entities"}),
+        "animation": ("sendAnimation", {"animation": "file_id", "caption": "caption", "caption_entities": "caption_entities"}),
+        "sticker": ("sendSticker", {"sticker": "file_id"}),
+        "document": ("sendDocument", {"document": "file_id", "caption": "caption", "caption_entities": "caption_entities"}),
+        "voice": ("sendVoice", {"voice": "file_id", "caption": "caption", "caption_entities": "caption_entities"}),
+        "video_note": ("sendVideoNote", {"video_note": "file_id"}),
+        "audio": ("sendAudio", {"audio": "file_id", "caption": "caption", "caption_entities": "caption_entities"}),
+        "dice": ("sendDice", {"emoji": "emoji"}),
+    }
+    if t in method_map:
+        method, fields = method_map[t]
+        for payload_key, content_key in fields.items():
+            if content.get(content_key) is not None:
+                payload[payload_key] = content[content_key]
+        for extra in ["has_spoiler", "show_caption_above_media", "duration", "width", "height", "supports_streaming", "performer", "title", "length"]:
+            if content.get(extra):
+                payload[extra] = content[extra]
+        r = await tg(method, payload)
     elif t == "contact":
-        payload["phone_number"] = content["phone_number"]
-        payload["first_name"] = content.get("first_name", "")
+        payload.update({"phone_number": content["phone_number"], "first_name": content.get("first_name", "")})
         if content.get("last_name"): payload["last_name"] = content["last_name"]
         if content.get("vcard"): payload["vcard"] = content["vcard"]
         r = await tg("sendContact", payload)
     elif t == "location":
-        payload["latitude"] = content["latitude"]
-        payload["longitude"] = content["longitude"]
-        if content.get("horizontal_accuracy"):
-            payload["horizontal_accuracy"] = content["horizontal_accuracy"]
+        payload.update({"latitude": content["latitude"], "longitude": content["longitude"]})
+        if content.get("horizontal_accuracy"): payload["horizontal_accuracy"] = content["horizontal_accuracy"]
         r = await tg("sendLocation", payload)
     elif t == "venue":
-        payload["latitude"] = content["latitude"]
-        payload["longitude"] = content["longitude"]
-        payload["title"] = content["title"]
-        payload["address"] = content["address"]
-        if content.get("foursquare_id"): payload["foursquare_id"] = content["foursquare_id"]
-        if content.get("google_place_id"): payload["google_place_id"] = content["google_place_id"]
+        payload.update({"latitude": content["latitude"], "longitude": content["longitude"], "title": content["title"], "address": content["address"]})
         r = await tg("sendVenue", payload)
     elif t == "poll":
-        payload["question"] = content["question"]
-        if content.get("question_entities"):
-            payload["question_entities"] = content["question_entities"]
-        payload["options"] = content["options"]
-        payload["is_anonymous"] = content.get("is_anonymous", True)
-        payload["type"] = content.get("poll_type", "regular")
-        payload["allows_multiple_answers"] = content.get("allows_multiple_answers", False)
-        if content.get("correct_option_id") is not None:
-            payload["correct_option_id"] = content["correct_option_id"]
-        if content.get("explanation"):
-            payload["explanation"] = content["explanation"]
-        if content.get("explanation_entities"):
-            payload["explanation_entities"] = content["explanation_entities"]
+        payload.update({"question": content["question"], "options": content["options"], "is_anonymous": content.get("is_anonymous", True), "type": content.get("poll_type", "regular"), "allows_multiple_answers": content.get("allows_multiple_answers", False)})
+        if content.get("question_entities"): payload["question_entities"] = content["question_entities"]
+        if content.get("correct_option_id") is not None: payload["correct_option_id"] = content["correct_option_id"]
+        if content.get("explanation"): payload["explanation"] = content["explanation"]
+        if content.get("explanation_entities"): payload["explanation_entities"] = content["explanation_entities"]
         payload.pop("reply_markup", None)
         r = await tg("sendPoll", payload)
-    elif t == "dice":
-        payload["emoji"] = content.get("emoji", "🎲")
-        r = await tg("sendDice", payload)
     else:
         return False
-
     return r.get("ok", False)
 
 
 async def send_broadcast_msg(chat_id, content, mode="reconstruct"):
     try:
         if mode == "forward":
-            r = await tg("forwardMessage", {
-                "chat_id": chat_id,
-                "from_chat_id": content["_original_chat_id"],
-                "message_id": content["_original_message_id"],
-            })
+            r = await tg("forwardMessage", {"chat_id": chat_id, "from_chat_id": content["_original_chat_id"], "message_id": content["_original_message_id"]})
         elif mode == "copy":
-            r = await tg("copyMessage", {
-                "chat_id": chat_id,
-                "from_chat_id": content["_original_chat_id"],
-                "message_id": content["_original_message_id"],
-            })
+            r = await tg("copyMessage", {"chat_id": chat_id, "from_chat_id": content["_original_chat_id"], "message_id": content["_original_message_id"]})
         else:
             return await send_reconstruct(chat_id, content)
-
         if not r.get("ok"):
             desc = r.get("description", "")
-            if any(x in desc for x in [
-                "blocked", "deactivated", "not found",
-                "PEER_ID_INVALID", "bot was blocked",
-                "user is deactivated", "chat not found",
-            ]):
+            if any(x in desc for x in ["blocked", "deactivated", "not found", "PEER_ID_INVALID", "bot was blocked", "user is deactivated", "chat not found"]):
                 return False
-            log.warning(f"Broadcast error [{mode}]: {desc}")
             return False
         return True
-
     except Exception as e:
         log.error(f"Broadcast exception [{mode}]: {e}")
         return False
@@ -1144,12 +1025,6 @@ async def prepare_broadcast(cid, msg):
     content["_original_message_id"] = msg["message_id"]
     content["_send_mode"] = "reconstruct"
 
-    if msg.get("forward_from_chat"):
-        content["_forward_from_chat_id"] = msg["forward_from_chat"]["id"]
-        content["_forward_from_chat_title"] = msg["forward_from_chat"].get("title", "")
-    if msg.get("forward_from"):
-        content["_forward_from_user"] = msg["forward_from"].get("first_name", "")
-
     await db.update_eq("users", {
         "admin_state": "broadcast_confirm",
         "broadcast_data": json.dumps(content),
@@ -1159,23 +1034,10 @@ async def prepare_broadcast(cid, msg):
     type_name = CONTENT_TYPE_NAMES.get(content["type"], content["type"])
     preview = get_content_preview(content)
 
-    fwd_note = ""
-    if content.get("_forward_from_chat_title"):
-        fwd_note = f"\n↗️ Переслано из: <b>{content['_forward_from_chat_title']}</b>"
-    elif content.get("_forward_from_user"):
-        fwd_note = f"\n↗️ Переслано от: <b>{content['_forward_from_user']}</b>"
-
     await send_msg(cid,
         f"📨 <b>Рассылка — выберите режим отправки</b>\n\n"
-        f"📦 Тип: <b>{type_name}</b>{fwd_note}\n"
-        f"{preview}\n\n"
-        f"👥 Получателей: <b>{total}</b>\n\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
-        f"<b>Как отправить?</b>\n\n"
-        f"📝 <b>Своим</b> — бот отправит как своё сообщение\n"
-        f"📋 <b>Копией</b> — точная копия без «переслано от»\n"
-        f"↗️ <b>Пересылкой</b> — с заголовком «переслано от»\n"
-        f"   <i>(идеально для giveaway, розыгрышей, системных сообщений)</i>",
+        f"📦 Тип: <b>{type_name}</b>\n{preview}\n\n"
+        f"👥 Получателей: <b>{total}</b>",
         {"inline_keyboard": [
             [{"text": "📝 Своим сообщением", "callback_data": "adm_bmode_reconstruct"}],
             [{"text": "📋 Копией", "callback_data": "adm_bmode_copy"}],
@@ -1192,24 +1054,18 @@ async def show_broadcast_confirm(cid, msg_id=None):
     content = json.loads(admin[0].get("broadcast_data") or "{}")
     if not content:
         return
-
     mode = content.get("_send_mode", "reconstruct")
     mode_name = SEND_MODE_NAMES.get(mode, mode)
     type_name = CONTENT_TYPE_NAMES.get(content.get("type", ""), "")
     preview = get_content_preview(content)
     total = await db.count("users")
-
     text = (
         f"📨 <b>Подтверждение рассылки</b>\n\n"
-        f"📦 Тип: <b>{type_name}</b>\n"
-        f"📤 Режим: <b>{mode_name}</b>\n"
-        f"{preview}\n\n"
-        f"👥 Получателей: <b>{total}</b>\n\n"
-        f"Всё верно?"
+        f"📦 Тип: <b>{type_name}</b>\n📤 Режим: <b>{mode_name}</b>\n{preview}\n\n"
+        f"👥 Получателей: <b>{total}</b>\n\nВсё верно?"
     )
     kb = {"inline_keyboard": [
-        [{"text": "✅ Отправить всем", "callback_data": "adm_broadcast_go"},
-         {"text": "❌ Отмена", "callback_data": "adm_broadcast_cancel"}],
+        [{"text": "✅ Отправить всем", "callback_data": "adm_broadcast_go"}, {"text": "❌ Отмена", "callback_data": "adm_broadcast_cancel"}],
         [{"text": "📨 Тест (мне)", "callback_data": "adm_broadcast_test"}],
         [{"text": "🔄 Сменить режим", "callback_data": "adm_broadcast_chmode"}],
     ]}
@@ -1230,24 +1086,13 @@ async def do_broadcast(admin_cid):
     content = json.loads(admin[0].get("broadcast_data") or "{}")
     if not content:
         return
-
     mode = content.get("_send_mode", "reconstruct")
     mode_name = SEND_MODE_NAMES.get(mode, mode)
-
     users = await db.select("users")
-    broadcast_status = {"running": True, "total": len(users),
-                        "sent": 0, "failed": 0, "blocked": 0}
-
-    type_name = CONTENT_TYPE_NAMES.get(content.get("type", ""), "")
-    log.info(f"Broadcast started: {type_name} [{mode}] → {len(users)} users")
-
-    sm = await send_msg(admin_cid,
-        f"🚀 Рассылка запущена!\n"
-        f"📦 {type_name}\n"
-        f"📤 {mode_name}\n"
-        f"👥 {broadcast_status['total']}")
+    broadcast_status = {"running": True, "total": len(users), "sent": 0, "failed": 0, "blocked": 0}
+    log.info(f"Broadcast started: [{mode}] → {len(users)} users")
+    sm = await send_msg(admin_cid, f"🚀 Рассылка запущена!\n📤 {mode_name}\n👥 {broadcast_status['total']}")
     sm_id = sm.get("result", {}).get("message_id") if sm.get("ok") else None
-
     for i, u in enumerate(users):
         try:
             ok = await send_broadcast_msg(u["telegram_id"], content, mode)
@@ -1257,40 +1102,21 @@ async def do_broadcast(admin_cid):
                 broadcast_status["blocked"] += 1
         except Exception:
             broadcast_status["failed"] += 1
-
         if sm_id and (i + 1) % 25 == 0:
             try:
-                await edit_msg(admin_cid, sm_id,
-                    f"🚀 Рассылка...\n"
-                    f"✅ {broadcast_status['sent']}  "
-                    f"🚫 {broadcast_status['blocked']}  "
-                    f"❌ {broadcast_status['failed']}\n"
-                    f"📊 {i+1}/{broadcast_status['total']}")
+                await edit_msg(admin_cid, sm_id, f"🚀 Рассылка...\n✅ {broadcast_status['sent']}  🚫 {broadcast_status['blocked']}  ❌ {broadcast_status['failed']}\n📊 {i+1}/{broadcast_status['total']}")
             except Exception:
                 pass
         await asyncio.sleep(0.05)
-
     broadcast_status["running"] = False
-    log.info(f"Broadcast done: sent={broadcast_status['sent']} "
-             f"blocked={broadcast_status['blocked']} failed={broadcast_status['failed']}")
-
-    final = (f"✅ <b>Рассылка завершена!</b>\n\n"
-             f"📤 Режим: {mode_name}\n"
-             f"✅ Доставлено: {broadcast_status['sent']}\n"
-             f"🚫 Заблокировали: {broadcast_status['blocked']}\n"
-             f"❌ Ошибки: {broadcast_status['failed']}\n"
-             f"📊 Всего: {broadcast_status['total']}")
+    log.info(f"Broadcast done: sent={broadcast_status['sent']} blocked={broadcast_status['blocked']} failed={broadcast_status['failed']}")
+    final = (f"✅ <b>Рассылка завершена!</b>\n\n📤 Режим: {mode_name}\n✅ Доставлено: {broadcast_status['sent']}\n🚫 Заблокировали: {broadcast_status['blocked']}\n❌ Ошибки: {broadcast_status['failed']}\n📊 Всего: {broadcast_status['total']}")
     if sm_id:
         await edit_msg(admin_cid, sm_id, final)
     else:
         await send_msg(admin_cid, final)
-    await db.update_eq("users", {"admin_state": "", "broadcast_data": ""},
-                       "telegram_id", ADMIN_ID)
-
-    await log_event(ADMIN_ID, "broadcast", {
-        "mode": mode, "sent": broadcast_status["sent"],
-        "blocked": broadcast_status["blocked"], "failed": broadcast_status["failed"],
-    })
+    await db.update_eq("users", {"admin_state": "", "broadcast_data": ""}, "telegram_id", ADMIN_ID)
+    await log_event(ADMIN_ID, "broadcast", {"mode": mode, "sent": broadcast_status["sent"], "blocked": broadcast_status["blocked"], "failed": broadcast_status["failed"]})
 
 
 # ══════════════════════════════════════
@@ -1318,17 +1144,14 @@ async def handle_callback(cb):
             text += "Пусто."
         for i, c in enumerate(chs, 1):
             text += f"{i}. <b>{c['title']}</b> 👥{c.get('member_count',0)}\n"
-        btns = [[{"text": f"❌ {c['title'][:20]}",
-                  "callback_data": f"adm_del_sp:{c['channel_id']}"}] for c in chs]
+        btns = [[{"text": f"❌ {c['title'][:20]}", "callback_data": f"adm_del_sp:{c['channel_id']}"}] for c in chs]
         btns.append([{"text": "➕ Добавить", "callback_data": "adm_add_ch"}])
         btns.append([{"text": "← Назад", "callback_data": "adm_menu"}])
         await edit_msg(cid, mid, text, {"inline_keyboard": btns})
 
     elif data == "adm_add_ch":
         await db.update_eq("users", {"admin_state": "add_channel"}, "telegram_id", ADMIN_ID)
-        await edit_msg(cid, mid, "📢 Отправьте @username канала\n⚠️ Бот должен быть админом!",
-                       {"inline_keyboard": [[{"text": "← Отмена",
-                                              "callback_data": "adm_channels"}]]})
+        await edit_msg(cid, mid, "📢 Отправьте @username канала\n⚠️ Бот должен быть админом!", {"inline_keyboard": [[{"text": "← Отмена", "callback_data": "adm_channels"}]]})
 
     elif data == "adm_bots":
         sponsors = await get_sponsors_cached()
@@ -1338,17 +1161,14 @@ async def handle_callback(cb):
             text += "Пусто."
         for i, b in enumerate(bots, 1):
             text += f"{i}. <b>{b['title']}</b>\n"
-        btns = [[{"text": f"❌ {b['title'][:20]}",
-                  "callback_data": f"adm_del_sp:{b['channel_id']}"}] for b in bots]
+        btns = [[{"text": f"❌ {b['title'][:20]}", "callback_data": f"adm_del_sp:{b['channel_id']}"}] for b in bots]
         btns.append([{"text": "➕ Добавить", "callback_data": "adm_add_bot"}])
         btns.append([{"text": "← Назад", "callback_data": "adm_menu"}])
         await edit_msg(cid, mid, text, {"inline_keyboard": btns})
 
     elif data == "adm_add_bot":
         await db.update_eq("users", {"admin_state": "add_bot"}, "telegram_id", ADMIN_ID)
-        await edit_msg(cid, mid, "🤖 Отправьте @username бота:",
-                       {"inline_keyboard": [[{"text": "← Отмена",
-                                              "callback_data": "adm_bots"}]]})
+        await edit_msg(cid, mid, "🤖 Отправьте @username бота:", {"inline_keyboard": [[{"text": "← Отмена", "callback_data": "adm_bots"}]]})
 
     elif data.startswith("adm_del_sp:"):
         sp_id = data.split(":")[1]
@@ -1356,7 +1176,6 @@ async def handle_callback(cb):
         sp_type = items[0].get("type", "channel") if items else "channel"
         await db.update_eq("channels", {"is_active": False}, "channel_id", sp_id)
         invalidate_cache()
-
         if sp_type == "bot":
             sponsors = await get_sponsors()
             bots = [s for s in sponsors if s.get("type") == "bot"]
@@ -1365,8 +1184,7 @@ async def handle_callback(cb):
                 text += f"{i}. <b>{b['title']}</b>\n"
             if not bots:
                 text += "Пусто."
-            btns = [[{"text": f"❌ {b['title'][:20]}",
-                      "callback_data": f"adm_del_sp:{b['channel_id']}"}] for b in bots]
+            btns = [[{"text": f"❌ {b['title'][:20]}", "callback_data": f"adm_del_sp:{b['channel_id']}"}] for b in bots]
             btns.append([{"text": "➕ Добавить", "callback_data": "adm_add_bot"}])
             btns.append([{"text": "← Назад", "callback_data": "adm_menu"}])
         else:
@@ -1377,8 +1195,7 @@ async def handle_callback(cb):
                 text += f"{i}. <b>{c['title']}</b>\n"
             if not chs:
                 text += "Пусто."
-            btns = [[{"text": f"❌ {c['title'][:20]}",
-                      "callback_data": f"adm_del_sp:{c['channel_id']}"}] for c in chs]
+            btns = [[{"text": f"❌ {c['title'][:20]}", "callback_data": f"adm_del_sp:{c['channel_id']}"}] for c in chs]
             btns.append([{"text": "➕ Добавить", "callback_data": "adm_add_ch"}])
             btns.append([{"text": "← Назад", "callback_data": "adm_menu"}])
         await edit_msg(cid, mid, text, {"inline_keyboard": btns})
@@ -1390,24 +1207,18 @@ async def handle_callback(cb):
             s = "✅" if p["is_active"] else "❌"
             text += f"{s} {p['emoji']} <b>{p['name']}</b>\n"
         btns = [[
-            {"text": f"✏️ {p['name'][:15]}",
-             "callback_data": f"adm_edit_pr:{p['key']}"},
-            {"text": "🟢" if p["is_active"] else "🔴",
-             "callback_data": f"adm_toggle_pr:{p['key']}"},
+            {"text": f"✏️ {p['name'][:15]}", "callback_data": f"adm_edit_pr:{p['key']}"},
+            {"text": "🟢" if p["is_active"] else "🔴", "callback_data": f"adm_toggle_pr:{p['key']}"},
         ] for p in prs]
         btns.append([{"text": "← Назад", "callback_data": "adm_menu"}])
         await edit_msg(cid, mid, text, {"inline_keyboard": btns})
 
     elif data.startswith("adm_edit_pr:"):
         key = data.split(":")[1]
-        await db.update_eq("users", {"admin_state": f"edit_prize:{key}"},
-                           "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": f"edit_prize:{key}"}, "telegram_id", ADMIN_ID)
         p = await db.select_eq("prizes", "key", key)
         name = p[0]["name"] if p else key
-        await edit_msg(cid, mid,
-                       f"✏️ Текущее: <b>{name}</b>\nОтправьте новое название:",
-                       {"inline_keyboard": [[{"text": "← Отмена",
-                                              "callback_data": "adm_prizes"}]]})
+        await edit_msg(cid, mid, f"✏️ Текущее: <b>{name}</b>\nОтправьте новое название:", {"inline_keyboard": [[{"text": "← Отмена", "callback_data": "adm_prizes"}]]})
 
     elif data.startswith("adm_toggle_pr:"):
         key = data.split(":")[1]
@@ -1421,10 +1232,8 @@ async def handle_callback(cb):
             s = "✅" if p["is_active"] else "❌"
             text += f"{s} {p['emoji']} <b>{p['name']}</b>\n"
         btns = [[
-            {"text": f"✏️ {p['name'][:15]}",
-             "callback_data": f"adm_edit_pr:{p['key']}"},
-            {"text": "🟢" if p["is_active"] else "🔴",
-             "callback_data": f"adm_toggle_pr:{p['key']}"},
+            {"text": f"✏️ {p['name'][:15]}", "callback_data": f"adm_edit_pr:{p['key']}"},
+            {"text": "🟢" if p["is_active"] else "🔴", "callback_data": f"adm_toggle_pr:{p['key']}"},
         ] for p in prs]
         btns.append([{"text": "← Назад", "callback_data": "adm_menu"}])
         await edit_msg(cid, mid, text, {"inline_keyboard": btns})
@@ -1434,19 +1243,20 @@ async def handle_callback(cb):
         new = await db.count("users", {"state": "eq.new"})
         rolled = await db.count("users", {"state": "eq.rolled"})
         claimed = await db.count("users", {"state": "eq.claimed"})
+        completed = await db.count("users", {"state": "eq.completed"})
         with_ref = await db.count("users", {"referred_by": "neq.null"})
         recent = await db.select("users", order="created_at.desc", limit=5)
-
         text = (
             f"📊 <b>Статистика</b>\n\n"
             f"👥 Всего: <b>{total}</b>\n"
             f"🆕 Новые: <b>{new}</b>\n"
             f"🎰 Крутили: <b>{rolled}</b>\n"
             f"✅ Подписались: <b>{claimed}</b>\n"
+            f"🏆 Получили приз: <b>{completed}</b>\n"
             f"🔗 По рефералам: <b>{with_ref}</b>\n\n"
             f"📈 Конверсия: "
-            f"<b>{round(((rolled+claimed)/total)*100) if total else 0}%</b> крутили → "
-            f"<b>{round((claimed/total)*100) if total else 0}%</b> подписались\n"
+            f"<b>{round(((rolled+claimed+completed)/total)*100) if total else 0}%</b> крутили → "
+            f"<b>{round(((claimed+completed)/total)*100) if total else 0}%</b> подписались\n"
         )
         if recent:
             text += "\n👤 <b>Последние:</b>\n"
@@ -1458,56 +1268,28 @@ async def handle_callback(cb):
                 if u.get("referred_by"):
                     text += " 🔗"
                 text += "\n"
-        await edit_msg(cid, mid, text,
-                       {"inline_keyboard": [[{"text": "← Назад",
-                                              "callback_data": "adm_menu"}]]})
+        await edit_msg(cid, mid, text, {"inline_keyboard": [[{"text": "← Назад", "callback_data": "adm_menu"}]]})
 
     elif data == "adm_refresh":
         sponsors = await get_sponsors()
         for s in sponsors:
             if s.get("type") == "bot":
-                info = await parse_bot(
-                    f"@{s['username']}" if s.get("username") else str(s["channel_id"]))
+                info = await parse_bot(f"@{s['username']}" if s.get("username") else str(s["channel_id"]))
             else:
                 info = await parse_channel(str(s["channel_id"]))
             if info:
-                await db.update_eq("channels", {
-                    "title": info["title"], "username": info["username"],
-                    "invite_link": info["invite_link"],
-                    "avatar_base64": info["avatar_base64"],
-                    "member_count": info.get("member_count", 0),
-                }, "channel_id", s["channel_id"])
+                await db.update_eq("channels", {"title": info["title"], "username": info["username"], "invite_link": info["invite_link"], "avatar_base64": info["avatar_base64"], "member_count": info.get("member_count", 0)}, "channel_id", s["channel_id"])
         invalidate_cache()
         await show_admin_menu(cid, mid)
 
     elif data == "adm_broadcast":
         if broadcast_status["running"]:
-            await edit_msg(cid, mid,
-                f"⏳ Рассылка идёт!\n"
-                f"✅ {broadcast_status['sent']}  "
-                f"🚫 {broadcast_status['blocked']}  "
-                f"❌ {broadcast_status['failed']}\n"
-                f"📊 {broadcast_status['sent']+broadcast_status['blocked']+broadcast_status['failed']}"
-                f"/{broadcast_status['total']}",
-                {"inline_keyboard": [[{"text": "← Назад",
-                                       "callback_data": "adm_menu"}]]})
+            await edit_msg(cid, mid, f"⏳ Рассылка идёт!\n✅ {broadcast_status['sent']}  🚫 {broadcast_status['blocked']}  ❌ {broadcast_status['failed']}\n📊 {broadcast_status['sent']+broadcast_status['blocked']+broadcast_status['failed']}/{broadcast_status['total']}", {"inline_keyboard": [[{"text": "← Назад", "callback_data": "adm_menu"}]]})
             return
-        await db.update_eq("users", {"admin_state": "broadcast_text"},
-                           "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": "broadcast_text"}, "telegram_id", ADMIN_ID)
         await edit_msg(cid, mid,
-            "📨 <b>Рассылка</b>\n\n"
-            "Отправьте <b>любое</b> сообщение:\n\n"
-            "📝 Текст\n"
-            "🖼 Фото / 🎬 Видео / 🎞 GIF\n"
-            "🎭 Стикер / 📎 Файл\n"
-            "🎤 Голосовое / ⚪ Кружок / 🎵 Аудио\n"
-            "👤 Контакт / 📍 Локация / 🏢 Место\n"
-            "📊 Опрос / 🎲 Кость\n\n"
-            "💡 <b>Совет:</b> Перешлите сюда сообщение из канала\n"
-            "(розыгрыш, giveaway, системное) — бот предложит\n"
-            "переслать его всем пользователям!",
-            {"inline_keyboard": [[{"text": "← Отмена",
-                                   "callback_data": "adm_menu"}]]})
+            "📨 <b>Рассылка</b>\n\nОтправьте <b>любое</b> сообщение:\n\n📝 Текст\n🖼 Фото / 🎬 Видео / 🎞 GIF\n🎭 Стикер / 📎 Файл\n🎤 Голосовое / ⚪ Кружок / 🎵 Аудио\n👤 Контакт / 📍 Локация / 🏢 Место\n📊 Опрос / 🎲 Кость\n\n💡 <b>Совет:</b> Перешлите сюда сообщение из канала!",
+            {"inline_keyboard": [[{"text": "← Отмена", "callback_data": "adm_menu"}]]})
 
     elif data.startswith("adm_bmode_"):
         mode = data.replace("adm_bmode_", "")
@@ -1515,8 +1297,7 @@ async def handle_callback(cb):
         if admin and admin[0].get("broadcast_data"):
             content = json.loads(admin[0]["broadcast_data"])
             content["_send_mode"] = mode
-            await db.update_eq("users", {"broadcast_data": json.dumps(content)},
-                               "telegram_id", ADMIN_ID)
+            await db.update_eq("users", {"broadcast_data": json.dumps(content)}, "telegram_id", ADMIN_ID)
         await show_broadcast_confirm(cid, mid)
 
     elif data == "adm_broadcast_chmode":
@@ -1526,28 +1307,17 @@ async def handle_callback(cb):
             return
         content = json.loads(admin[0]["broadcast_data"])
         current = content.get("_send_mode", "reconstruct")
-        type_name = CONTENT_TYPE_NAMES.get(content.get("type", ""), "")
-
         def mk(label, key):
             mark = " ✓" if key == current else ""
             return {"text": f"{label}{mark}", "callback_data": f"adm_bmode_{key}"}
-
         await edit_msg(cid, mid,
-            f"🔄 <b>Сменить режим отправки</b>\n\n"
-            f"📦 Контент: {type_name}\n"
-            f"📤 Текущий: <b>{SEND_MODE_NAMES.get(current, current)}</b>\n\n"
-            f"📝 <b>Своим</b> — бот отправит как своё новое сообщение\n"
-            f"📋 <b>Копией</b> — точная копия без «переслано от»\n"
-            f"↗️ <b>Пересылкой</b> — с заголовком «переслано от»\n"
-            f"   <i>(для giveaway, розыгрышей, системных сообщений)</i>",
+            f"🔄 <b>Сменить режим отправки</b>\n\n📤 Текущий: <b>{SEND_MODE_NAMES.get(current, current)}</b>",
             {"inline_keyboard": [
                 [mk("📝 Своим сообщением", "reconstruct")],
                 [mk("📋 Копией", "copy")],
                 [mk("↗️ Пересылкой", "forward")],
-                [{"text": "← Назад к подтверждению",
-                  "callback_data": "adm_broadcast_back_confirm"}],
-            ]}
-        )
+                [{"text": "← Назад к подтверждению", "callback_data": "adm_broadcast_back_confirm"}],
+            ]})
 
     elif data == "adm_broadcast_back_confirm":
         await show_broadcast_confirm(cid, mid)
@@ -1560,18 +1330,11 @@ async def handle_callback(cb):
             ok = await send_broadcast_msg(ADMIN_ID, content, mode)
             mode_name = SEND_MODE_NAMES.get(mode, mode)
             await send_msg(cid,
-                f"{'✅ Тест отправлен!' if ok else '❌ Ошибка отправки'}\n"
-                f"📤 Режим: {mode_name}\n\n"
-                f"Проверьте сообщение выше ☝️",
+                f"{'✅ Тест отправлен!' if ok else '❌ Ошибка отправки'}\n📤 Режим: {mode_name}\n\nПроверьте сообщение выше ☝️",
                 {"inline_keyboard": [
-                    [{"text": "✅ Отправить всем",
-                      "callback_data": "adm_broadcast_go"},
-                     {"text": "❌ Отмена",
-                      "callback_data": "adm_broadcast_cancel"}],
-                    [{"text": "📨 Тест ещё раз",
-                      "callback_data": "adm_broadcast_test"}],
-                    [{"text": "🔄 Сменить режим",
-                      "callback_data": "adm_broadcast_chmode"}],
+                    [{"text": "✅ Отправить всем", "callback_data": "adm_broadcast_go"}, {"text": "❌ Отмена", "callback_data": "adm_broadcast_cancel"}],
+                    [{"text": "📨 Тест ещё раз", "callback_data": "adm_broadcast_test"}],
+                    [{"text": "🔄 Сменить режим", "callback_data": "adm_broadcast_chmode"}],
                 ]})
 
     elif data == "adm_broadcast_go":
@@ -1579,8 +1342,7 @@ async def handle_callback(cb):
         asyncio.create_task(do_broadcast(cid))
 
     elif data == "adm_broadcast_cancel":
-        await db.update_eq("users", {"admin_state": "", "broadcast_data": ""},
-                           "telegram_id", ADMIN_ID)
+        await db.update_eq("users", {"admin_state": "", "broadcast_data": ""}, "telegram_id", ADMIN_ID)
         await show_admin_menu(cid, mid)
 
 
@@ -1590,8 +1352,6 @@ async def handle_callback(cb):
 @app.on_event("startup")
 async def on_startup():
     await db.start()
-
-    # Auto webhook
     webhook_url = f"{WEBAPP_URL}/api/webhook"
     r = await tg("setWebhook", {
         "url": webhook_url,
@@ -1602,12 +1362,9 @@ async def on_startup():
         log.info(f"Webhook set: {webhook_url}")
     else:
         log.error(f"Webhook error: {r}")
-
-    # Pre-warm cache
     await get_sponsors_cached()
     await get_prizes_cached()
     log.info("Cache pre-warmed")
-
     asyncio.create_task(background_worker())
     asyncio.create_task(rate_limit_cleanup())
 
@@ -1620,7 +1377,6 @@ async def on_shutdown():
             if not broadcast_status["running"]:
                 break
             await asyncio.sleep(1)
-
     await db.stop()
     global tg_client
     if tg_client:
@@ -1640,9 +1396,9 @@ async def background_worker():
         except Exception as e:
             log.error(f"[bg reactivation] {e}")
         try:
-            await check_antifraud()
+            await check_prize_ready()
         except Exception as e:
-            log.error(f"[bg antifraud] {e}")
+            log.error(f"[bg prize_ready] {e}")
         await asyncio.sleep(300)
 
 
@@ -1659,23 +1415,20 @@ async def check_reactivation():
                 "🔥 <b>ОСТАЛОСЬ ОЧЕНЬ МАЛО ВРЕМЕНИ ДО КОНЦА РАЗДАЧИ ПОДАРКОВ!</b>\n\n"
                 "⏰ Поспеши забрать свой подарок!\n"
                 "Не упусти шанс — это бесплатно! 🎁",
-                {"inline_keyboard": [[
-                    {"text": "⭐ НАРИСОВАТЬ ЗВЕЗДУ!",
-                     "web_app": {"url": WEBAPP_URL}}
-                ]]}
+                {"inline_keyboard": [[{"text": "⭐ НАРИСОВАТЬ ЗВЕЗДУ!", "web_app": {"url": WEBAPP_URL}}]]}
             )
             notified += 1
         except Exception:
             pass
-        await db.update_eq("users", {"notified_1h": True},
-                           "telegram_id", u["telegram_id"])
+        await db.update_eq("users", {"notified_1h": True}, "telegram_id", u["telegram_id"])
         await asyncio.sleep(0.1)
     if notified:
         log.info(f"Reactivation: notified {notified} users")
 
 
-async def check_antifraud():
-    users = await db.select("users", {"state": "eq.claimed", "notified_unsub": "eq.false"})
+async def check_prize_ready():
+    """Notify users whose timer has elapsed — honest notification."""
+    users = await db.select("users", {"state": "eq.claimed", "notified_payout": "eq.false"})
     if not users:
         return
     now = datetime.now(timezone.utc)
@@ -1692,26 +1445,18 @@ async def check_antifraud():
             continue
         try:
             await send_msg(u["telegram_id"],
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"❌ <b>ПРИЗ НЕ МОЖЕТ БЫТЬ ВЫДАН!</b>\n"
-                f"━━━━━━━━━━━━━━━━━━\n\n"
-                f"⚠️ Обнаружена проблема с подписками.\n\n"
-                f"📢 Проверьте что вы подписаны на <b>все</b> необходимые "
-                f"каналы и попробуйте ещё раз!\n\n"
-                f"👇 Нажмите кнопку ниже:",
-                {"inline_keyboard": [[
-                    {"text": "🔄 Проверить и получить приз",
-                     "web_app": {"url": WEBAPP_URL}}
-                ]]}
+                f"✅ <b>Ваш приз готов!</b>\n\n"
+                f"🎉 Поздравляем! Время ожидания подошло к концу.\n"
+                f"Нажмите кнопку ниже, чтобы получить свой приз: <b>{u.get('prize_name', 'Приз')}</b>",
+                {"inline_keyboard": [[{"text": "🎁 ПОЛУЧИТЬ ПРИЗ", "web_app": {"url": WEBAPP_URL}}]]}
             )
             notified += 1
         except Exception:
             pass
-        await db.update_eq("users", {"notified_unsub": True},
-                           "telegram_id", u["telegram_id"])
+        await db.update_eq("users", {"notified_payout": True}, "telegram_id", u["telegram_id"])
         await asyncio.sleep(0.1)
     if notified:
-        log.info(f"Antifraud: notified {notified} users")
+        log.info(f"Prize ready: notified {notified} users")
 
 
 # ══════════════════════════════════════

@@ -209,72 +209,6 @@
         padding-top: 10px;
       }
 
-      /* ═══════════ TAP SCENE ═══════════ */
-      #scene-tap {
-        align-items: center;
-        justify-content: center;
-      }
-      .tap-area {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        touch-action: manipulation;
-      }
-      .tap-sticker {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        will-change: transform;
-      }
-      .tap-emoji {
-        font-size: 55px;
-      }
-      .tap-bottom {
-        position: absolute;
-        bottom: max(60px, calc(40px + var(--safe-bot)));
-        left: 0;
-        right: 0;
-        text-align: center;
-        opacity: 0;
-      }
-      .tap-label {
-        font-size: 18px;
-        font-weight: 700;
-        color: #333;
-        letter-spacing: 1px;
-      }
-      .tap-bar-wrap {
-        margin-top: 6px;
-      }
-      .tap-bar {
-        width: 140px;
-        height: 5px;
-        background: #e8e8e8;
-        border-radius: 3px;
-        overflow: hidden;
-        margin: 0 auto 4px;
-      }
-      .tap-fill {
-        height: 100%;
-        width: 0%;
-        border-radius: 3px;
-        transition: width 0.15s;
-      }
-      .tap-fill.gold {
-        background: linear-gradient(90deg, #ffd700, #ffa500);
-      }
-      .tap-fill.purple {
-        background: linear-gradient(90deg, var(--blue), var(--purple));
-      }
-      .tap-count {
-        font-size: 12px;
-        color: #aaa;
-        font-weight: 600;
-      }
-
       /* ═══════════ DONE SCENE ═══════════ */
       #scene-done {
         align-items: center;
@@ -1127,26 +1061,6 @@
           transform: translate(var(--dx), var(--dy)) scale(0);
         }
       }
-      .tap-fx {
-        position: fixed;
-        font-size: 22px;
-        font-weight: 900;
-        color: var(--purple);
-        pointer-events: none;
-        z-index: 150;
-        will-change: transform, opacity;
-        animation: t-fly 0.5s ease-out forwards;
-      }
-      @keyframes t-fly {
-        0% {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-        100% {
-          opacity: 0;
-          transform: translateY(-50px) scale(1.2);
-        }
-      }
 
       @media (prefers-reduced-motion: reduce) {
         *,
@@ -1155,17 +1069,14 @@
           animation-duration: 0.01ms !important;
           transition-duration: 0.01ms !important;
         }
-        .particle,
-        .tap-fx {
+        .particle {
           display: none !important;
         }
       }
     </style>
   </head>
   <body>
-    <!-- ═══════════════════════════════════════ -->
-    <!--              SCENES                     -->
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ═══════════ SCENES ═══════════ -->
 
     <div id="scene-loading" class="scene active">
       <div class="loader"></div>
@@ -1195,21 +1106,6 @@
         <button id="btn-submit" class="btn-primary" disabled>
           <span>Готово</span><span class="btn-shine"></span>
         </button>
-      </div>
-    </div>
-
-    <div id="scene-tap" class="scene">
-      <div class="tap-area" id="tap-area">
-        <div class="tap-sticker" id="tap-sticker">
-          <div class="tap-emoji" id="tap-emoji">❓</div>
-        </div>
-      </div>
-      <div class="tap-bottom" id="tap-bottom">
-        <div class="tap-label">Тапай! 👆</div>
-        <div class="tap-bar-wrap">
-          <div class="tap-bar"><div class="tap-fill" id="tap-fill"></div></div>
-          <span class="tap-count" id="tap-count">0 / 10</span>
-        </div>
       </div>
     </div>
 
@@ -1247,7 +1143,7 @@
             <div id="tlbl3" class="tp-label">Выдача</div>
           </div>
         </div>
-        <div class="done-actions">
+        <div id="done-actions-timer" class="done-actions">
           <button id="btn-speedup" class="btn-action purple">
             <span class="btn-action-icon" id="btn-rocket-tgs"></span>
             <span>Ускорить</span>
@@ -1257,12 +1153,15 @@
             <span>Заработать</span>
           </button>
         </div>
+        <div id="done-actions-final" class="done-actions hidden">
+          <button id="btn-finalize" class="btn-primary pulse">
+            <span>🎁 Получить приз</span><span class="btn-shine"></span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!--              SHEETS                     -->
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ═══════════ SHEETS ═══════════ -->
 
     <div id="sheet-prize" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
@@ -1357,9 +1256,7 @@
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!--           STARS MODAL                   -->
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ═══════════ STARS MODAL ═══════════ -->
 
     <div id="modal-stars" class="modal-fs hidden">
       <div class="modal-fs-header">
@@ -1385,17 +1282,13 @@
       <button id="btn-edit-stars" class="btn-admin-edit hidden">✏️</button>
     </div>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!--            UTILITIES                    -->
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ═══════════ FX ═══════════ -->
 
     <div id="flash"></div>
     <div id="edge-glow"></div>
     <div id="toast" class="toast"></div>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!--          EXTERNAL SCRIPTS               -->
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ═══════════ EXTERNAL SCRIPTS ═══════════ -->
 
     <script
       defer
@@ -1414,9 +1307,7 @@
       src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"
     ></script>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!--          APPLICATION SCRIPT             -->
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ═══════════ APPLICATION ═══════════ -->
 
     <script>
       window.addEventListener("load", () => {
@@ -1435,9 +1326,7 @@
 
       function startApp() {
         /* ═══════════ CONFIG ═══════════ */
-        const API = "/api";
         const BOT = "fawtfbot";
-        const MAX_TAPS = 10;
         const T_SEC = 86400;
         const THRESHOLD = 80;
 
@@ -1453,23 +1342,11 @@
           invite: "assets/invite.tgs",
         };
 
-        const PRIZES = {
-          stars: {
-            key: "stars",
-            name: "500 Stars",
-            tgs: TGS.starY,
-            modal: TGS.modalS,
-            glow: "rgba(255,215,0,.35)",
-            fill: "gold",
-            shine: "",
-          },
+        const PRIZE_META = {
+          stars: { modal: TGS.modalS, glow: "rgba(255,215,0,.35)", shine: "" },
           premium: {
-            key: "premium",
-            name: "Telegram Premium",
-            tgs: TGS.starP,
             modal: TGS.modalP,
             glow: "rgba(124,103,254,.35)",
-            fill: "purple",
             shine: "purple-shine",
           },
         };
@@ -1486,7 +1363,6 @@
           tInt = null;
         let wonPrize = null,
           appState = "loading",
-          tapN = 0,
           isChecking = false;
         let strokes = [],
           curStroke = null,
@@ -1634,7 +1510,7 @@
         async function api(ep, body = {}) {
           for (let i = 0; i < 3; i++) {
             try {
-              const r = await fetch(`${API}/${ep}`, {
+              const r = await fetch(`/api/${ep}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ initData: gID(), ...body }),
@@ -1714,6 +1590,15 @@
         }
 
         function playIcon(c, u) {
+          iconLotties = iconLotties.filter((a) => {
+            try {
+              if (a && a._c === c) {
+                a.destroy();
+                return false;
+              }
+            } catch (e) {}
+            return true;
+          });
           c.innerHTML = "";
           const d = cloneTGS(u);
           if (!d) return null;
@@ -1800,38 +1685,6 @@
                 ),
               i * 60,
             );
-          }
-        }
-
-        const TPP = [],
-          TT = ["+1", "⭐", "✨", "💫", "🔥", "💎"];
-        for (let i = 0; i < 6; i++) {
-          const el = document.createElement("div");
-          el.className = "tap-fx";
-          el.style.display = "none";
-          document.body.appendChild(el);
-          TPP.push({ el, busy: false, t: null });
-        }
-
-        function showTapFx(x, y) {
-          for (let i = 0; i < TPP.length; i++) {
-            const s = TPP[i];
-            if (s.busy) continue;
-            s.busy = true;
-            s.el.textContent = TT[~~(Math.random() * TT.length)];
-            s.el.style.left = x + (Math.random() - 0.5) * 30 + "px";
-            s.el.style.top = y - 10 + "px";
-            s.el.style.display = "block";
-            s.el.style.animation = "none";
-            void s.el.offsetHeight;
-            s.el.style.animation = "";
-            if (s.t) clearTimeout(s.t);
-            s.t = setTimeout(() => {
-              s.el.style.display = "none";
-              s.busy = false;
-              s.t = null;
-            }, 500);
-            return;
           }
         }
 
@@ -2129,15 +1982,25 @@
             gsap.to(sh, { opacity: 1, duration: 0.3 });
             wrap.classList.add("ok");
             hapticNotif("success");
-            wonPrize = Math.random() < 0.5 ? PRIZES.stars : PRIZES.premium;
-            api("check-subscription", {
-              action: "save_roll",
-              prize_key: wonPrize.key,
-              prize_name: wonPrize.name,
-            }).catch(() => {});
-            await sleep(800);
-            appState = "transforming";
-            await doTransform();
+
+            /* SERVER determines the prize */
+            const res = await api("process-action", {
+              action: "complete_draw",
+            });
+            if (!res.ok || !res.prize) {
+              toast(
+                res.error === "Already played"
+                  ? "Вы уже играли"
+                  : "Ошибка сервера",
+              );
+              appState = "drawing";
+              return;
+            }
+
+            wonPrize = res.prize;
+            await sleep(500);
+            appState = "prize";
+            await doRevealPrize();
           } else {
             sv.style.color = "#FF4757";
             sh.textContent = "Попробуйте ещё раз";
@@ -2153,152 +2016,27 @@
           }
         });
 
-        /* ═══════════ TRANSFORM → TAP ═══════════ */
-        async function doTransform() {
-          const wrapR = wrap.getBoundingClientRect();
-          const cx = wrapR.left + wrapR.width / 2;
-          const cy = wrapR.top + wrapR.height / 2;
+        /* ═══════════ PRIZE REVEAL ═══════════ */
+        async function doRevealPrize() {
+          killLotties();
+          const meta = PRIZE_META[wonPrize.key] || PRIZE_META.stars;
 
-          gsap.to([".draw-submit", "#btn-reset", ".draw-score"], {
-            opacity: 0,
-            duration: 0.3,
-          });
-
-          // Shake canvas
-          let amp = 0,
-            run = true;
-          const shake = () => {
-            if (!run) return;
-            cvs.style.transform = `translate(${(Math.random() - 0.5) * amp * 2}px,${(Math.random() - 0.5) * amp * 2}px)`;
-            requestAnimationFrame(shake);
-          };
-          amp = 2;
-          shake();
-          gsap.to(
-            { v: 2 },
-            {
-              v: 12,
-              duration: 1,
-              ease: "power2.in",
-              onUpdate() {
-                amp = this.targets()[0].v;
-              },
-            },
-          );
-          for (let i = 0; i < 6; i++) {
-            await sleep(150);
-            haptic("light");
-          }
-
-          haptic("heavy");
-          megaBurst(cx, cy);
-          gsap.to(cvs, {
-            scale: 0,
-            opacity: 0,
-            rotation: 90,
-            duration: 0.35,
-            ease: "power3.in",
-          });
-          run = false;
-          amp = 0;
-          cvs.style.transform = "";
-          await sleep(400);
-
-          // Setup tap scene
-          const sticker = $("tap-sticker"),
-            emoji = $("tap-emoji"),
-            bottom = $("tap-bottom");
-          const startSz = Math.round(cSize * 0.35);
-          sticker.style.width = startSz + "px";
-          sticker.style.height = startSz + "px";
-          emoji.textContent = "❓";
-          emoji.style.display = "";
-          bottom.style.opacity = "0";
-          $("tap-fill").style.width = "0%";
-          $("tap-fill").className = "tap-fill";
-          $("tap-count").textContent = "0 / " + MAX_TAPS;
-
-          showScene("tap", true);
-          gsap.from(sticker, { scale: 0, duration: 0.3, ease: "back.out(2)" });
-          await sleep(200);
-
-          // Drumroll
-          const emojis = [
-            "❓",
-            "🎁",
-            "⭐",
-            "💎",
-            "✨",
-            "🎁",
-            "❓",
-            "💫",
-            "⭐",
-            "💎",
-          ];
-          let idx = 0,
-            spd = 280,
-            dAmp = 0,
-            dRun = true;
-          const dShake = () => {
-            if (!dRun) return;
-            $("scene-tap").style.transform =
-              `translate(${(Math.random() - 0.5) * dAmp * 2}px,${(Math.random() - 0.5) * dAmp * 2}px)`;
-            requestAnimationFrame(dShake);
-          };
-          dAmp = 1;
-          dShake();
-          gsap.to(
-            { v: 1 },
-            {
-              v: 10,
-              duration: 2.5,
-              ease: "power2.in",
-              onUpdate() {
-                dAmp = this.targets()[0].v;
-              },
-            },
-          );
-
-          for (let r = 0; r < 18; r++) {
-            emoji.textContent = emojis[idx++ % emojis.length];
-            gsap.fromTo(
-              emoji,
-              { scale: 1.3, opacity: 0.6 },
-              { scale: 1, opacity: 1, duration: Math.min(spd / 1000, 0.15) },
-            );
-            haptic("light");
-            await sleep(spd);
-            spd = Math.max(50, spd - 14);
-          }
-
-          dRun = false;
-          dAmp = 0;
-          $("scene-tap").style.transform = "";
-
-          // Flash reveal
+          /* Flash */
           const flash = $("flash");
           flash.style.transition = "opacity .08s";
           flash.style.opacity = "1";
           haptic("heavy");
           hapticNotif("success");
           await sleep(100);
+          flash.style.transition = "opacity .6s";
+          flash.style.opacity = "0";
 
-          // Show prize sticker
-          emoji.style.display = "none";
-          sticker.style.width = Math.round(cSize * 0.3) + "px";
-          sticker.style.height = Math.round(cSize * 0.3) + "px";
-          await loadTGS(wonPrize.tgs);
-          playLottie(sticker, wonPrize.tgs);
-          gsap.fromTo(
-            sticker,
-            { scale: 2, opacity: 0 },
-            { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.8)" },
-          );
-
+          /* Glow */
           const glow = $("edge-glow");
-          glow.style.setProperty("--glow", wonPrize.glow);
+          glow.style.setProperty("--glow", meta.glow);
           glow.classList.add("on");
 
+          /* Confetti */
           confetti({ particleCount: 70, spread: 80, origin: { y: 0.4 } });
           confetti({
             particleCount: 35,
@@ -2310,62 +2048,19 @@
             spread: 120,
             origin: { y: 0.6, x: 0.85 },
           });
-          megaBurst(cx, cy);
 
-          flash.style.transition = "opacity .6s";
-          flash.style.opacity = "0";
-          await sleep(1000);
+          const wrapR = wrap.getBoundingClientRect();
+          megaBurst(wrapR.left + wrapR.width / 2, wrapR.top + wrapR.height / 2);
 
-          // Show tap UI
-          bottom.style.opacity = "1";
-          gsap.from(bottom, { opacity: 0, y: 10, duration: 0.3 });
-          $("tap-fill").classList.add(wonPrize.fill);
-          appState = "tapping";
-          tapN = 0;
-        }
-
-        /* ═══════════ TAP ═══════════ */
-        $("tap-area").addEventListener("pointerdown", async (e) => {
-          if (appState !== "tapping") return;
-          e.preventDefault();
-          tapN++;
-          haptic("medium");
-
-          const st = $("tap-sticker");
-          const progress = tapN / MAX_TAPS;
-          gsap.to(st, {
-            width: cSize * (0.3 + 0.55 * progress),
-            height: cSize * (0.3 + 0.55 * progress),
-            duration: 0.3,
-            ease: "back.out(1.5)",
-          });
-
-          $("tap-fill").style.width = progress * 100 + "%";
-          $("tap-count").textContent = tapN + " / " + MAX_TAPS;
-          showTapFx(e.clientX, e.clientY);
-          burst(e.clientX, e.clientY, 6);
-
-          if (tapN >= MAX_TAPS) {
-            appState = "revealing";
-            await sleep(300);
-            await doReveal();
-          }
-        });
-
-        async function doReveal() {
-          confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } });
-          hapticNotif("success");
           await sleep(600);
-          gsap.to($("tap-bottom"), { opacity: 0, duration: 0.2 });
-          await sleep(300);
-          showPrize();
+          showPrizeSheet();
         }
 
         /* ═══════════ PRIZE SHEET ═══════════ */
-        async function showPrize() {
-          killLotties();
+        async function showPrizeSheet() {
+          const meta = PRIZE_META[wonPrize.key] || PRIZE_META.stars;
           $("prize-name").textContent = wonPrize.name;
-          playLottie($("prize-sticker"), wonPrize.modal, false);
+          playLottie($("prize-sticker"), meta.modal, false);
 
           $("btn-claim").disabled = true;
           $("btn-claim").classList.remove("pulse");
@@ -2373,7 +2068,6 @@
 
           openSheet("sheet-prize");
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-          appState = "prize";
 
           for (let i = 3; i >= 1; i--) {
             $("prize-cd").textContent = i;
@@ -2416,15 +2110,12 @@
 
         function showSub() {
           killLotties();
-          const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
-          $("sub-prize").textContent = pN;
+          const pKey = wonPrize ? wonPrize.key : US?.prize_key || "stars";
+          const pName = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
+          const meta = PRIZE_META[pKey] || PRIZE_META.stars;
 
-          const tU = wonPrize
-            ? wonPrize.modal
-            : US?.prize_key === "stars"
-              ? TGS.modalS
-              : TGS.modalP;
-          if (tU) playLottie($("sub-sticker"), tU, false);
+          $("sub-prize").textContent = pName;
+          if (meta.modal) playLottie($("sub-sticker"), meta.modal, false);
 
           const list = $("sub-list");
           list.innerHTML = "";
@@ -2473,7 +2164,7 @@
                 btn.textContent = "✓";
                 btn.classList.add("done");
                 updateSubProg();
-                api("check-subscription", {
+                api("process-action", {
                   action: "mark_bot_opened",
                   bot_id: ch.id,
                 }).catch(() => {});
@@ -2497,8 +2188,10 @@
           btn.querySelector("span").textContent = "Проверяем...";
 
           try {
-            const res = await api("check-subscription", { action: "check" });
-            if (res.all_subscribed) {
+            const res = await api("process-action", {
+              action: "check_subscriptions",
+            });
+            if (res.ok && res.all_subscribed) {
               document.querySelectorAll(".sub-btn").forEach((b) => {
                 b.textContent = "✓";
                 b.classList.add("done");
@@ -2507,9 +2200,14 @@
               toast("Подписки подтверждены!", "success");
               refCount = res.referral_count || 0;
               tSpeed = calcSpeed(refCount);
+
+              /* Update local state — claimed_at comes from the server now */
+              if (res.claimed_at) claimedAt = res.claimed_at;
+              else claimedAt = Date.now() / 1000;
+
               await sleep(800);
               closeSheet("sheet-sub", goToDone);
-            } else {
+            } else if (res.ok) {
               const items = document.querySelectorAll(".sub-item");
               CHANNELS.forEach((ch, i) => {
                 const b = items[i]?.querySelector(".sub-btn");
@@ -2527,6 +2225,8 @@
               updateSubProg();
               toast("Подпишитесь на все каналы!");
               hapticNotif("error");
+            } else {
+              toast("Ошибка, попробуйте позже");
             }
           } catch (e) {
             toast("Ошибка, попробуйте позже");
@@ -2545,42 +2245,6 @@
           playIcon($("btn-star-tgs"), TGS.star);
         }
 
-        function goToDone() {
-          killLotties();
-
-          const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
-          const dp = $("done-prize");
-          dp.textContent = pN;
-          dp.className =
-            "done-prize" +
-            (wonPrize && wonPrize.shine ? " " + wonPrize.shine : "");
-
-          const tU = wonPrize
-            ? wonPrize.modal
-            : US?.prize_key === "stars"
-              ? TGS.modalS
-              : TGS.modalP;
-          if (tU) playLottie($("done-sticker"), tU, false);
-
-          if (!claimedAt) claimedAt = US?.claimed_at || Date.now() / 1000;
-          refCount = US?.referral_count || refCount || 0;
-          tSpeed = calcSpeed(refCount);
-
-          resetTimerDots();
-          startTimer();
-          setupDoneIcons();
-
-          showScene("done");
-          confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
-          gsap.from(".done-wrap", {
-            y: 40,
-            opacity: 0,
-            duration: 0.5,
-            ease: "back.out(1.5)",
-          });
-          appState = "final";
-        }
-
         function resetTimerDots() {
           const tp2 = $("tp2"),
             tp3 = $("tp3"),
@@ -2596,6 +2260,42 @@
           tlbl2.textContent = "Обработка";
           tlbl3.className = "tp-label";
           tlbl3.textContent = "Выдача";
+        }
+
+        function goToDone() {
+          killLotties();
+
+          const pKey = wonPrize ? wonPrize.key : US?.prize_key || "stars";
+          const pName = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
+          const meta = PRIZE_META[pKey] || PRIZE_META.stars;
+
+          const dp = $("done-prize");
+          dp.textContent = pName;
+          dp.className = "done-prize" + (meta.shine ? " " + meta.shine : "");
+
+          playLottie($("done-sticker"), meta.modal, false);
+
+          if (!claimedAt) claimedAt = US?.claimed_at || Date.now() / 1000;
+          refCount = US?.referral_count || refCount || 0;
+          tSpeed = calcSpeed(refCount);
+
+          /* Show timer buttons, hide finalize */
+          $("done-actions-timer").classList.remove("hidden");
+          $("done-actions-final").classList.add("hidden");
+
+          resetTimerDots();
+          startTimer();
+          setupDoneIcons();
+
+          showScene("done");
+          confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
+          gsap.from(".done-wrap", {
+            y: 40,
+            opacity: 0,
+            duration: 0.5,
+            ease: "back.out(1.5)",
+          });
+          appState = "final";
         }
 
         /* ═══════════ TIMER ═══════════ */
@@ -2626,6 +2326,7 @@
           }
 
           if (!t) {
+            /* Timer done */
             if (te) {
               te.textContent = "Готово!";
               te.classList.add("done");
@@ -2655,6 +2356,11 @@
               tlbl3.textContent = "Выдан";
             }
             if (pill) pill.style.display = "none";
+
+            /* Switch buttons */
+            $("done-actions-timer").classList.add("hidden");
+            $("done-actions-final").classList.remove("hidden");
+
             clearInterval(tInt);
             return;
           }
@@ -2666,6 +2372,33 @@
           if (dot) dot.classList.remove("done");
           if (st) st.textContent = "Подготавливаем приз...";
         }
+
+        /* ═══════════ FINALIZE ═══════════ */
+        $("btn-finalize").addEventListener("click", async () => {
+          const btn = $("btn-finalize");
+          btn.disabled = true;
+          btn.classList.remove("pulse");
+          btn.querySelector("span").textContent = "Обработка...";
+
+          const res = await api("process-action", {
+            action: "finalize_claim",
+          });
+          if (res.ok) {
+            hapticNotif("success");
+            toast("🎉 Приз получен!", "success");
+            confetti({
+              particleCount: 100,
+              spread: 100,
+              origin: { y: 0.5 },
+            });
+            btn.querySelector("span").textContent = "✅ Получено";
+          } else {
+            toast(res.error || "Ошибка", "error");
+            btn.disabled = false;
+            btn.classList.add("pulse");
+            btn.querySelector("span").textContent = "🎁 Получить приз";
+          }
+        });
 
         /* ═══════════ SPEEDUP ═══════════ */
         $("btn-speedup").addEventListener("click", () => {
@@ -2760,9 +2493,6 @@
           PP.forEach((p) => {
             if (p.t) clearTimeout(p.t);
           });
-          TPP.forEach((p) => {
-            if (p.t) clearTimeout(p.t);
-          });
         }
         window.addEventListener("beforeunload", cleanup);
 
@@ -2775,9 +2505,10 @@
             Telegram.WebApp.setBackgroundColor("#ffffff");
           } catch (e) {}
 
-          // Load all TGS in parallel
+          /* Load all TGS in parallel */
           const allTgs = Object.values(TGS).map((u) => loadTGS(u));
 
+          /* Load user data */
           try {
             const res = await api("get-user");
             if (res.ok) {
@@ -2792,26 +2523,57 @@
 
           await Promise.all(allTgs);
 
-          // Hide loading
+          /* Hide loading */
           $("scene-loading").style.opacity = "0";
           await sleep(300);
           try {
             Telegram.WebApp.ready();
           } catch (e) {}
 
-          // ── Route based on user state ──
+          /* ══════ STATE ROUTING (FIXED) ══════ */
 
-          if (US?.state === "claimed") {
-            wonPrize = US.prize_key === "stars" ? PRIZES.stars : PRIZES.premium;
+          if (!US) {
+            toast("Ошибка загрузки данных", "error", 10000);
+            return;
+          }
+
+          /* completed = prize already received */
+          if (US.state === "completed") {
             showScene("done", true);
+            const pKey = US.prize_key || "stars";
+            const meta = PRIZE_META[pKey] || PRIZE_META.stars;
             const dp = $("done-prize");
-            dp.textContent = wonPrize.name;
-            dp.className =
-              "done-prize" + (wonPrize.shine ? " " + wonPrize.shine : "");
-            playLottie($("done-sticker"), wonPrize.modal, false);
-            if (!claimedAt) claimedAt = US.claimed_at || Date.now() / 1000;
-            resetTimerDots();
-            startTimer();
+            dp.textContent = US.prize_name || "Приз";
+            dp.className = "done-prize" + (meta.shine ? " " + meta.shine : "");
+            playLottie($("done-sticker"), meta.modal, false);
+
+            $("timer-time").textContent = "Получено!";
+            $("timer-time").classList.add("done");
+            $("timer-dot").classList.add("done");
+            $("timer-text").textContent = "Приз выдан";
+            $("timer-pill").style.display = "none";
+
+            /* All dots done */
+            ["tp1", "tp2", "tp3"].forEach((id) => {
+              $(id).className = "tp-dot done";
+              $(id).textContent = "✓";
+            });
+            ["tl1", "tl2"].forEach((id) => {
+              $(id).className = "tp-line done";
+            });
+            $("tlbl1").className = "tp-label done-l";
+            $("tlbl1").textContent = "Получен";
+            $("tlbl2").className = "tp-label done-l";
+            $("tlbl2").textContent = "Готово";
+            $("tlbl3").className = "tp-label done-l";
+            $("tlbl3").textContent = "Выдан";
+
+            $("done-actions-timer").classList.add("hidden");
+            $("done-actions-final").classList.remove("hidden");
+            $("btn-finalize").disabled = true;
+            $("btn-finalize").classList.remove("pulse");
+            $("btn-finalize").querySelector("span").textContent = "✅ Получено";
+
             setupDoneIcons();
             gsap.from(".done-wrap", {
               y: 30,
@@ -2823,24 +2585,30 @@
             return;
           }
 
-          if (US?.state === "rolled") {
-            wonPrize = US.prize_key === "stars" ? PRIZES.stars : PRIZES.premium;
-            showScene("done", true);
-            const dp = $("done-prize");
-            dp.textContent = wonPrize.name;
-            dp.className =
-              "done-prize" + (wonPrize.shine ? " " + wonPrize.shine : "");
-            playLottie($("done-sticker"), wonPrize.modal, false);
-            resetTimerDots();
-            setupDoneIcons();
-            appState = "subscribe";
-            setTimeout(() => showSub(), 400);
+          /* claimed = subscribed, timer running */
+          if (US.state === "claimed") {
+            wonPrize = {
+              key: US.prize_key || "stars",
+              name: US.prize_name || "Приз",
+            };
+            goToDone();
             return;
           }
 
-          // ── Default: draw scene ──
+          /* rolled = drew star, needs to subscribe (FIX: no timer yet!) */
+          if (US.state === "rolled") {
+            wonPrize = {
+              key: US.prize_key || "stars",
+              name: US.prize_name || "Приз",
+            };
+            showScene("draw", true);
+            await sleep(200);
+            showSub();
+            return;
+          }
+
+          /* new = start drawing */
           showScene("draw", true);
-          // Wait two frames for layout to fully settle before measuring canvas
           await new Promise((r) =>
             requestAnimationFrame(() => requestAnimationFrame(r)),
           );
@@ -2848,7 +2616,11 @@
           playIcon($("title-star-tgs"), TGS.star);
           appState = "drawing";
 
-          gsap.from(".draw-header", { y: 20, opacity: 0, duration: 0.4 });
+          gsap.from(".draw-header", {
+            y: 20,
+            opacity: 0,
+            duration: 0.4,
+          });
           gsap.from("#canvas-wrap", {
             y: 20,
             opacity: 0,
