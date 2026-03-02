@@ -6,18 +6,13 @@
       name="viewport"
       content="width=device-width,initial-scale=1.0,user-scalable=no"
     />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self';
-               script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
-               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com;
-               font-src https://fonts.gstatic.com;
-               img-src 'self' data: https:;
-               connect-src 'self';"
-    />
     <title>⭐ Draw & Win!</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap"
+      as="style"
+    />
     <link
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap"
       rel="stylesheet"
@@ -33,181 +28,171 @@
         height: 100vh;
         height: 100dvh;
         overflow: hidden;
-        background: #fff;
+        background: var(--bg);
+        color: var(--text);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         -webkit-tap-highlight-color: transparent;
         user-select: none;
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-        padding-left: env(safe-area-inset-left);
-        padding-right: env(safe-area-inset-right);
+        touch-action: manipulation;
       }
-      .hidden {
-        display: none !important;
+      :root {
+        --bg: #fff;
+        --bg2: #f5f5f5;
+        --text: #333;
+        --text2: #888;
+        --text3: #aaa;
+        --border: #333;
+        --card-bg: linear-gradient(135deg, #f8f9ff, #f0ecff);
+        --line: #f0f0f0;
+        --line2: #e0e0e0;
+        --line3: #e8e8e8;
+        --sheet-bg: #fff;
+        --overlay: rgba(0, 0, 0, 0.4);
+        --purple: #976fff;
+        --blue: #6b93ff;
+        --pink: #e46ace;
+        --green: #4caf50;
+        --red: #ff4757;
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-bot: env(safe-area-inset-bottom, 0px);
+      }
+      body.dark {
+        --bg: #1a1a2e;
+        --bg2: #252542;
+        --text: #e0e0e0;
+        --text2: #999;
+        --text3: #666;
+        --border: #555;
+        --card-bg: linear-gradient(135deg, #1e1e3a, #2a2a4e);
+        --line: #333;
+        --line2: #444;
+        --line3: #333;
+        --sheet-bg: #1e1e34;
+        --overlay: rgba(0, 0, 0, 0.6);
       }
 
-      #loading-screen {
+      /* ═══ SCENE SYSTEM ═══ */
+      .scene {
         position: fixed;
         inset: 0;
-        background: #fff;
         display: flex;
         flex-direction: column;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+          opacity 0.3s,
+          visibility 0s 0.3s;
+        z-index: 1;
+        background: var(--bg);
+      }
+      .scene.active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition:
+          opacity 0.3s,
+          visibility 0s;
+      }
+      .scene.instant {
+        transition: none !important;
+      }
+
+      /* ═══ LOADING ═══ */
+      #scene-loading {
         align-items: center;
         justify-content: center;
-        z-index: 9999;
+        z-index: 999;
       }
-      .loading-spinner {
+      .loader {
         width: 36px;
         height: 36px;
-        border: 3px solid #eee;
-        border-top: 3px solid #976fff;
+        border: 3px solid var(--line3);
+        border-top-color: var(--purple);
         border-radius: 50%;
         animation: spin 0.7s linear infinite;
+      }
+      .loader-text {
+        color: var(--text3);
+        font-size: 13px;
+        margin-top: 14px;
       }
       @keyframes spin {
         to {
           transform: rotate(360deg);
         }
       }
-      .loading-text {
-        color: #bbb;
-        font-size: 13px;
-        margin-top: 14px;
-      }
 
-      .toast {
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%) translateY(-100px);
-        padding: 12px 24px;
-        border-radius: 12px;
+      /* ═══ DRAW SCENE ═══ */
+      #scene-draw {
+        padding: max(12px, var(--safe-top)) 20px max(12px, var(--safe-bot));
+        align-items: center;
+      }
+      .draw-header {
+        text-align: center;
+        flex-shrink: 0;
+      }
+      .draw-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--text);
+      }
+      .draw-sub {
         font-size: 14px;
+        color: var(--text2);
+        margin-top: 2px;
+      }
+      .draw-attempts {
+        font-size: 12px;
+        color: var(--text3);
         font-weight: 600;
-        z-index: 9999;
-        transition: transform 0.3s;
-        pointer-events: none;
-        color: #fff;
+        height: 18px;
+        margin-top: 2px;
       }
-      .toast.error {
-        background: #ff4757;
-      }
-      .toast.success {
-        background: #4caf50;
-      }
-      .toast.show {
-        transform: translateX(-50%) translateY(0);
-      }
-
-      #flash {
-        position: fixed;
-        inset: 0;
-        background: #fff;
-        z-index: 999;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.15s;
-      }
-      #edge-glow {
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        z-index: 50;
-        opacity: 0;
-        transition: opacity 0.5s;
-        background: radial-gradient(
-          ellipse at center,
-          transparent 35%,
-          var(--glow-color, rgba(255, 215, 0, 0.35)) 100%
-        );
-      }
-      #edge-glow.active {
-        opacity: 1;
-        animation: glow-pulse 2s ease-in-out infinite;
-      }
-      @keyframes glow-pulse {
-        0%,
-        100% {
-          opacity: 0.6;
-        }
-        50% {
-          opacity: 1;
-        }
-      }
-
-      #draw-scene {
-        position: fixed;
-        inset: 0;
+      .draw-score {
+        flex-shrink: 0;
+        height: 68px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: max(12px, env(safe-area-inset-top)) 24px
-          max(16px, env(safe-area-inset-bottom));
-        z-index: 2;
-        overflow: hidden;
+        justify-content: center;
       }
-      #draw-title {
-        font-size: 22px;
-        font-weight: 800;
-        color: #333;
-        text-align: center;
-        flex-shrink: 0;
-      }
-      #draw-subtitle {
-        font-size: 14px;
-        color: #888;
-        margin-top: 2px;
-        text-align: center;
-        flex-shrink: 0;
-      }
-      #attempt-counter {
-        font-size: 12px;
-        color: #aaa;
-        margin-top: 2px;
-        text-align: center;
-        font-weight: 600;
-        flex-shrink: 0;
-        height: 16px;
-      }
-      #score-display {
-        font-size: 44px;
+      .draw-score-val {
+        font-size: 42px;
         font-weight: 900;
         opacity: 0;
         transition: color 0.3s;
-        text-align: center;
-        height: 48px;
+      }
+      .draw-score-hint {
+        font-size: 14px;
+        font-weight: 600;
+        opacity: 0;
+        transition: opacity 0.3s;
+        margin-top: -2px;
+      }
+      .draw-canvas-area {
+        flex: 1;
+        min-height: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        flex-shrink: 0;
+        padding: 4px;
+        width: 100%;
       }
-      #score-hint {
-        font-size: 14px;
-        font-weight: 600;
-        height: 18px;
-        text-align: center;
-        opacity: 0;
-        transition: opacity 0.3s;
-        flex-shrink: 0;
-      }
-
       #canvas-wrap {
         position: relative;
         border-radius: 16px;
-        background: #f5f5f5;
-        border: 2px solid #333;
+        background: var(--bg2);
+        border: 2px solid var(--border);
         overflow: hidden;
         touch-action: none;
-        will-change: transform;
-        transition: border-color 0.4s ease;
-        flex-shrink: 0;
-        margin-top: 6px;
+        transition: border-color 0.4s;
       }
-      #canvas-wrap.border-success {
-        border-color: #4caf50;
+      #canvas-wrap.ok {
+        border-color: var(--green);
       }
-      #canvas-wrap.border-fail {
-        border-color: #ff4757;
+      #canvas-wrap.fail {
+        border-color: var(--red);
       }
       #draw-canvas {
         display: block;
@@ -219,7 +204,7 @@
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: rgba(0, 0, 0, 0.06);
+        background: rgba(128, 128, 128, 0.12);
         border: none;
         font-size: 18px;
         cursor: pointer;
@@ -227,305 +212,110 @@
         align-items: center;
         justify-content: center;
         z-index: 5;
-        transition: background 0.15s;
+        color: var(--text);
       }
-      #btn-reset:active {
-        background: rgba(0, 0, 0, 0.12);
-      }
-
-      #tap-scene {
-        position: fixed;
-        inset: 0;
-        z-index: 100;
-        background: #fff;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 20px;
-      }
-
-      #btn-submit {
-        margin-top: auto;
+      .draw-submit {
+        flex-shrink: 0;
         width: 100%;
         max-width: 360px;
-        flex-shrink: 0;
+        padding-top: 8px;
       }
 
-      .btn-primary {
-        position: relative;
-        width: 100%;
-        padding: 15px;
-        font-size: 16px;
-        font-weight: 700;
-        color: #fff;
-        background: linear-gradient(135deg, #6b93ff, #976fff, #e46ace);
-        border: none;
-        border-radius: 14px;
-        cursor: pointer;
-        overflow: hidden;
-        box-shadow: 0 4px 15px rgba(151, 111, 255, 0.3);
-        transition:
-          transform 0.1s,
-          opacity 0.3s;
+      /* ═══ TAP SCENE ═══ */
+      #scene-tap {
+        align-items: center;
+        justify-content: center;
       }
-      .btn-primary:active {
-        transform: scale(0.95);
-      }
-      .btn-primary:disabled {
-        opacity: 0.35;
-        pointer-events: none;
-        box-shadow: none;
-      }
-      .btn-primary.pulse-active {
-        animation: btn-pulse-glow 1.5s ease-in-out infinite;
-      }
-      @keyframes btn-pulse-glow {
-        0%,
-        100% {
-          box-shadow: 0 4px 15px rgba(151, 111, 255, 0.3);
-        }
-        50% {
-          box-shadow:
-            0 4px 30px rgba(151, 111, 255, 0.6),
-            0 0 20px rgba(228, 106, 206, 0.3);
-        }
-      }
-      .btn-shine {
+      .tap-area {
         position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(255, 255, 255, 0.25),
-          transparent
-        );
-        animation: shine-move 2.5s ease-in-out infinite;
-      }
-      @keyframes shine-move {
-        0% {
-          left: -100%;
-        }
-        50%,
-        100% {
-          left: 100%;
-        }
-      }
-
-      .particle {
-        position: fixed;
-        pointer-events: none;
-        z-index: 50;
-        border-radius: 50%;
-        will-change: transform, opacity;
-        animation: p-fly 0.6s ease-out forwards;
-      }
-      @keyframes p-fly {
-        0% {
-          opacity: 1;
-          transform: translate(0, 0) scale(1);
-        }
-        100% {
-          opacity: 0;
-          transform: translate(var(--dx), var(--dy)) scale(0);
-        }
-      }
-      .tap-effect {
-        position: fixed;
-        font-size: 22px;
-        font-weight: 900;
-        color: #976fff;
-        pointer-events: none;
-        z-index: 150;
-        will-change: transform, opacity;
-        animation: tap-fly 0.5s ease-out forwards;
-      }
-      @keyframes tap-fly {
-        0% {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-        100% {
-          opacity: 0;
-          transform: translateY(-50px) scale(1.2);
-        }
-      }
-
-      .sheet-overlay {
-        position: fixed;
         inset: 0;
-        z-index: 200;
         display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        touch-action: manipulation;
       }
-      .sheet-bg {
+      .tap-sticker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        will-change: transform;
+      }
+      .tap-emoji {
+        font-size: 55px;
+      }
+      .tap-bottom {
         position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.4);
-      }
-      .sheet {
-        position: relative;
-        z-index: 1;
-        background: #fff;
-        border-radius: 20px 20px 0 0;
-        padding: 10px 24px max(34px, env(safe-area-inset-bottom));
-        max-height: 85vh;
-        overflow-y: auto;
+        bottom: max(60px, calc(40px + var(--safe-bot)));
+        left: 0;
+        right: 0;
         text-align: center;
+        opacity: 0;
+      }
+      .tap-label {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: 1px;
+      }
+      .tap-bar-wrap {
+        margin-top: 6px;
+      }
+      .tap-bar {
+        width: 140px;
+        height: 5px;
+        background: var(--line3);
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 0 auto 4px;
+      }
+      .tap-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 3px;
+        transition: width 0.15s;
+      }
+      .tap-fill.gold {
+        background: linear-gradient(90deg, #ffd700, #ffa500);
+      }
+      .tap-fill.purple {
+        background: linear-gradient(90deg, var(--blue), var(--purple));
+      }
+      .tap-count {
+        font-size: 12px;
+        color: var(--text3);
+        font-weight: 600;
+      }
+
+      /* ═══ DONE SCENE ═══ */
+      #scene-done {
+        align-items: center;
+        justify-content: center;
+        padding: 20px 24px max(24px, var(--safe-bot));
+        overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
-      .sheet-handle {
-        width: 36px;
-        height: 4px;
-        border-radius: 2px;
-        background: #ddd;
-        margin: 0 auto 18px;
-      }
-
-      .prize-label {
-        font-size: 18px;
-        color: #888;
-        font-weight: 600;
-        letter-spacing: 1px;
-        margin-bottom: 6px;
-      }
-      .prize-sticker {
-        width: 130px;
-        height: 130px;
-        margin: 0 auto 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .prize-name {
-        font-size: 22px;
-        font-weight: 800;
-        color: #333;
-        margin-bottom: 10px;
-      }
-      .claim-countdown-wrap {
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 10px;
-      }
-      #claim-cd {
-        font-size: 42px;
-        font-weight: 900;
-        color: #976fff;
-        line-height: 1;
-      }
-
-      .sub-desc {
-        font-size: 14px;
-        color: #666;
-        margin-bottom: 12px;
-        line-height: 1.5;
-      }
-      .sub-sticker {
-        width: 80px;
-        height: 80px;
-        margin: 0 auto 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .sub-prize-name {
-        font-size: 18px;
-        font-weight: 700;
-        color: #333;
-        margin-bottom: 14px;
-      }
-      .sub-progress {
-        font-size: 13px;
-        color: #976fff;
-        font-weight: 700;
-        margin-bottom: 12px;
-      }
-      .channel-list {
-        list-style: none;
-        margin-bottom: 20px;
-      }
-      .channel-item {
-        display: flex;
-        align-items: center;
-        padding: 10px 0;
-        border-bottom: 1px solid #f0f0f0;
-      }
-      .channel-item:last-child {
-        border-bottom: none;
-      }
-      .channel-avatar {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        background: #e0e0e0;
-        margin-right: 12px;
-        flex-shrink: 0;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        color: #999;
-      }
-      .channel-avatar img {
+      .done-wrap {
         width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        object-fit: cover;
+        max-width: 380px;
+        text-align: center;
       }
-      .channel-info {
-        flex: 1;
-        text-align: left;
-        min-width: 0;
-      }
-      .channel-name {
-        font-size: 14px;
-        font-weight: 600;
-        color: #333;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .channel-sub-btn {
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: 600;
-        color: #fff;
-        background: #3390ec;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        flex-shrink: 0;
-        margin-left: 10px;
-      }
-      .channel-sub-btn.done {
-        background: #4caf50;
-        pointer-events: none;
-      }
-
-      .final-sticker {
+      .done-sticker {
         width: 80px;
         height: 80px;
-        margin: 0 auto 4px;
+        margin: 0 auto 6px;
         display: flex;
         align-items: center;
         justify-content: center;
       }
-      .final-prize-name {
+      .done-prize {
         font-size: 20px;
         font-weight: 800;
-        color: #333;
+        color: var(--text);
         margin-bottom: 14px;
       }
       .timer-card {
-        background: linear-gradient(135deg, #f8f9ff, #f0ecff);
+        background: var(--card-bg);
         border-radius: 16px;
         padding: 20px;
         margin-bottom: 14px;
@@ -557,33 +347,32 @@
         font-family: "Orbitron", sans-serif;
         font-size: 28px;
         font-weight: 900;
-        color: #333;
+        color: var(--text);
         letter-spacing: 2px;
         line-height: 1;
       }
       .timer-time.done {
-        color: #4caf50;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--green);
+        font-family: inherit;
         font-size: 20px;
         letter-spacing: 0;
         font-weight: 800;
       }
-      .timer-speed-pill {
+      .timer-pill {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        background: linear-gradient(135deg, #6b93ff, #976fff);
+        background: linear-gradient(135deg, var(--blue), var(--purple));
         color: #fff;
         font-weight: 800;
         padding: 5px 11px;
         border-radius: 20px;
         font-size: 12px;
-        flex-shrink: 0;
       }
-      .timer-speed-pill.fast {
-        animation: pill-pulse 1s ease-in-out infinite;
+      .timer-pill.fast {
+        animation: pill-p 1s ease-in-out infinite;
       }
-      @keyframes pill-pulse {
+      @keyframes pill-p {
         0%,
         100% {
           transform: scale(1);
@@ -598,22 +387,22 @@
         justify-content: center;
         gap: 6px;
         font-size: 13px;
-        color: #888;
+        color: var(--text2);
         font-weight: 600;
       }
-      .status-dot {
+      .timer-dot {
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: #976fff;
-        animation: dot-blink 1.5s ease-in-out infinite;
+        background: var(--purple);
+        animation: dot-b 1.5s ease-in-out infinite;
         flex-shrink: 0;
       }
-      .status-dot.done {
-        background: #4caf50;
+      .timer-dot.done {
+        background: var(--green);
         animation: none;
       }
-      @keyframes dot-blink {
+      @keyframes dot-b {
         0%,
         100% {
           opacity: 0.3;
@@ -622,14 +411,13 @@
           opacity: 1;
         }
       }
-      .progress-track {
+      .timer-progress {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0;
         margin-top: 14px;
       }
-      .p-dot {
+      .tp-dot {
         width: 22px;
         height: 22px;
         border-radius: 50%;
@@ -642,53 +430,122 @@
         flex-shrink: 0;
         transition: background 0.3s;
       }
-      .p-dot.done {
-        background: #4caf50;
+      .tp-dot.done {
+        background: var(--green);
       }
-      .p-dot.active {
-        background: linear-gradient(135deg, #6b93ff, #976fff);
+      .tp-dot.active {
+        background: linear-gradient(135deg, var(--blue), var(--purple));
       }
-      .p-dot.pending {
+      .tp-dot.pending {
         background: #ddd;
       }
-      .p-line {
+      .tp-line {
         width: 40px;
         height: 3px;
         border-radius: 2px;
         transition: background 0.3s;
       }
-      .p-line.done {
-        background: #4caf50;
+      .tp-line.done {
+        background: var(--green);
       }
-      .p-line.active {
-        background: linear-gradient(90deg, #976fff, #ddd);
+      .tp-line.active {
+        background: linear-gradient(90deg, var(--purple), #ddd);
       }
-      .p-line.pending {
-        background: #e8e8e8;
+      .tp-line.pending {
+        background: var(--line3);
       }
-      .p-labels {
+      .timer-labels {
         display: flex;
         justify-content: space-between;
         margin-top: 6px;
         padding: 0 4px;
       }
-      .p-label {
+      .tp-label {
         font-size: 10px;
-        color: #aaa;
+        color: var(--text3);
         font-weight: 600;
         text-align: center;
         width: 60px;
       }
-      .p-label.active-label {
-        color: #976fff;
+      .tp-label.done-l {
+        color: var(--green);
       }
-      .p-label.done-label {
-        color: #4caf50;
+      .tp-label.active-l {
+        color: var(--purple);
       }
-      .final-actions {
+      .done-actions {
         display: flex;
         gap: 10px;
         margin-top: 4px;
+      }
+
+      /* ═══ BUTTONS ═══ */
+      .btn-primary {
+        position: relative;
+        width: 100%;
+        padding: 15px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(
+          135deg,
+          var(--blue),
+          var(--purple),
+          var(--pink)
+        );
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(151, 111, 255, 0.3);
+        transition:
+          transform 0.1s,
+          opacity 0.3s;
+      }
+      .btn-primary:active {
+        transform: scale(0.95);
+      }
+      .btn-primary:disabled {
+        opacity: 0.35;
+        pointer-events: none;
+        box-shadow: none;
+      }
+      .btn-primary.pulse {
+        animation: btn-glow 1.5s ease-in-out infinite;
+      }
+      @keyframes btn-glow {
+        0%,
+        100% {
+          box-shadow: 0 4px 15px rgba(151, 111, 255, 0.3);
+        }
+        50% {
+          box-shadow:
+            0 4px 30px rgba(151, 111, 255, 0.6),
+            0 0 20px rgba(228, 106, 206, 0.3);
+        }
+      }
+      .btn-shine {
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.25),
+          transparent
+        );
+        animation: shine 2.5s ease-in-out infinite;
+      }
+      @keyframes shine {
+        0% {
+          left: -100%;
+        }
+        50%,
+        100% {
+          left: 100%;
+        }
       }
       .btn-action {
         flex: 1;
@@ -710,7 +567,7 @@
         transform: scale(0.95);
       }
       .btn-action.purple {
-        background: linear-gradient(135deg, #6b93ff, #976fff);
+        background: linear-gradient(135deg, var(--blue), var(--purple));
         box-shadow: 0 4px 15px rgba(151, 111, 255, 0.25);
       }
       .btn-action.dark {
@@ -719,75 +576,222 @@
       }
       .btn-action-icon {
         font-size: 17px;
-        flex-shrink: 0;
       }
 
-      .speedup-header {
+      /* ═══ SHEETS ═══ */
+      .sheet-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+      }
+      .sheet-bg {
+        position: absolute;
+        inset: 0;
+        background: var(--overlay);
+      }
+      .sheet {
+        position: relative;
+        z-index: 1;
+        background: var(--sheet-bg);
+        border-radius: 20px 20px 0 0;
+        padding: 10px 24px max(34px, var(--safe-bot));
+        max-height: 85vh;
+        overflow-y: auto;
+        text-align: center;
+        -webkit-overflow-scrolling: touch;
+      }
+      .sheet-handle {
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--line2);
+        margin: 0 auto 18px;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      /* ═══ PRIZE SHEET ═══ */
+      .prize-label {
+        font-size: 18px;
+        color: var(--text2);
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+      .prize-sticker {
+        width: 130px;
+        height: 130px;
+        margin: 0 auto 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .prize-name {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--text);
+        margin-bottom: 10px;
+      }
+      .prize-cd-wrap {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+      #prize-cd {
+        font-size: 42px;
+        font-weight: 900;
+        color: var(--purple);
+        line-height: 1;
+      }
+
+      /* ═══ SUBSCRIBE SHEET ═══ */
+      .sub-sticker {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .sub-prize {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 14px;
+      }
+      .sub-desc {
+        font-size: 14px;
+        color: var(--text2);
+        margin-bottom: 12px;
+        line-height: 1.5;
+      }
+      .sub-progress {
+        font-size: 13px;
+        color: var(--purple);
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      .sub-list {
+        list-style: none;
+        margin-bottom: 20px;
+      }
+      .sub-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .sub-item:last-child {
+        border-bottom: none;
+      }
+      .sub-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: var(--line2);
+        margin-right: 12px;
+        flex-shrink: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--text3);
+      }
+      .sub-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+      .sub-info {
+        flex: 1;
+        text-align: left;
+        min-width: 0;
+      }
+      .sub-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sub-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        background: #3390ec;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        flex-shrink: 0;
+        margin-left: 10px;
+      }
+      .sub-btn.done {
+        background: var(--green);
+        pointer-events: none;
+      }
+
+      /* ═══ SPEEDUP SHEET ═══ */
+      .su-header {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
         margin-bottom: 6px;
       }
-      .header-icon {
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        flex-shrink: 0;
-      }
-      .speedup-title {
+      .su-title {
         font-size: 18px;
         font-weight: 800;
-        color: #333;
+        color: var(--text);
       }
-      .speedup-desc {
+      .su-desc {
         font-size: 13px;
-        color: #888;
+        color: var(--text2);
         line-height: 1.5;
         margin-bottom: 18px;
       }
-      .speedup-current {
+      .su-stats {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 12px;
-        background: #f8f9fa;
+        background: var(--bg2);
         border-radius: 14px;
         padding: 14px;
         margin-bottom: 20px;
       }
-      .speedup-stat {
-        text-align: center;
-      }
-      .speedup-stat-val {
+      .su-stat-val {
         font-size: 26px;
         font-weight: 900;
-        color: #333;
+        color: var(--text);
         line-height: 1;
       }
-      .speedup-stat-label {
+      .su-stat-label {
         font-size: 11px;
-        color: #999;
+        color: var(--text3);
         margin-top: 4px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
-      .speedup-divider {
+      .su-divider {
         width: 1px;
         height: 40px;
-        background: #e0e0e0;
-      }
-      .ref-progress {
-        margin-bottom: 20px;
+        background: var(--line2);
       }
       .ref-track {
         position: relative;
         height: 8px;
-        background: #e8e8e8;
+        background: var(--line3);
         border-radius: 4px;
         margin: 10px 14px 52px;
       }
@@ -796,27 +800,26 @@
         top: 0;
         left: 0;
         height: 100%;
-        background: linear-gradient(90deg, #6b93ff, #976fff);
+        background: linear-gradient(90deg, var(--blue), var(--purple));
         border-radius: 4px;
-        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: width 0.6s;
       }
-      .ref-milestone {
+      .ref-ms {
         position: absolute;
         top: -6px;
         width: 20px;
         height: 20px;
         border-radius: 50%;
         background: #d0d0d0;
-        border: 3px solid #fff;
+        border: 3px solid var(--bg);
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
         transform: translateX(-50%);
-        transition: background 0.3s;
         z-index: 2;
       }
-      .ref-milestone.reached {
-        background: linear-gradient(135deg, #6b93ff, #976fff);
+      .ref-ms.on {
+        background: linear-gradient(135deg, var(--blue), var(--purple));
       }
-      .ref-milestone-info {
+      .ref-ms-info {
         position: absolute;
         top: 24px;
         left: 50%;
@@ -824,21 +827,19 @@
         text-align: center;
         white-space: nowrap;
       }
-      .ref-milestone-count {
+      .ref-ms-count {
         font-size: 11px;
         font-weight: 700;
-        color: #555;
+        color: var(--text2);
       }
-      .ref-milestone-speed {
+      .ref-ms-speed {
         font-size: 10px;
-        color: #aaa;
+        color: var(--text3);
         font-weight: 600;
       }
-      .ref-milestone.reached .ref-milestone-count {
-        color: #976fff;
-      }
-      .ref-milestone.reached .ref-milestone-speed {
-        color: #976fff;
+      .ref-ms.on .ref-ms-count,
+      .ref-ms.on .ref-ms-speed {
+        color: var(--purple);
       }
       .btn-share {
         width: 100%;
@@ -850,7 +851,6 @@
         border: none;
         border-radius: 14px;
         cursor: pointer;
-        transition: transform 0.1s;
         box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);
         display: flex;
         align-items: center;
@@ -860,19 +860,16 @@
       .btn-share:active {
         transform: scale(0.95);
       }
-      .share-icon {
-        font-size: 16px;
-      }
       .ref-hint {
         font-size: 12px;
-        color: #aaa;
+        color: var(--text3);
         margin-top: 10px;
         line-height: 1.4;
       }
-      .btn-back-small {
+      .btn-back {
         background: none;
         border: none;
-        color: #999;
+        color: var(--text3);
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
@@ -880,11 +877,12 @@
         padding: 8px;
       }
 
+      /* ═══ STARS MODAL ═══ */
       .modal-fs {
         position: fixed;
         inset: 0;
-        background: #fff;
-        z-index: 210;
+        background: var(--bg);
+        z-index: 200;
         display: flex;
         flex-direction: column;
       }
@@ -893,49 +891,43 @@
         align-items: center;
         justify-content: space-between;
         padding: 16px 20px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--line);
         flex-shrink: 0;
       }
       .modal-fs-title {
         font-size: 17px;
         font-weight: 700;
-        color: #333;
+        color: var(--text);
         display: flex;
         align-items: center;
         gap: 6px;
-      }
-      .header-icon-inline {
-        font-size: 17px;
       }
       .modal-fs-close {
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        background: #f0f0f0;
+        background: var(--bg2);
         border: none;
         font-size: 16px;
-        color: #999;
+        color: var(--text3);
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-      }
-      .modal-fs-close:active {
-        background: #e0e0e0;
       }
       .modal-fs-body {
         flex: 1;
         overflow-y: auto;
         padding: 20px;
         font-size: 15px;
-        color: #444;
+        color: var(--text2);
         line-height: 1.7;
         white-space: pre-wrap;
         word-wrap: break-word;
       }
       .modal-fs-body:empty::after {
         content: "Загрузка...";
-        color: #ccc;
+        color: var(--text3);
       }
       .btn-admin-edit {
         position: fixed;
@@ -944,7 +936,7 @@
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #6b93ff, #976fff);
+        background: linear-gradient(135deg, var(--blue), var(--purple));
         border: none;
         font-size: 20px;
         box-shadow: 0 4px 20px rgba(151, 111, 255, 0.4);
@@ -963,7 +955,7 @@
       .stars-textarea {
         flex: 1;
         width: 100%;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--line2);
         border-radius: 14px;
         padding: 14px;
         font-size: 15px;
@@ -971,16 +963,16 @@
         resize: none;
         line-height: 1.6;
         outline: none;
-        transition: border-color 0.2s;
+        background: var(--bg);
+        color: var(--text);
       }
       .stars-textarea:focus {
-        border-color: #976fff;
+        border-color: var(--purple);
       }
       .stars-edit-btns {
         display: flex;
         gap: 10px;
         margin-top: 12px;
-        flex-shrink: 0;
       }
       .btn-save {
         flex: 1;
@@ -998,102 +990,200 @@
         padding: 14px;
         font-size: 15px;
         font-weight: 600;
-        color: #666;
-        background: #f0f0f0;
+        color: var(--text2);
+        background: var(--bg2);
         border: none;
         border-radius: 12px;
         cursor: pointer;
       }
+
+      /* ═══ FX ═══ */
+      #flash {
+        position: fixed;
+        inset: 0;
+        background: #fff;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      #edge-glow {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 3;
+        opacity: 0;
+        transition: opacity 0.5s;
+        background: radial-gradient(
+          ellipse at center,
+          transparent 35%,
+          var(--glow, rgba(255, 215, 0, 0.35)) 100%
+        );
+      }
+      #edge-glow.on {
+        opacity: 1;
+        animation: glow-p 2s ease-in-out infinite;
+      }
+      @keyframes glow-p {
+        0%,
+        100% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        z-index: 9999;
+        transition: transform 0.3s;
+        pointer-events: none;
+        color: #fff;
+      }
+      .toast.error {
+        background: var(--red);
+      }
+      .toast.success {
+        background: var(--green);
+      }
+      .toast.show {
+        transform: translateX(-50%) translateY(0);
+      }
+      .particle {
+        position: fixed;
+        pointer-events: none;
+        z-index: 50;
+        border-radius: 50%;
+        will-change: transform, opacity;
+        animation: p-fly 0.6s ease-out forwards;
+      }
+      @keyframes p-fly {
+        0% {
+          opacity: 1;
+          transform: translate(0, 0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(var(--dx), var(--dy)) scale(0);
+        }
+      }
+      .tap-fx {
+        position: fixed;
+        font-size: 22px;
+        font-weight: 900;
+        color: var(--purple);
+        pointer-events: none;
+        z-index: 150;
+        will-change: transform, opacity;
+        animation: t-fly 0.5s ease-out forwards;
+      }
+      @keyframes t-fly {
+        0% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-50px) scale(1.2);
+        }
+      }
+
+      /* ═══ REDUCED MOTION ═══ */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+        .particle,
+        .tap-fx {
+          display: none !important;
+        }
+      }
     </style>
   </head>
   <body>
-    <div id="loading-screen">
-      <div class="loading-spinner"></div>
-      <p class="loading-text">Загрузка...</p>
+    <!-- ═══ SCENES ═══ -->
+    <div id="scene-loading" class="scene active">
+      <div class="loader"></div>
+      <p class="loader-text">Загрузка...</p>
     </div>
-    <div id="flash"></div>
-    <div id="edge-glow"></div>
-    <div id="toast" class="toast"></div>
 
-    <div id="draw-scene" class="hidden">
-      <div id="draw-title">Нарисуй звезду ⭐</div>
-      <div id="draw-subtitle">и получи свой приз</div>
-      <div id="attempt-counter"></div>
-      <div id="score-display"></div>
-      <div id="score-hint"></div>
-      <div id="canvas-wrap">
-        <canvas id="draw-canvas"></canvas>
-        <button id="btn-reset" title="Сброс">↻</button>
+    <div id="scene-draw" class="scene">
+      <div class="draw-header">
+        <div class="draw-title">Нарисуй звезду ⭐</div>
+        <div class="draw-sub">и получи свой приз</div>
+        <div class="draw-attempts" id="draw-attempts"></div>
       </div>
-      <button id="btn-submit" class="btn-primary" disabled>
-        <span>Готово</span><span class="btn-shine"></span>
-      </button>
-    </div>
-
-    <div id="tap-scene" class="hidden"></div>
-
-    <div id="modal-prize" class="sheet-overlay hidden">
-      <div class="sheet-bg"></div>
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="prize-label">ВАМ ВЫПАЛО:</div>
-        <div id="modal-prize-sticker" class="prize-sticker"></div>
-        <p id="modal-prize-name" class="prize-name"></p>
-        <div class="claim-countdown-wrap"><div id="claim-cd"></div></div>
-        <button id="btn-claim" class="btn-primary" disabled>
-          <span>ЗАБРАТЬ</span><span class="btn-shine"></span>
+      <div class="draw-score">
+        <div class="draw-score-val" id="score-val"></div>
+        <div class="draw-score-hint" id="score-hint"></div>
+      </div>
+      <div class="draw-canvas-area">
+        <div id="canvas-wrap">
+          <canvas id="draw-canvas"></canvas>
+          <button id="btn-reset" aria-label="Сброс">↻</button>
+        </div>
+      </div>
+      <div class="draw-submit">
+        <button id="btn-submit" class="btn-primary" disabled>
+          <span>Готово</span><span class="btn-shine"></span>
         </button>
       </div>
     </div>
 
-    <div id="modal-subscribe" class="sheet-overlay hidden">
-      <div class="sheet-bg"></div>
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div id="sub-sticker" class="sub-sticker"></div>
-        <p id="sub-prize-name" class="sub-prize-name"></p>
-        <p class="sub-desc">
-          Чтобы получить приз, подпишитесь на&nbsp;наших спонсоров:
-        </p>
-        <div id="sub-progress" class="sub-progress"></div>
-        <ul id="channel-list" class="channel-list"></ul>
-        <button id="btn-check-sub" class="btn-primary">
-          <span>Проверить подписку</span><span class="btn-shine"></span>
-        </button>
+    <div id="scene-tap" class="scene">
+      <div class="tap-area" id="tap-area">
+        <div class="tap-sticker" id="tap-sticker">
+          <div class="tap-emoji" id="tap-emoji">❓</div>
+        </div>
+      </div>
+      <div class="tap-bottom" id="tap-bottom">
+        <div class="tap-label">Тапай! 👆</div>
+        <div class="tap-bar-wrap">
+          <div class="tap-bar"><div class="tap-fill" id="tap-fill"></div></div>
+          <span class="tap-count" id="tap-count">0 / 10</span>
+        </div>
       </div>
     </div>
 
-    <div id="modal-final" class="sheet-overlay hidden">
-      <div class="sheet-bg"></div>
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div id="final-sticker" class="final-sticker"></div>
-        <p id="final-prize-name" class="final-prize-name"></p>
+    <div id="scene-done" class="scene">
+      <div class="done-wrap">
+        <div class="done-sticker" id="done-sticker"></div>
+        <p class="done-prize" id="done-prize"></p>
         <div class="timer-card">
           <div class="timer-main">
-            <div id="timer-time" class="timer-time">24:00:00</div>
-            <div id="speed-pill" class="timer-speed-pill">
-              <span>⚡</span><span id="speed-text">x1</span>
+            <div class="timer-time" id="timer-time">24:00:00</div>
+            <div class="timer-pill" id="timer-pill">
+              <span>⚡</span><span id="timer-speed">x1</span>
             </div>
           </div>
           <div class="timer-status">
-            <div id="status-dot" class="status-dot"></div>
-            <span id="status-text">Подготавливаем приз...</span>
+            <div class="timer-dot" id="timer-dot"></div>
+            <span id="timer-text">Подготавливаем приз...</span>
           </div>
-          <div class="progress-track">
-            <div id="pd-1" class="p-dot done">✓</div>
-            <div id="pl-1" class="p-line done"></div>
-            <div id="pd-2" class="p-dot active">2</div>
-            <div id="pl-2" class="p-line active"></div>
-            <div id="pd-3" class="p-dot pending">3</div>
+          <div class="timer-progress">
+            <div id="tp1" class="tp-dot done">✓</div>
+            <div id="tl1" class="tp-line done"></div>
+            <div id="tp2" class="tp-dot active">2</div>
+            <div id="tl2" class="tp-line active"></div>
+            <div id="tp3" class="tp-dot pending">3</div>
           </div>
-          <div class="p-labels">
-            <div id="plbl-1" class="p-label done-label">Получен</div>
-            <div id="plbl-2" class="p-label active-label">Обработка</div>
-            <div id="plbl-3" class="p-label">Выдача</div>
+          <div class="timer-labels">
+            <div id="tlbl1" class="tp-label done-l">Получен</div>
+            <div id="tlbl2" class="tp-label active-l">Обработка</div>
+            <div id="tlbl3" class="tp-label">Выдача</div>
           </div>
         </div>
-        <div class="final-actions">
+        <div class="done-actions">
           <button id="btn-speedup" class="btn-action purple">
             <span class="btn-action-icon">🚀</span><span>Ускорить</span>
           </button>
@@ -1104,85 +1194,125 @@
       </div>
     </div>
 
-    <div id="modal-speedup" class="sheet-overlay hidden">
+    <!-- ═══ SHEETS ═══ -->
+    <div id="sheet-prize" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="speedup-header">
-          <div class="header-icon">🚀</div>
-          <div class="speedup-title">Ускорить вывод</div>
-        </div>
-        <p class="speedup-desc">
-          Пригласи друзей — каждые 2 друга ускоряют таймер вдвое! Друг
-          засчитывается когда получит свой подарок.
+        <div class="prize-label">ВАМ ВЫПАЛО:</div>
+        <div class="prize-sticker" id="prize-sticker"></div>
+        <p class="prize-name" id="prize-name"></p>
+        <div class="prize-cd-wrap"><div id="prize-cd"></div></div>
+        <button id="btn-claim" class="btn-primary" disabled>
+          <span>ЗАБРАТЬ</span><span class="btn-shine"></span>
+        </button>
+      </div>
+    </div>
+
+    <div id="sheet-sub" class="sheet-overlay hidden">
+      <div class="sheet-bg"></div>
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sub-sticker" id="sub-sticker"></div>
+        <p class="sub-prize" id="sub-prize"></p>
+        <p class="sub-desc">
+          Чтобы получить приз, подпишитесь на&nbsp;наших спонсоров:
         </p>
-        <div class="speedup-current">
-          <div class="speedup-stat">
-            <div id="su-ref-count" class="speedup-stat-val">0</div>
-            <div class="speedup-stat-label">Друзей</div>
+        <div class="sub-progress" id="sub-progress"></div>
+        <ul class="sub-list" id="sub-list"></ul>
+        <button id="btn-check-sub" class="btn-primary">
+          <span>Проверить подписку</span><span class="btn-shine"></span>
+        </button>
+      </div>
+    </div>
+
+    <div id="sheet-speed" class="sheet-overlay hidden">
+      <div class="sheet-bg"></div>
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="su-header">
+          <span style="font-size: 22px">🚀</span>
+          <div class="su-title">Ускорить вывод</div>
+        </div>
+        <p class="su-desc">
+          Пригласи друзей — каждые 2 друга ускоряют таймер вдвое!
+        </p>
+        <div class="su-stats">
+          <div style="text-align: center">
+            <div class="su-stat-val" id="su-refs">0</div>
+            <div class="su-stat-label">Друзей</div>
           </div>
-          <div class="speedup-divider"></div>
-          <div class="speedup-stat">
-            <div id="su-speed" class="speedup-stat-val">x1</div>
-            <div class="speedup-stat-label">Скорость</div>
+          <div class="su-divider"></div>
+          <div style="text-align: center">
+            <div class="su-stat-val" id="su-speed">x1</div>
+            <div class="su-stat-label">Скорость</div>
           </div>
         </div>
-        <div class="ref-progress">
+        <div style="margin-bottom: 20px">
           <div class="ref-track">
-            <div id="ref-fill" class="ref-fill" style="width: 0%"></div>
-            <div class="ref-milestone" id="ms-2" style="left: 25%">
-              <div class="ref-milestone-info">
-                <div class="ref-milestone-count">2</div>
-                <div class="ref-milestone-speed">x2</div>
+            <div class="ref-fill" id="ref-fill" style="width: 0"></div>
+            <div class="ref-ms" id="ms2" style="left: 25%">
+              <div class="ref-ms-info">
+                <div class="ref-ms-count">2</div>
+                <div class="ref-ms-speed">x2</div>
               </div>
             </div>
-            <div class="ref-milestone" id="ms-4" style="left: 50%">
-              <div class="ref-milestone-info">
-                <div class="ref-milestone-count">4</div>
-                <div class="ref-milestone-speed">x4</div>
+            <div class="ref-ms" id="ms4" style="left: 50%">
+              <div class="ref-ms-info">
+                <div class="ref-ms-count">4</div>
+                <div class="ref-ms-speed">x4</div>
               </div>
             </div>
-            <div class="ref-milestone" id="ms-6" style="left: 75%">
-              <div class="ref-milestone-info">
-                <div class="ref-milestone-count">6</div>
-                <div class="ref-milestone-speed">x8</div>
+            <div class="ref-ms" id="ms6" style="left: 75%">
+              <div class="ref-ms-info">
+                <div class="ref-ms-count">6</div>
+                <div class="ref-ms-speed">x8</div>
               </div>
             </div>
-            <div class="ref-milestone" id="ms-8" style="left: 100%">
-              <div class="ref-milestone-info">
-                <div class="ref-milestone-count">8</div>
-                <div class="ref-milestone-speed">x16</div>
+            <div class="ref-ms" id="ms8" style="left: 100%">
+              <div class="ref-ms-info">
+                <div class="ref-ms-count">8</div>
+                <div class="ref-ms-speed">x16</div>
               </div>
             </div>
           </div>
         </div>
         <button id="btn-share" class="btn-share">
-          <span class="share-icon">📤</span><span>Пригласить друга</span>
+          <span>📤</span><span>Пригласить друга</span>
         </button>
         <p class="ref-hint">
           Ваша реферальная ссылка будет прикреплена автоматически
         </p>
-        <button id="btn-back-speedup" class="btn-back-small">← Назад</button>
+        <button id="btn-back-speed" class="btn-back">← Назад</button>
       </div>
     </div>
 
     <div id="modal-stars" class="modal-fs hidden">
       <div class="modal-fs-header">
-        <span class="modal-fs-title"
-          ><span class="header-icon-inline">⭐</span>Заработать звёзды</span
+        <span class="modal-fs-title">⭐ Заработать звёзды</span>
+        <button
+          id="btn-close-stars"
+          class="modal-fs-close"
+          aria-label="Закрыть"
         >
-        <button id="btn-close-stars" class="modal-fs-close">✕</button>
+          ✕
+        </button>
       </div>
       <div id="stars-content" class="modal-fs-body"></div>
-      <div id="stars-edit-wrap" class="stars-edit-wrap hidden">
-        <textarea id="stars-textarea" class="stars-textarea"></textarea>
+      <div id="stars-edit" class="stars-edit-wrap hidden">
+        <textarea id="stars-ta" class="stars-textarea"></textarea>
         <div class="stars-edit-btns">
-          <button id="btn-save-stars" class="btn-save">💾 Сохранить</button>
-          <button id="btn-cancel-edit" class="btn-cancel">Отмена</button>
+          <button id="btn-save-stars" class="btn-save">💾 Сохранить</button
+          ><button id="btn-cancel-edit" class="btn-cancel">Отмена</button>
         </div>
       </div>
       <button id="btn-edit-stars" class="btn-admin-edit hidden">✏️</button>
     </div>
+
+    <!-- ═══ UTILITIES ═══ -->
+    <div id="flash"></div>
+    <div id="edge-glow"></div>
+    <div id="toast" class="toast"></div>
 
     <script
       defer
@@ -1217,457 +1347,331 @@
       });
 
       function startApp() {
-        /* ═══════════════════════════════
-       CONSTANTS & CONFIG
-       ═══════════════════════════════ */
-        const CONFIG = {
-          API_BASE: "/api",
-          BOT_USERNAME: "fawtfbot",
-          MAX_TAPS: 10,
-          TIMER_DURATION_SEC: 86400,
-          SCORE_THRESHOLD: 80,
-          PARTICLE_POOL_SIZE: 24,
-          TAP_FX_POOL_SIZE: 6,
-          STAR_GRID_SIZE: 64,
-          MAX_DPR: 2,
-          MAX_CANVAS_SIZE: 400,
-          MIN_CANVAS_SIZE: 180,
-          MIN_STROKE_POINTS: 10,
-          MAX_STROKE_POINTS: 2000,
-          API_RETRIES: 3,
-          API_RETRY_DELAY_MS: 1000,
-          LOTTIE_QUALITY: 2,
-          DEBUG: false,
+        /* ═══ CONFIG ═══ */
+        const API = "/api",
+          BOT = "fawtfbot",
+          MAX_TAPS = 10,
+          T_SEC = 86400,
+          THRESHOLD = 80;
+        const TGS = {
+          starY: "assets/star_yellow.tgs",
+          starP: "assets/star_purple.tgs",
+          modalS: "assets/modalstars.tgs",
+          modalP: "assets/modalpremium.tgs",
+          rocket: "assets/rocket.tgs",
+          star: "assets/star.tgs",
+          lightning: "assets/lightning.tgs",
+          check: "assets/true.tgs",
+          invite: "assets/invite.tgs",
+        };
+        const PRIZES = {
+          stars: {
+            key: "stars",
+            name: "500 Stars",
+            tgs: TGS.starY,
+            modal: TGS.modalS,
+            glow: "rgba(255,215,0,.35)",
+            fill: "gold",
+          },
+          premium: {
+            key: "premium",
+            name: "Telegram Premium",
+            tgs: TGS.starP,
+            modal: TGS.modalP,
+            glow: "rgba(124,103,254,.35)",
+            fill: "purple",
+          },
         };
 
-        const ASSETS = {
-          TGS_STAR_YELLOW: "assets/star_yellow.tgs",
-          TGS_STAR_PURPLE: "assets/star_purple.tgs",
-          TGS_MODAL_STARS: "assets/modalstars.tgs",
-          TGS_MODAL_PREMIUM: "assets/modalpremium.tgs",
-          TGS_ROCKET: "assets/rocket.tgs",
-          TGS_STAR_ICON: "assets/star.tgs",
-          TGS_LIGHTNING: "assets/lightning.tgs",
-          TGS_CHECK: "assets/true.tgs",
-          TGS_INVITE: "assets/invite.tgs",
-        };
-
-        const PRIZE_STARS = {
-          key: "stars",
-          name: "500 Stars",
-          tgs: ASSETS.TGS_STAR_YELLOW,
-          glowColor: "rgba(255,215,0,.35)",
-          fillClass: "gold",
-        };
-
-        const PRIZE_PREMIUM = {
-          key: "premium",
-          name: "Telegram Premium",
-          tgs: ASSETS.TGS_STAR_PURPLE,
-          glowColor: "rgba(124,103,254,.35)",
-          fillClass: "purple",
-        };
-
-        /* ═══════════════════════════════
-       STATE
-       ═══════════════════════════════ */
-        let CHANNELS = [];
-        let US = null;
-        let isAdmin = false;
-        let attemptCount = 0;
+        /* ═══ STATE ═══ */
+        let CHANNELS = [],
+          US = null,
+          isAdmin = false,
+          attemptN = 0;
         const openedBots = new Set();
-        let claimedAt = null;
-        let refCount = 0;
-        let tSpeed = 1;
-        let tInt = null;
-        let wonPrize = null;
-        let appState = "loading";
-        let tapCount = 0;
-        let isCheckingSub = false;
-        let savedWrapSize = 300;
-        let strokes = [];
-        let currentStroke = null;
-        let isDrawing = false;
-        let hasDrawn = false;
-        let hapticCounter = 0;
-        let canvasSize = 0;
+        let claimedAt = null,
+          refCount = 0,
+          tSpeed = 1,
+          tInt = null;
+        let wonPrize = null,
+          appState = "loading",
+          tapN = 0,
+          isChecking = false;
+        let strokes = [],
+          curStroke = null,
+          drawing = false,
+          hasDrawn = false,
+          hapticN_ = 0,
+          cSize = 0;
         let activeLotties = [];
 
-        /* ═══════════════════════════════
-       LOGGING
-       ═══════════════════════════════ */
-        function log(...args) {
-          if (CONFIG.DEBUG) console.log("[DrawWin]", ...args);
-        }
+        /* ═══ THEME ═══ */
+        try {
+          const th = Telegram.WebApp.colorScheme;
+          if (th === "dark") {
+            document.body.classList.add("dark");
+            Telegram.WebApp.setHeaderColor("#1a1a2e");
+            Telegram.WebApp.setBackgroundColor("#1a1a2e");
+          } else {
+            Telegram.WebApp.setHeaderColor("#ffffff");
+            Telegram.WebApp.setBackgroundColor("#ffffff");
+          }
+        } catch (e) {}
 
-        /* ═══════════════════════════════
-       UTILITY FUNCTIONS
-       ═══════════════════════════════ */
+        /* ═══ UTILS ═══ */
+        const $ = (id) => document.getElementById(id);
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const haptic = (t) => {
+          try {
+            Telegram.WebApp.HapticFeedback.impactOccurred(t);
+          } catch (e) {}
+        };
+        const hapticNotif = (t) => {
+          try {
+            Telegram.WebApp.HapticFeedback.notificationOccurred(t);
+          } catch (e) {}
+        };
         function calcSpeed(r) {
           return r >= 2 ? Math.pow(2, Math.floor(r / 2)) : 1;
         }
-
-        function fmtT(s) {
+        function fmtTime(s) {
           if (s <= 0) return null;
-          const h = Math.floor(s / 3600);
-          const m = Math.floor((s % 3600) / 60);
-          const sc = Math.floor(s % 60);
-          return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sc).padStart(2, "0")}`;
+          const h = Math.floor(s / 3600),
+            m = Math.floor((s % 3600) / 60),
+            sc = Math.floor(s % 60);
+          return [h, m, sc].map((v) => String(v).padStart(2, "0")).join(":");
         }
 
-        function sleep(ms) {
-          return new Promise((r) => setTimeout(r, ms));
-        }
-
-        function haptic(t) {
-          try {
-            Telegram.WebApp.HapticFeedback.impactOccurred(t);
-          } catch (e) {
-            /* noop */
-          }
-        }
-
-        function hapticN(t) {
-          try {
-            Telegram.WebApp.HapticFeedback.notificationOccurred(t);
-          } catch (e) {
-            /* noop */
-          }
-        }
-
-        function escapeHtml(str) {
-          const div = document.createElement("div");
-          div.textContent = str;
-          return div.innerHTML;
-        }
-
-        function sanitizeUrl(url) {
-          if (!url || typeof url !== "string") return "";
-          try {
-            const parsed = new URL(url, "https://t.me");
-            if (parsed.protocol === "https:" || parsed.protocol === "http:")
-              return url;
-            return "";
-          } catch (e) {
-            return "";
-          }
-        }
-
-        /* ═══════════════════════════════
-       VALIDATION
-       ═══════════════════════════════ */
-        function validateChannels(channels) {
-          if (!Array.isArray(channels)) return [];
-          return channels
-            .filter(
-              (ch) =>
-                ch &&
-                (typeof ch.id === "number" || typeof ch.id === "string") &&
-                typeof ch.name === "string" &&
-                ch.name.length > 0 &&
-                typeof ch.link === "string" &&
-                ch.link.length > 0,
-            )
-            .map((ch) => ({
-              id: ch.id,
-              name: String(ch.name).substring(0, 100),
-              link: String(ch.link),
-              type: ch.type === "bot" ? "bot" : "channel",
-              avatar: ch.avatar ? String(ch.avatar) : null,
-            }));
-        }
-
-        /* ═══════════════════════════════
-       TELEGRAM INIT DATA
-       ═══════════════════════════════ */
-        function getInitData() {
-          try {
-            const initData = Telegram.WebApp.initData;
-            if (!initData) {
-              log("No initData — development mode?");
-              return "";
-            }
-            return initData;
-          } catch (e) {
-            log("Failed to get initData:", e);
-            return "";
-          }
-        }
-
-        /* ═══════════════════════════════
-       API WITH RETRY
-       ═══════════════════════════════ */
-        async function api(ep, body = {}) {
-          let lastError = null;
-
-          for (let attempt = 0; attempt < CONFIG.API_RETRIES; attempt++) {
-            try {
-              log("API call:", ep, "attempt:", attempt + 1);
-
-              const r = await fetch(`${CONFIG.API_BASE}/${ep}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData: getInitData(), ...body }),
-              });
-
-              if (!r.ok) {
-                const errData = await r.json().catch(() => ({}));
-                const errMsg = errData.error || `HTTP ${r.status}`;
-                log("API HTTP error:", errMsg);
-
-                // Не ретраим 4xx (кроме 429)
-                if (r.status >= 400 && r.status < 500 && r.status !== 429) {
-                  return { ok: false, error: errMsg };
-                }
-
-                lastError = errMsg;
-                if (attempt < CONFIG.API_RETRIES - 1) {
-                  await sleep(CONFIG.API_RETRY_DELAY_MS * (attempt + 1));
-                  continue;
-                }
-                return { ok: false, error: lastError };
-              }
-
-              const data = await r.json();
-              log("API response:", ep, data.ok);
-              return data;
-            } catch (e) {
-              log("API network error:", ep, e.message);
-              lastError = e.message || "network";
-
-              if (attempt < CONFIG.API_RETRIES - 1) {
-                await sleep(CONFIG.API_RETRY_DELAY_MS * (attempt + 1));
-                continue;
-              }
-            }
-          }
-
-          return { ok: false, error: lastError || "network" };
-        }
-
-        /* ═══════════════════════════════
-       TOAST
-       ═══════════════════════════════ */
-        let toastTimeout = null;
-
+        let toastTimer = null;
         function toast(t, tp = "error", ms = 3000) {
-          const el = document.getElementById("toast");
+          const el = $("toast");
           el.textContent = t;
           el.className = "toast " + tp;
-          if (toastTimeout) clearTimeout(toastTimeout);
+          if (toastTimer) clearTimeout(toastTimer);
           requestAnimationFrame(() => el.classList.add("show"));
-          toastTimeout = setTimeout(() => {
+          toastTimer = setTimeout(() => {
             el.classList.remove("show");
-            toastTimeout = null;
+            toastTimer = null;
           }, ms);
         }
 
-        /* ═══════════════════════════════
-       TIMER
-       ═══════════════════════════════ */
-        function startTimer() {
-          stopTimer();
-          updTimer();
-          tInt = setInterval(updTimer, 500);
+        /* ═══ SCENE MANAGER ═══ */
+        function showScene(id, instant = false) {
+          document.querySelectorAll(".scene").forEach((s) => {
+            if (instant) {
+              s.classList.add("instant");
+              s.classList.remove("active");
+              void s.offsetHeight;
+              s.classList.remove("instant");
+            } else s.classList.remove("active");
+          });
+          const el = $("scene-" + id);
+          if (instant) {
+            el.classList.add("instant");
+            el.classList.add("active");
+            void el.offsetHeight;
+            el.classList.remove("instant");
+          } else el.classList.add("active");
         }
 
-        function stopTimer() {
-          if (tInt) {
-            clearInterval(tInt);
-            tInt = null;
+        /* ═══ SHEET MANAGER ═══ */
+        function openSheet(id) {
+          const ov = $(id),
+            bg = ov.querySelector(".sheet-bg"),
+            sh = ov.querySelector(".sheet");
+          ov.classList.remove("hidden");
+          if (bg) {
+            gsap.set(bg, { opacity: 0 });
+            gsap.to(bg, { opacity: 1, duration: 0.25 });
+          }
+          if (sh) {
+            gsap.set(sh, { y: "100%" });
+            gsap.to(sh, { y: "0%", duration: 0.4, ease: "power3.out" });
+          }
+          updateBackBtn();
+        }
+        function closeSheet(id, cb) {
+          const ov = $(id),
+            bg = ov.querySelector(".sheet-bg"),
+            sh = ov.querySelector(".sheet");
+          if (sh) {
+            gsap.to(sh, { y: "100%", duration: 0.3, ease: "power2.in" });
+            if (bg) gsap.to(bg, { opacity: 0, duration: 0.25 });
+            gsap.delayedCall(0.35, () => {
+              ov.classList.add("hidden");
+              updateBackBtn();
+              if (cb) cb();
+            });
+          } else {
+            ov.classList.add("hidden");
+            updateBackBtn();
+            if (cb) cb();
           }
         }
 
-        function updTimer() {
-          if (!claimedAt) return;
-
-          const elapsed = (Date.now() / 1000 - claimedAt) * tSpeed;
-          const rem = Math.max(0, CONFIG.TIMER_DURATION_SEC - elapsed);
-          const t = fmtT(rem);
-
-          const timeEl = document.getElementById("timer-time");
-          const speedEl = document.getElementById("speed-text");
-          const pillEl = document.getElementById("speed-pill");
-          const dotEl = document.getElementById("status-dot");
-          const statusEl = document.getElementById("status-text");
-
-          if (speedEl) speedEl.textContent = "x" + tSpeed;
-
-          if (pillEl) {
-            if (tSpeed > 1) pillEl.classList.add("fast");
-            else pillEl.classList.remove("fast");
-          }
-
-          if (!t) {
-            // Таймер завершён
-            if (timeEl) {
-              timeEl.textContent = "Готово!";
-              timeEl.classList.add("done");
-            }
-            if (dotEl) dotEl.classList.add("done");
-            if (statusEl) statusEl.textContent = "Приз готов к выдаче!";
-
-            const pd2 = document.getElementById("pd-2");
-            const pd3 = document.getElementById("pd-3");
-            const pl2 = document.getElementById("pl-2");
-            const plbl2 = document.getElementById("plbl-2");
-            const plbl3 = document.getElementById("plbl-3");
-
-            if (pd2) {
-              pd2.className = "p-dot done";
-              pd2.textContent = "✓";
-            }
-            if (pd3) {
-              pd3.className = "p-dot done";
-              pd3.textContent = "✓";
-            }
-            if (pl2) pl2.className = "p-line done";
-            if (plbl2) {
-              plbl2.className = "p-label done-label";
-              plbl2.textContent = "Готово";
-            }
-            if (plbl3) {
-              plbl3.className = "p-label done-label";
-              plbl3.textContent = "Выдан";
-            }
-            if (pillEl) pillEl.style.display = "none";
-
-            stopTimer();
-            return;
-          }
-
-          if (timeEl) {
-            timeEl.textContent = t;
-            timeEl.classList.remove("done");
-          }
-          if (dotEl) dotEl.classList.remove("done");
-          if (statusEl) statusEl.textContent = "Подготавливаем приз...";
+        /* ═══ BACK BUTTON ═══ */
+        function updateBackBtn() {
+          try {
+            const stars = !$("modal-stars").classList.contains("hidden");
+            const speed = !$("sheet-speed").classList.contains("hidden");
+            if (stars || speed) Telegram.WebApp.BackButton.show();
+            else Telegram.WebApp.BackButton.hide();
+          } catch (e) {}
         }
-
-        /* ═══════════════════════════════
-       TGS / LOTTIE
-       ═══════════════════════════════ */
-        const tgsCache = {};
-        const tgsStr = {};
-
         try {
-          lottie.setQuality(CONFIG.LOTTIE_QUALITY);
-        } catch (e) {
-          /* noop */
+          Telegram.WebApp.BackButton.onClick(() => {
+            if (!$("modal-stars").classList.contains("hidden"))
+              $("btn-close-stars").click();
+            else if (!$("sheet-speed").classList.contains("hidden"))
+              closeSheet("sheet-speed");
+          });
+        } catch (e) {}
+
+        /* ═══ OFFLINE ═══ */
+        window.addEventListener("offline", () =>
+          toast("Нет интернета", "error", 5000),
+        );
+        window.addEventListener("online", () =>
+          toast("Соединение восстановлено", "success"),
+        );
+
+        /* ═══ API ═══ */
+        function gID() {
+          try {
+            return Telegram.WebApp.initData;
+          } catch (e) {
+            return "";
+          }
+        }
+        async function api(ep, body = {}) {
+          for (let i = 0; i < 3; i++) {
+            try {
+              const r = await fetch(`${API}/${ep}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ initData: gID(), ...body }),
+              });
+              if (!r.ok) {
+                if (r.status >= 400 && r.status < 500 && r.status !== 429)
+                  return { ok: false };
+                if (i < 2) {
+                  await sleep(1000 * (i + 1));
+                  continue;
+                }
+                return { ok: false };
+              }
+              return await r.json();
+            } catch (e) {
+              if (i < 2) {
+                await sleep(1000 * (i + 1));
+                continue;
+              }
+              return { ok: false, error: "network" };
+            }
+          }
+          return { ok: false };
         }
 
+        /* ═══ TGS / LOTTIE ═══ */
+        const tgsC = {},
+          tgsS = {};
+        try {
+          lottie.setQuality(2);
+        } catch (e) {}
         async function loadTGS(u) {
-          if (tgsCache[u] !== undefined) return tgsCache[u];
+          if (tgsC[u] !== undefined) return tgsC[u];
           try {
             const r = await fetch(u);
-            if (!r.ok) throw new Error(`TGS fetch failed: ${r.status}`);
+            if (!r.ok) throw 0;
             const b = await r.arrayBuffer();
             const j = pako.inflate(new Uint8Array(b), { to: "string" });
-            const p = JSON.parse(j);
-            tgsCache[u] = p;
-            tgsStr[u] = j;
-            return p;
+            tgsC[u] = JSON.parse(j);
+            tgsS[u] = j;
+            return tgsC[u];
           } catch (e) {
-            log("TGS load error:", u, e.message);
-            tgsCache[u] = null;
+            tgsC[u] = null;
             return null;
           }
         }
-
         function cloneTGS(u) {
-          return tgsStr[u] ? JSON.parse(tgsStr[u]) : null;
+          return tgsS[u] ? JSON.parse(tgsS[u]) : null;
         }
-
-        function playLottie(container, tgsUrl, loop = true) {
-          // Уничтожаем старые анимации, привязанные к этому контейнеру
+        function playLottie(c, u, loop = true) {
           activeLotties = activeLotties.filter((a) => {
             try {
-              if (a.wrapper === container || a._container === container) {
+              if (a._c === c) {
                 a.destroy();
                 return false;
               }
-            } catch (e) {
-              /* noop */
-            }
+            } catch (e) {}
             return true;
           });
-
-          container.innerHTML = "";
-          const d = cloneTGS(tgsUrl);
+          c.innerHTML = "";
+          const d = cloneTGS(u);
           if (!d) return null;
-
           const a = lottie.loadAnimation({
-            container: container,
+            container: c,
             renderer: "svg",
-            loop: loop,
+            loop,
             autoplay: true,
             animationData: d,
           });
           a.setSubframe(false);
-          a._container = container; // Сохраняем ссылку для cleanup
+          a._c = c;
           activeLotties.push(a);
           return a;
         }
-
         function killLotties() {
           activeLotties.forEach((a) => {
             try {
               a.destroy();
-            } catch (e) {
-              /* noop */
-            }
+            } catch (e) {}
           });
           activeLotties = [];
         }
 
-        /* ═══════════════════════════════
-       PARTICLE SYSTEM
-       ═══════════════════════════════ */
-        const pPool = [];
-        const PC = [
-          "#6B93FF",
-          "#976FFF",
-          "#E46ACE",
-          "#FFD700",
-          "#FF6B6B",
-          "#4CAF50",
-        ];
-
-        for (let i = 0; i < CONFIG.PARTICLE_POOL_SIZE; i++) {
+        /* ═══ PARTICLES ═══ */
+        const PP = [],
+          PC = [
+            "#6B93FF",
+            "#976FFF",
+            "#E46ACE",
+            "#FFD700",
+            "#FF6B6B",
+            "#4CAF50",
+          ];
+        for (let i = 0; i < 24; i++) {
           const p = document.createElement("div");
           p.className = "particle";
           p.style.display = "none";
           document.body.appendChild(p);
-          pPool.push({ el: p, busy: false, timer: null });
+          PP.push({ el: p, busy: false, t: null });
         }
-
         function burst(x, y, n) {
           n = Math.min(n, 10);
           let u = 0;
-          for (let i = 0; i < pPool.length && u < n; i++) {
-            const s = pPool[i];
+          for (let i = 0; i < PP.length && u < n; i++) {
+            const s = PP[i];
             if (s.busy) continue;
             s.busy = true;
             u++;
-            const a = ((Math.PI * 2) / n) * u + Math.random() * 0.5;
-            const d = 30 + Math.random() * 50;
-            const sz = 3 + Math.random() * 4;
-            const el = s.el;
-            el.style.cssText = `left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;background:${PC[u % PC.length]};display:block`;
-            el.style.animation = "none";
-            void el.offsetHeight; // force reflow
-            el.style.animation = "";
-            if (s.timer) clearTimeout(s.timer);
-            s.timer = setTimeout(() => {
-              el.style.display = "none";
+            const a = ((Math.PI * 2) / n) * u + Math.random() * 0.5,
+              d = 30 + Math.random() * 50,
+              sz = 3 + Math.random() * 4;
+            s.el.style.cssText = `left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;background:${PC[u % PC.length]};display:block`;
+            s.el.style.animation = "none";
+            void s.el.offsetHeight;
+            s.el.style.animation = "";
+            if (s.t) clearTimeout(s.t);
+            s.t = setTimeout(() => {
+              s.el.style.display = "none";
               s.busy = false;
-              s.timer = null;
+              s.t = null;
             }, 600);
           }
         }
-
         function megaBurst(x, y) {
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0; i < 4; i++)
             setTimeout(
               () =>
                 burst(
@@ -1677,170 +1681,110 @@
                 ),
               i * 60,
             );
-          }
         }
-
-        /* ═══════════════════════════════
-       TAP EFFECTS
-       ═══════════════════════════════ */
-        const tFxPool = [];
-        const TFT = ["+1", "⭐", "✨", "💫", "🔥", "💎"];
-
-        for (let i = 0; i < CONFIG.TAP_FX_POOL_SIZE; i++) {
+        const TP = [],
+          TT = ["+1", "⭐", "✨", "💫", "🔥", "💎"];
+        for (let i = 0; i < 6; i++) {
           const el = document.createElement("div");
-          el.className = "tap-effect";
+          el.className = "tap-fx";
           el.style.display = "none";
           document.body.appendChild(el);
-          tFxPool.push({ el: el, busy: false, timer: null });
+          TP.push({ el, busy: false, t: null });
         }
-
         function showTapFx(x, y) {
-          for (let i = 0; i < tFxPool.length; i++) {
-            const s = tFxPool[i];
+          for (let i = 0; i < TP.length; i++) {
+            const s = TP[i];
             if (s.busy) continue;
             s.busy = true;
-            const el = s.el;
-            el.textContent = TFT[Math.floor(Math.random() * TFT.length)];
-            el.style.left = x + (Math.random() - 0.5) * 30 + "px";
-            el.style.top = y - 10 + "px";
-            el.style.display = "block";
-            el.style.animation = "none";
-            void el.offsetHeight;
-            el.style.animation = "";
-            if (s.timer) clearTimeout(s.timer);
-            s.timer = setTimeout(() => {
-              el.style.display = "none";
+            s.el.textContent = TT[~~(Math.random() * TT.length)];
+            s.el.style.left = x + (Math.random() - 0.5) * 30 + "px";
+            s.el.style.top = y - 10 + "px";
+            s.el.style.display = "block";
+            s.el.style.animation = "none";
+            void s.el.offsetHeight;
+            s.el.style.animation = "";
+            if (s.t) clearTimeout(s.t);
+            s.t = setTimeout(() => {
+              s.el.style.display = "none";
               s.busy = false;
-              s.timer = null;
+              s.t = null;
             }, 500);
             return;
           }
         }
 
-        /* ═══════════════════════════════
-       SHEET ANIMATIONS
-       ═══════════════════════════════ */
-        function openSheet(id) {
-          const ov = document.getElementById(id);
-          const bg = ov.querySelector(".sheet-bg");
-          const sh = ov.querySelector(".sheet");
-          ov.classList.remove("hidden");
-
-          if (bg) {
-            gsap.set(bg, { opacity: 0 });
-            gsap.to(bg, { opacity: 1, duration: 0.25 });
-          }
-          if (sh) {
-            gsap.set(sh, { y: "100%" });
-            gsap.to(sh, { y: "0%", duration: 0.4, ease: "power3.out" });
-          }
-        }
-
-        function closeSheet(id, cb) {
-          const ov = document.getElementById(id);
-          const bg = ov.querySelector(".sheet-bg");
-          const sh = ov.querySelector(".sheet");
-
-          if (sh) {
-            gsap.to(sh, { y: "100%", duration: 0.3, ease: "power2.in" });
-            if (bg) gsap.to(bg, { opacity: 0, duration: 0.25 });
-            gsap.delayedCall(0.35, () => {
-              ov.classList.add("hidden");
-              if (cb) cb();
-            });
-          } else {
-            ov.classList.add("hidden");
-            if (cb) cb();
-          }
-        }
-
-        /* ═══════════════════════════════
-       STAR DRAWING & SCORING
-       ═══════════════════════════════ */
-        function generateIdealStar(size) {
+        /* ═══ STAR SCORING ═══ */
+        function genIdealStar(sz) {
           const c = document.createElement("canvas");
-          c.width = c.height = size;
-          const ctx = c.getContext("2d");
-          const cx = size / 2,
-            cy = size / 2;
-          const oR = size * 0.45,
-            iR = size * 0.18;
-
-          ctx.beginPath();
+          c.width = c.height = sz;
+          const x = c.getContext("2d"),
+            cx = sz / 2,
+            cy = sz / 2,
+            oR = sz * 0.45,
+            iR = sz * 0.18;
+          x.beginPath();
           for (let i = 0; i < 10; i++) {
-            const r = i % 2 === 0 ? oR : iR;
-            const angle = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
-            const x = cx + Math.cos(angle) * r;
-            const y = cy + Math.sin(angle) * r;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+            const r = i % 2 === 0 ? oR : iR,
+              a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
+            const px = cx + Math.cos(a) * r,
+              py = cy + Math.sin(a) * r;
+            i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
           }
-          ctx.closePath();
-          ctx.strokeStyle = "#000";
-          ctx.lineWidth = Math.max(2, size * 0.05);
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.stroke();
-          return ctx.getImageData(0, 0, size, size);
+          x.closePath();
+          x.strokeStyle = "#000";
+          x.lineWidth = Math.max(2, sz * 0.05);
+          x.lineCap = "round";
+          x.lineJoin = "round";
+          x.stroke();
+          return x.getImageData(0, 0, sz, sz);
         }
-
-        function renderDrawingToGrid(drawnStrokes, size) {
+        function renderStrokes(st, sz) {
           const c = document.createElement("canvas");
-          c.width = c.height = size;
-          const ctx = c.getContext("2d");
-
-          if (!drawnStrokes.length) return ctx.getImageData(0, 0, size, size);
-
-          let minX = Infinity,
-            minY = Infinity,
-            maxX = -Infinity,
-            maxY = -Infinity;
-          for (const s of drawnStrokes) {
+          c.width = c.height = sz;
+          const x = c.getContext("2d");
+          if (!st.length) return x.getImageData(0, 0, sz, sz);
+          let mX = 1e9,
+            mY = 1e9,
+            MX = -1e9,
+            MY = -1e9;
+          for (const s of st)
             for (const p of s) {
-              if (p.x < minX) minX = p.x;
-              if (p.y < minY) minY = p.y;
-              if (p.x > maxX) maxX = p.x;
-              if (p.y > maxY) maxY = p.y;
+              if (p.x < mX) mX = p.x;
+              if (p.y < mY) mY = p.y;
+              if (p.x > MX) MX = p.x;
+              if (p.y > MY) MY = p.y;
             }
-          }
-
-          const w = maxX - minX || 1;
-          const h = maxY - minY || 1;
-          const scale = (size * 0.85) / Math.max(w, h);
-          const offX = (size - w * scale) / 2 - minX * scale;
-          const offY = (size - h * scale) / 2 - minY * scale;
-
-          ctx.strokeStyle = "#000";
-          ctx.lineWidth = Math.max(2, size * 0.05);
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-
-          for (const s of drawnStrokes) {
+          const w = MX - mX || 1,
+            h = MY - mY || 1,
+            sc = (sz * 0.85) / Math.max(w, h),
+            ox = (sz - w * sc) / 2 - mX * sc,
+            oy = (sz - h * sc) / 2 - mY * sc;
+          x.strokeStyle = "#000";
+          x.lineWidth = Math.max(2, sz * 0.05);
+          x.lineCap = "round";
+          x.lineJoin = "round";
+          for (const s of st) {
             if (s.length < 2) continue;
-            ctx.beginPath();
-            ctx.moveTo(s[0].x * scale + offX, s[0].y * scale + offY);
-            for (let i = 1; i < s.length; i++) {
-              ctx.lineTo(s[i].x * scale + offX, s[i].y * scale + offY);
-            }
-            ctx.stroke();
+            x.beginPath();
+            x.moveTo(s[0].x * sc + ox, s[0].y * sc + oy);
+            for (let i = 1; i < s.length; i++)
+              x.lineTo(s[i].x * sc + ox, s[i].y * sc + oy);
+            x.stroke();
           }
-
-          return ctx.getImageData(0, 0, size, size);
+          return x.getImageData(0, 0, sz, sz);
         }
-
-        function dilate(imgData, radius) {
-          const w = imgData.width,
-            h = imgData.height;
-          const src = new Uint8Array(w * h);
-          for (let i = 0; i < w * h; i++) {
-            src[i] = imgData.data[i * 4 + 3] > 30 ? 1 : 0;
-          }
-          const dst = new Uint8Array(w * h);
-          for (let y = 0; y < h; y++) {
+        function dilate(img, rad) {
+          const w = img.width,
+            h = img.height,
+            src = new Uint8Array(w * h),
+            dst = new Uint8Array(w * h);
+          for (let i = 0; i < w * h; i++)
+            src[i] = img.data[i * 4 + 3] > 30 ? 1 : 0;
+          for (let y = 0; y < h; y++)
             for (let x = 0; x < w; x++) {
-              let f = false;
-              for (let dy = -radius; dy <= radius && !f; dy++) {
-                for (let dx = -radius; dx <= radius && !f; dx++) {
+              let f = 0;
+              for (let dy = -rad; dy <= rad && !f; dy++)
+                for (let dx = -rad; dx <= rad && !f; dx++) {
                   const nx = x + dx,
                     ny = y + dy;
                   if (
@@ -1850,368 +1794,264 @@
                     ny < h &&
                     src[ny * w + nx]
                   )
-                    f = true;
+                    f = 1;
                 }
-              }
-              dst[y * w + x] = f ? 1 : 0;
+              dst[y * w + x] = f;
             }
-          }
           return dst;
         }
-
-        function scoreDrawing(drawnStrokes) {
-          if (!drawnStrokes.length) return 0;
-
+        function scoreDrawing(st) {
+          if (!st.length) return 0;
           let tp = 0;
-          for (const s of drawnStrokes) tp += s.length;
-          if (tp < CONFIG.MIN_STROKE_POINTS) return 0;
-
-          const SZ = CONFIG.STAR_GRID_SIZE;
-          const id = generateIdealStar(SZ);
-          const dd = renderDrawingToGrid(drawnStrokes, SZ);
-          const iDil = dilate(id, 3);
-          const dDil = dilate(dd, 3);
-          const dRaw = dilate(dd, 0);
-          const iRaw = dilate(id, 0);
-
+          for (const s of st) tp += s.length;
+          if (tp < 10) return 0;
+          const SZ = 64,
+            id = genIdealStar(SZ),
+            dd = renderStrokes(st, SZ),
+            iD = dilate(id, 3),
+            dD = dilate(dd, 3),
+            dR = dilate(dd, 0),
+            iR = dilate(id, 0);
           let ip = 0,
             cp = 0;
           for (let i = 0; i < SZ * SZ; i++) {
-            if (iRaw[i]) {
+            if (iR[i]) {
               ip++;
-              if (dDil[i]) cp++;
+              if (dD[i]) cp++;
             }
           }
-          const cov = ip > 0 ? cp / ip : 0;
-
+          const cov = ip ? cp / ip : 0;
           let dp = 0,
             pp = 0;
           for (let i = 0; i < SZ * SZ; i++) {
-            if (dRaw[i]) {
+            if (dR[i]) {
               dp++;
-              if (iDil[i]) pp++;
+              if (iD[i]) pp++;
             }
           }
-          const prec = dp > 0 ? pp / dp : 0;
-
+          const prec = dp ? pp / dp : 0;
           return Math.min(100, Math.round((cov * 0.55 + prec * 0.45) * 110));
         }
 
-        /* ═══════════════════════════════
-       CANVAS SETUP & DRAWING
-       ═══════════════════════════════ */
-        const canvasEl = document.getElementById("draw-canvas");
-        const canvasCtx = canvasEl.getContext("2d");
-        const canvasWrap = document.getElementById("canvas-wrap");
+        /* ═══ CANVAS ═══ */
+        const cvs = $("draw-canvas"),
+          ctx = cvs.getContext("2d"),
+          wrap = $("canvas-wrap");
 
-        function drawGhostStar() {
-          const sz = canvasSize;
-          const cx = sz / 2,
-            cy = sz / 2;
-          const oR = sz * 0.38,
+        function ghostStar() {
+          const sz = cSize,
+            cx = sz / 2,
+            cy = sz / 2,
+            oR = sz * 0.38,
             iR = sz * 0.15;
-
-          canvasCtx.save();
-          canvasCtx.strokeStyle = "rgba(0,0,0,0.07)";
-          canvasCtx.lineWidth = 2;
-          canvasCtx.setLineDash([6, 6]);
-          canvasCtx.lineCap = "round";
-          canvasCtx.lineJoin = "round";
-          canvasCtx.beginPath();
+          ctx.save();
+          ctx.strokeStyle = "rgba(128,128,128,0.1)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 6]);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
           for (let i = 0; i < 10; i++) {
-            const r = i % 2 === 0 ? oR : iR;
-            const angle = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
-            const x = cx + Math.cos(angle) * r;
-            const y = cy + Math.sin(angle) * r;
-            if (i === 0) canvasCtx.moveTo(x, y);
-            else canvasCtx.lineTo(x, y);
+            const r = i % 2 === 0 ? oR : iR,
+              a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
+            const x = cx + Math.cos(a) * r,
+              y = cy + Math.sin(a) * r;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
           }
-          canvasCtx.closePath();
-          canvasCtx.stroke();
-          canvasCtx.restore();
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
         }
 
         function setupCanvas() {
-          const totalH = window.innerHeight;
-          const maxW = window.innerWidth - 48;
-          const availH = totalH - 240;
-
-          canvasSize = Math.min(availH, maxW, CONFIG.MAX_CANVAS_SIZE);
-          canvasSize = Math.max(canvasSize, CONFIG.MIN_CANVAS_SIZE);
-          savedWrapSize = canvasSize;
-
-          canvasWrap.style.width = canvasSize + "px";
-          canvasWrap.style.height = canvasSize + "px";
-
-          const dpr = Math.min(window.devicePixelRatio || 1, CONFIG.MAX_DPR);
-          canvasEl.width = canvasSize * dpr;
-          canvasEl.height = canvasSize * dpr;
-          canvasEl.style.width = canvasSize + "px";
-          canvasEl.style.height = canvasSize + "px";
-
-          canvasCtx.scale(dpr, dpr);
-          canvasCtx.strokeStyle = "#000";
-          canvasCtx.lineWidth = 3;
-          canvasCtx.lineCap = "round";
-          canvasCtx.lineJoin = "round";
-          canvasCtx.imageSmoothingEnabled = false;
-
-          drawGhostStar();
+          const area = document.querySelector(".draw-canvas-area");
+          if (!area) return;
+          const r = area.getBoundingClientRect();
+          const avail = Math.min(r.width - 16, r.height - 16);
+          cSize = Math.min(Math.max(Math.floor(avail), 160), 400);
+          wrap.style.width = cSize + "px";
+          wrap.style.height = cSize + "px";
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          cvs.width = cSize * dpr;
+          cvs.height = cSize * dpr;
+          cvs.style.width = cSize + "px";
+          cvs.style.height = cSize + "px";
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.scale(dpr, dpr);
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ghostStar();
         }
 
-        function getCanvasPos(e) {
-          const rect = canvasEl.getBoundingClientRect();
-          const cx = e.touches?.[0]?.clientX ?? e.clientX ?? 0;
-          const cy = e.touches?.[0]?.clientY ?? e.clientY ?? 0;
-          return { x: cx - rect.left, y: cy - rect.top };
+        function getPos(e) {
+          const r = cvs.getBoundingClientRect();
+          return {
+            x: (e.touches?.[0]?.clientX ?? e.clientX) - r.left,
+            y: (e.touches?.[0]?.clientY ?? e.clientY) - r.top,
+          };
         }
-
-        canvasEl.addEventListener("pointerdown", (e) => {
+        cvs.addEventListener("pointerdown", (e) => {
           if (appState !== "drawing") return;
           e.preventDefault();
-          isDrawing = true;
-          const p = getCanvasPos(e);
-          currentStroke = [p];
-          canvasCtx.beginPath();
-          canvasCtx.moveTo(p.x, p.y);
-          hapticCounter = 0;
+          drawing = true;
+          const p = getPos(e);
+          curStroke = [p];
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          hapticN_ = 0;
         });
-
-        canvasEl.addEventListener("pointermove", (e) => {
-          if (!isDrawing || !currentStroke) return;
+        cvs.addEventListener("pointermove", (e) => {
+          if (!drawing || !curStroke) return;
           e.preventDefault();
-
-          // Ограничиваем количество точек
-          if (currentStroke.length >= CONFIG.MAX_STROKE_POINTS) return;
-
-          const p = getCanvasPos(e);
-          currentStroke.push(p);
-
-          canvasCtx.strokeStyle = "#000";
-          canvasCtx.lineWidth = 3;
-          canvasCtx.setLineDash([]);
-          canvasCtx.lineTo(p.x, p.y);
-          canvasCtx.stroke();
-          canvasCtx.beginPath();
-          canvasCtx.moveTo(p.x, p.y);
-
-          hapticCounter++;
-          if (hapticCounter % 3 === 0) haptic("light");
-
+          if (curStroke.length >= 2000) return;
+          const p = getPos(e);
+          curStroke.push(p);
+          ctx.strokeStyle = document.body.classList.contains("dark")
+            ? "#ddd"
+            : "#000";
+          ctx.lineWidth = 3;
+          ctx.setLineDash([]);
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          hapticN_++;
+          if (hapticN_ % 3 === 0) haptic("light");
           if (!hasDrawn) {
             hasDrawn = true;
-            const btn = document.getElementById("btn-submit");
-            btn.disabled = false;
-            btn.classList.add("pulse-active");
+            $("btn-submit").disabled = false;
+            $("btn-submit").classList.add("pulse");
           }
         });
-
         function endStroke() {
-          if (!isDrawing || !currentStroke) return;
-          isDrawing = false;
-          if (currentStroke.length > 1) strokes.push(currentStroke);
-          currentStroke = null;
+          if (!drawing || !curStroke) return;
+          drawing = false;
+          if (curStroke.length > 1) strokes.push(curStroke);
+          curStroke = null;
         }
-
-        canvasEl.addEventListener("pointerup", endStroke);
-        canvasEl.addEventListener("pointercancel", endStroke);
-        canvasEl.addEventListener("pointerleave", endStroke);
+        cvs.addEventListener("pointerup", endStroke);
+        cvs.addEventListener("pointercancel", endStroke);
+        cvs.addEventListener("pointerleave", endStroke);
 
         function clearCanvas() {
-          const dpr = Math.min(window.devicePixelRatio || 1, CONFIG.MAX_DPR);
-          canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
-          canvasCtx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-          canvasCtx.scale(dpr, dpr);
-          canvasCtx.strokeStyle = "#000";
-          canvasCtx.lineWidth = 3;
-          canvasCtx.lineCap = "round";
-          canvasCtx.lineJoin = "round";
-          canvasCtx.setLineDash([]);
-
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, cvs.width, cvs.height);
+          ctx.scale(dpr, dpr);
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.setLineDash([]);
           strokes = [];
-          currentStroke = null;
+          curStroke = null;
           hasDrawn = false;
-
-          const btn = document.getElementById("btn-submit");
-          btn.disabled = true;
-          btn.classList.remove("pulse-active");
-
-          document.getElementById("score-display").style.opacity = "0";
-          document.getElementById("score-hint").style.opacity = "0";
-          canvasWrap.classList.remove("border-success", "border-fail");
-
-          drawGhostStar();
+          $("btn-submit").disabled = true;
+          $("btn-submit").classList.remove("pulse");
+          $("score-val").style.opacity = "0";
+          $("score-hint").style.opacity = "0";
+          wrap.classList.remove("ok", "fail");
+          ghostStar();
         }
-
-        document.getElementById("btn-reset").addEventListener("click", () => {
+        $("btn-reset").addEventListener("click", () => {
           if (appState !== "drawing") return;
           clearCanvas();
           haptic("medium");
         });
 
-        function updateAttemptCounter() {
-          const el = document.getElementById("attempt-counter");
-          el.textContent =
-            attemptCount > 0 ? "Попытка " + (attemptCount + 1) : "";
-        }
-
-        /* ═══════════════════════════════
-       SUBMIT DRAWING
-       ═══════════════════════════════ */
-        document
-          .getElementById("btn-submit")
-          .addEventListener("click", async () => {
-            if (appState !== "drawing") return;
-            appState = "evaluating";
-            endStroke();
-
-            const btn = document.getElementById("btn-submit");
-            btn.disabled = true;
-            btn.classList.remove("pulse-active");
-            haptic("medium");
-
-            const score = scoreDrawing(strokes);
-            const scoreEl = document.getElementById("score-display");
-            const hintEl = document.getElementById("score-hint");
-
-            const obj = { val: 0 };
-            gsap.to(obj, {
-              val: score,
-              duration: 0.8,
-              ease: "power2.out",
-              onUpdate() {
-                scoreEl.textContent = Math.round(obj.val) + "%";
-              },
-            });
-            gsap.set(scoreEl, { scale: 0.5 });
-            gsap.to(scoreEl, {
-              opacity: 1,
-              scale: 1,
-              duration: 0.4,
-              ease: "back.out(2)",
-            });
-
-            await sleep(900);
-
-            if (score >= CONFIG.SCORE_THRESHOLD) {
-              scoreEl.style.color = "#4CAF50";
-              hintEl.textContent = "Отлично!";
-              hintEl.style.color = "#4CAF50";
-              gsap.to(hintEl, { opacity: 1, duration: 0.3 });
-              canvasWrap.classList.add("border-success");
-              hapticN("success");
-
-              wonPrize = Math.random() < 0.5 ? PRIZE_STARS : PRIZE_PREMIUM;
-
-              // Fire-and-forget, но с retry
-              api("check-subscription", {
-                action: "save_roll",
-                prize_key: wonPrize.key,
-                prize_name: wonPrize.name,
-              }).catch((e) => log("save_roll error:", e));
-
-              await sleep(800);
-              appState = "transforming";
-              await animateTransform();
-            } else {
-              scoreEl.style.color = "#FF4757";
-              hintEl.textContent = "Попробуйте ещё раз";
-              hintEl.style.color = "#FF4757";
-              gsap.to(hintEl, { opacity: 1, duration: 0.3 });
-              canvasWrap.classList.add("border-fail");
-              hapticN("error");
-              attemptCount++;
-              updateAttemptCounter();
-
-              await sleep(1500);
-              clearCanvas();
-              appState = "drawing";
-            }
-          });
-
-        /* ═══════════════════════════════
-       TAP HANDLER
-       ═══════════════════════════════ */
-        async function handleTap(e) {
-          if (appState !== "tapping") return;
-          e.preventDefault();
-          tapCount++;
+        /* ═══ SUBMIT ═══ */
+        $("btn-submit").addEventListener("click", async () => {
+          if (appState !== "drawing") return;
+          appState = "evaluating";
+          endStroke();
+          const btn = $("btn-submit");
+          btn.disabled = true;
+          btn.classList.remove("pulse");
           haptic("medium");
+          const score = scoreDrawing(strokes),
+            sv = $("score-val"),
+            sh = $("score-hint");
+          const o = { v: 0 };
+          gsap.to(o, {
+            v: score,
+            duration: 0.8,
+            ease: "power2.out",
+            onUpdate() {
+              sv.textContent = Math.round(o.v) + "%";
+            },
+          });
+          gsap.set(sv, { scale: 0.5 });
+          gsap.to(sv, {
+            opacity: 1,
+            scale: 1,
+            duration: 0.4,
+            ease: "back.out(2)",
+          });
+          await sleep(900);
+          if (score >= THRESHOLD) {
+            sv.style.color = "var(--green)";
+            sh.textContent = "Отлично!";
+            sh.style.color = "var(--green)";
+            gsap.to(sh, { opacity: 1, duration: 0.3 });
+            wrap.classList.add("ok");
+            hapticNotif("success");
+            wonPrize = Math.random() < 0.5 ? PRIZES.stars : PRIZES.premium;
+            api("check-subscription", {
+              action: "save_roll",
+              prize_key: wonPrize.key,
+              prize_name: wonPrize.name,
+            }).catch(() => {});
+            await sleep(800);
+            appState = "transforming";
+            await doTransform();
+          } else {
+            sv.style.color = "var(--red)";
+            sh.textContent = "Попробуйте ещё раз";
+            sh.style.color = "var(--red)";
+            gsap.to(sh, { opacity: 1, duration: 0.3 });
+            wrap.classList.add("fail");
+            hapticNotif("error");
+            attemptN++;
+            $("draw-attempts").textContent = "Попытка " + (attemptN + 1);
+            await sleep(1500);
+            clearCanvas();
+            appState = "drawing";
+          }
+        });
 
-          const sc = document.getElementById("sticker-container");
-          const progress = tapCount / CONFIG.MAX_TAPS;
-          const newSize = savedWrapSize * (0.3 + 0.55 * progress);
-
-          gsap.to(sc, {
-            width: newSize,
-            height: newSize,
+        /* ═══ TRANSFORM → TAP ═══ */
+        async function doTransform() {
+          const wrapR = wrap.getBoundingClientRect(),
+            cx = wrapR.left + wrapR.width / 2,
+            cy = wrapR.top + wrapR.height / 2;
+          gsap.to([".draw-submit", "#btn-reset", ".draw-score"], {
+            opacity: 0,
             duration: 0.3,
-            ease: "back.out(1.5)",
           });
 
-          const tapFill = document.getElementById("tap-fill");
-          if (tapFill) tapFill.style.width = progress * 100 + "%";
-
-          const tapCounter = document.getElementById("tap-counter");
-          if (tapCounter)
-            tapCounter.textContent = tapCount + " / " + CONFIG.MAX_TAPS;
-
-          showTapFx(e.clientX, e.clientY);
-          burst(e.clientX, e.clientY, 6);
-
-          if (tapCount >= CONFIG.MAX_TAPS) {
-            appState = "revealing";
-            await sleep(300);
-            await revealPrize();
-          }
-        }
-
-        /* ═══════════════════════════════
-       TRANSFORM ANIMATION
-       ═══════════════════════════════ */
-        async function animateTransform() {
-          const canvas = document.getElementById("draw-canvas");
-          const flash = document.getElementById("flash");
-          const wrapRect = canvasWrap.getBoundingClientRect();
-          const cx = wrapRect.left + wrapRect.width / 2;
-          const cy = wrapRect.top + wrapRect.height / 2;
-
-          gsap.to(
-            [
-              "#btn-submit",
-              "#btn-reset",
-              "#score-display",
-              "#score-hint",
-              "#attempt-counter",
-            ],
-            {
-              opacity: 0,
-              duration: 0.3,
-            },
-          );
-
-          // Shake effect
-          let shakeAmp = 0;
-          let shakeRunning = true;
-          const shakeLoop = () => {
-            if (!shakeRunning || shakeAmp <= 0) return;
-            canvas.style.transform = `translate(${(Math.random() - 0.5) * shakeAmp * 2}px,${(Math.random() - 0.5) * shakeAmp * 2}px)`;
-            requestAnimationFrame(shakeLoop);
+          // Shake canvas
+          let amp = 0,
+            run = true;
+          const shake = () => {
+            if (!run) return;
+            cvs.style.transform = `translate(${(Math.random() - 0.5) * amp * 2}px,${(Math.random() - 0.5) * amp * 2}px)`;
+            requestAnimationFrame(shake);
           };
-          shakeAmp = 2;
-          shakeLoop();
+          amp = 2;
+          shake();
           gsap.to(
             { v: 2 },
             {
               v: 12,
               duration: 1,
               ease: "power2.in",
-              onUpdate: function () {
-                shakeAmp = this.targets()[0].v;
+              onUpdate() {
+                amp = this.targets()[0].v;
               },
             },
           );
-
           for (let i = 0; i < 6; i++) {
             await sleep(150);
             haptic("light");
@@ -2219,89 +2059,35 @@
 
           haptic("heavy");
           megaBurst(cx, cy);
-          gsap.to(canvas, {
+          gsap.to(cvs, {
             scale: 0,
             opacity: 0,
             rotation: 90,
             duration: 0.35,
             ease: "power3.in",
           });
-          shakeRunning = false;
-          shakeAmp = 0;
-          canvas.style.transform = "";
-
+          run = false;
+          amp = 0;
+          cvs.style.transform = "";
           await sleep(400);
-          canvas.style.display = "none";
-          canvasWrap.classList.remove("border-success");
 
-          /* Build tap scene */
-          const suspenseSize = Math.round(savedWrapSize * 0.35);
-          const tapScene = document.getElementById("tap-scene");
+          // Setup tap scene elements
+          const sticker = $("tap-sticker"),
+            emoji = $("tap-emoji"),
+            bottom = $("tap-bottom");
+          const startSz = Math.round(cSize * 0.35);
+          sticker.style.width = startSz + "px";
+          sticker.style.height = startSz + "px";
+          emoji.textContent = "❓";
+          emoji.style.display = "";
+          bottom.style.opacity = "0";
+          $("tap-fill").style.width = "0%";
+          $("tap-fill").className = "tap-fill";
+          $("tap-count").textContent = "0 / " + MAX_TAPS;
 
-          // Безопасное построение DOM
-          tapScene.innerHTML = "";
-
-          const stickerTapArea = document.createElement("div");
-          stickerTapArea.id = "sticker-tap-area";
-          stickerTapArea.style.cssText =
-            "cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;position:absolute;inset:0";
-
-          const stickerContainer = document.createElement("div");
-          stickerContainer.id = "sticker-container";
-          stickerContainer.style.cssText = `width:${suspenseSize}px;height:${suspenseSize}px;display:flex;align-items:center;justify-content:center`;
-
-          const suspenseText = document.createElement("div");
-          suspenseText.id = "suspense-text";
-          suspenseText.style.cssText =
-            "font-size:55px;display:flex;align-items:center;justify-content:center;width:100%;height:100%";
-          suspenseText.textContent = "❓";
-
-          stickerContainer.appendChild(suspenseText);
-          stickerTapArea.appendChild(stickerContainer);
-
-          const tapUiInner = document.createElement("div");
-          tapUiInner.id = "tap-ui-inner";
-          tapUiInner.style.cssText =
-            "text-align:center;position:absolute;bottom:60px;left:0;right:0;display:none";
-
-          const tapTitle = document.createElement("div");
-          tapTitle.style.cssText =
-            "font-size:18px;font-weight:700;color:#333;letter-spacing:1px";
-          tapTitle.textContent = "Тапай! 👆";
-
-          const tapProgressWrap = document.createElement("div");
-          tapProgressWrap.style.cssText = "margin-top:6px";
-
-          const tapTrack = document.createElement("div");
-          tapTrack.style.cssText =
-            "width:140px;height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin:0 auto 4px";
-
-          const tapFillEl = document.createElement("div");
-          tapFillEl.id = "tap-fill";
-          tapFillEl.style.cssText =
-            "height:100%;width:0%;border-radius:3px;transition:width .15s ease-out";
-
-          const tapCounterEl = document.createElement("span");
-          tapCounterEl.id = "tap-counter";
-          tapCounterEl.style.cssText =
-            "font-size:12px;color:#999;font-weight:600";
-          tapCounterEl.textContent = "0 / " + CONFIG.MAX_TAPS;
-
-          tapTrack.appendChild(tapFillEl);
-          tapProgressWrap.appendChild(tapTrack);
-          tapProgressWrap.appendChild(tapCounterEl);
-          tapUiInner.appendChild(tapTitle);
-          tapUiInner.appendChild(tapProgressWrap);
-
-          tapScene.appendChild(stickerTapArea);
-          tapScene.appendChild(tapUiInner);
-          tapScene.classList.remove("hidden");
-
-          gsap.from(stickerContainer, {
-            scale: 0,
-            duration: 0.3,
-            ease: "back.out(2)",
-          });
+          // Switch scene instantly
+          showScene("tap", true);
+          gsap.from(sticker, { scale: 0, duration: 0.3, ease: "back.out(2)" });
           await sleep(200);
 
           // Drumroll
@@ -2318,70 +2104,66 @@
             "💎",
           ];
           let idx = 0,
-            spd = 280;
-          let drumAmp = 0;
-          let drumRunning = true;
-
-          const drumLoop = () => {
-            if (!drumRunning || drumAmp <= 0) return;
-            tapScene.style.transform = `translate(${(Math.random() - 0.5) * drumAmp * 2}px,${(Math.random() - 0.5) * drumAmp * 2}px)`;
-            requestAnimationFrame(drumLoop);
+            spd = 280,
+            dAmp = 0,
+            dRun = true;
+          const dShake = () => {
+            if (!dRun) return;
+            $("scene-tap").style.transform =
+              `translate(${(Math.random() - 0.5) * dAmp * 2}px,${(Math.random() - 0.5) * dAmp * 2}px)`;
+            requestAnimationFrame(dShake);
           };
-          drumAmp = 1;
-          drumLoop();
+          dAmp = 1;
+          dShake();
           gsap.to(
             { v: 1 },
             {
               v: 10,
               duration: 2.5,
               ease: "power2.in",
-              onUpdate: function () {
-                drumAmp = this.targets()[0].v;
+              onUpdate() {
+                dAmp = this.targets()[0].v;
               },
             },
           );
-
-          for (let round = 0; round < 18; round++) {
-            suspenseText.textContent = emojis[idx % emojis.length];
+          for (let r = 0; r < 18; r++) {
+            emoji.textContent = emojis[idx++ % emojis.length];
             gsap.fromTo(
-              suspenseText,
+              emoji,
               { scale: 1.3, opacity: 0.6 },
               { scale: 1, opacity: 1, duration: Math.min(spd / 1000, 0.15) },
             );
-            idx++;
             haptic("light");
             await sleep(spd);
             spd = Math.max(50, spd - 14);
           }
-
-          drumRunning = false;
-          drumAmp = 0;
-          tapScene.style.transform = "";
+          dRun = false;
+          dAmp = 0;
+          $("scene-tap").style.transform = "";
 
           // Flash reveal
+          const flash = $("flash");
           flash.style.transition = "opacity .08s";
           flash.style.opacity = "1";
           haptic("heavy");
-          hapticN("success");
+          hapticNotif("success");
           await sleep(100);
 
-          stickerContainer.innerHTML = "";
-          const startSize = Math.round(savedWrapSize * 0.3);
-          stickerContainer.style.width = startSize + "px";
-          stickerContainer.style.height = startSize + "px";
+          // Show sticker
+          emoji.style.display = "none";
+          sticker.style.width = Math.round(cSize * 0.3) + "px";
+          sticker.style.height = Math.round(cSize * 0.3) + "px";
           await loadTGS(wonPrize.tgs);
-          playLottie(stickerContainer, wonPrize.tgs);
-
+          playLottie(sticker, wonPrize.tgs);
           gsap.fromTo(
-            stickerContainer,
+            sticker,
             { scale: 2, opacity: 0 },
             { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.8)" },
           );
 
-          const glowEl = document.getElementById("edge-glow");
-          glowEl.style.setProperty("--glow-color", wonPrize.glowColor);
-          glowEl.classList.add("active");
-
+          const glow = $("edge-glow");
+          glow.style.setProperty("--glow", wonPrize.glow);
+          glow.classList.add("on");
           confetti({ particleCount: 70, spread: 80, origin: { y: 0.4 } });
           confetti({
             particleCount: 35,
@@ -2394,616 +2176,498 @@
             origin: { y: 0.6, x: 0.85 },
           });
           megaBurst(cx, cy);
-
           flash.style.transition = "opacity .6s";
           flash.style.opacity = "0";
           await sleep(1000);
 
-          tapUiInner.style.display = "block";
-          gsap.from(tapUiInner, { opacity: 0, y: 10, duration: 0.3 });
-
-          tapFillEl.classList.remove("gold", "purple");
-          tapFillEl.classList.add(wonPrize.fillClass);
-
+          // Show tap UI
+          bottom.style.opacity = "1";
+          gsap.from(bottom, { opacity: 0, y: 10, duration: 0.3 });
+          $("tap-fill").classList.add(wonPrize.fill);
           appState = "tapping";
-          tapCount = 0;
-
-          const tapCounterRefresh = document.getElementById("tap-counter");
-          if (tapCounterRefresh)
-            tapCounterRefresh.textContent = "0 / " + CONFIG.MAX_TAPS;
-          tapFillEl.style.width = "0%";
-
-          stickerTapArea.addEventListener("pointerdown", handleTap);
+          tapN = 0;
         }
 
-        /* ═══════════════════════════════
-       REVEAL PRIZE
-       ═══════════════════════════════ */
-        async function revealPrize() {
+        /* ═══ TAP ═══ */
+        $("tap-area").addEventListener("pointerdown", async (e) => {
+          if (appState !== "tapping") return;
+          e.preventDefault();
+          tapN++;
+          haptic("medium");
+          const st = $("tap-sticker"),
+            progress = tapN / MAX_TAPS;
+          gsap.to(st, {
+            width: cSize * (0.3 + 0.55 * progress),
+            height: cSize * (0.3 + 0.55 * progress),
+            duration: 0.3,
+            ease: "back.out(1.5)",
+          });
+          $("tap-fill").style.width = progress * 100 + "%";
+          $("tap-count").textContent = tapN + " / " + MAX_TAPS;
+          showTapFx(e.clientX, e.clientY);
+          burst(e.clientX, e.clientY, 6);
+          if (tapN >= MAX_TAPS) {
+            appState = "revealing";
+            await sleep(300);
+            await doReveal();
+          }
+        });
+
+        async function doReveal() {
           confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } });
-          hapticN("success");
+          hapticNotif("success");
           await sleep(600);
-
-          const ui = document.getElementById("tap-ui-inner");
-          if (ui) gsap.to(ui, { opacity: 0, duration: 0.2 });
+          gsap.to($("tap-bottom"), { opacity: 0, duration: 0.2 });
           await sleep(300);
-
-          document.getElementById("tap-scene").classList.add("hidden");
-          showPrizeModal();
+          showPrize();
         }
 
-        /* ═══════════════════════════════
-       PRIZE MODAL
-       ═══════════════════════════════ */
-        async function showPrizeModal() {
+        /* ═══ PRIZE SHEET ═══ */
+        async function showPrize() {
           killLotties();
-          document.getElementById("modal-prize-name").textContent =
-            wonPrize.name;
-
-          const stickerUrl =
-            wonPrize.key === "stars"
-              ? ASSETS.TGS_MODAL_STARS
-              : ASSETS.TGS_MODAL_PREMIUM;
-          playLottie(
-            document.getElementById("modal-prize-sticker"),
-            stickerUrl,
-            false,
-          );
-
-          const claimBtn = document.getElementById("btn-claim");
-          claimBtn.disabled = true;
-          claimBtn.classList.remove("pulse-active");
-
-          const cd = document.getElementById("claim-cd");
-          cd.textContent = "";
-
-          openSheet("modal-prize");
+          $("prize-name").textContent = wonPrize.name;
+          playLottie($("prize-sticker"), wonPrize.modal, false);
+          $("btn-claim").disabled = true;
+          $("btn-claim").classList.remove("pulse");
+          $("prize-cd").textContent = "";
+          openSheet("sheet-prize");
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           appState = "prize";
-
           for (let i = 3; i >= 1; i--) {
-            cd.textContent = i;
-            cd.style.color = "#976FFF";
+            $("prize-cd").textContent = i;
+            $("prize-cd").style.color = "var(--purple)";
             gsap.fromTo(
-              cd,
+              $("prize-cd"),
               { scale: 1.4, opacity: 0 },
               { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" },
             );
             haptic("light");
             await sleep(1000);
           }
-
-          cd.textContent = "ГОТОВО!";
-          cd.style.color = "#4CAF50";
+          $("prize-cd").textContent = "ГОТОВО!";
+          $("prize-cd").style.color = "var(--green)";
           gsap.fromTo(
-            cd,
+            $("prize-cd"),
             { scale: 1.4, opacity: 0 },
             { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2)" },
           );
-          hapticN("success");
+          hapticNotif("success");
           await sleep(1200);
-
-          claimBtn.disabled = false;
-          claimBtn.classList.add("pulse-active");
+          $("btn-claim").disabled = false;
+          $("btn-claim").classList.add("pulse");
         }
-
-        document.getElementById("btn-claim").addEventListener("click", () => {
-          document.getElementById("btn-claim").classList.remove("pulse-active");
-          closeSheet("modal-prize", showSub);
-          document.getElementById("edge-glow").classList.remove("active");
+        $("btn-claim").addEventListener("click", () => {
+          $("btn-claim").classList.remove("pulse");
+          $("edge-glow").classList.remove("on");
+          closeSheet("sheet-prize", showSub);
         });
 
-        /* ═══════════════════════════════
-       SUBSCRIBE MODAL (XSS-safe)
-       ═══════════════════════════════ */
-        function updateSubProgress() {
-          const done = document.querySelectorAll(
-            ".channel-sub-btn.done",
-          ).length;
-          const el = document.getElementById("sub-progress");
-          el.textContent = `Подписано ${done} из ${CHANNELS.length}`;
+        /* ═══ SUBSCRIBE SHEET ═══ */
+        function updateSubProg() {
+          const d = document.querySelectorAll(".sub-btn.done").length;
+          $("sub-progress").textContent =
+            `Подписано ${d} из ${CHANNELS.length}`;
         }
 
         function showSub() {
           killLotties();
-
           const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
-          document.getElementById("sub-prize-name").textContent = pN;
-
+          $("sub-prize").textContent = pN;
           const tU = wonPrize
-            ? wonPrize.key === "stars"
-              ? ASSETS.TGS_MODAL_STARS
-              : ASSETS.TGS_MODAL_PREMIUM
+            ? wonPrize.modal
             : US?.prize_key === "stars"
-              ? ASSETS.TGS_MODAL_STARS
-              : ASSETS.TGS_MODAL_PREMIUM;
-          if (tU) playLottie(document.getElementById("sub-sticker"), tU, false);
+              ? TGS.modalS
+              : TGS.modalP;
+          if (tU) playLottie($("sub-sticker"), tU, false);
 
-          const list = document.getElementById("channel-list");
+          const list = $("sub-list");
           list.innerHTML = "";
-
           CHANNELS.forEach((ch) => {
-            const isBot = ch.type === "bot";
-
-            const li = document.createElement("li");
-            li.className = "channel-item";
-
-            // Avatar
-            const avatar = document.createElement("div");
-            avatar.className = "channel-avatar";
+            const isBot = ch.type === "bot",
+              li = document.createElement("li");
+            li.className = "sub-item";
+            const av = document.createElement("div");
+            av.className = "sub-avatar";
             if (ch.avatar) {
               const img = document.createElement("img");
-              img.src = sanitizeUrl(ch.avatar) || "";
+              img.src = ch.avatar;
               img.loading = "lazy";
-              img.alt = "";
               img.onerror = function () {
-                this.style.display = "none";
-                avatar.textContent = isBot ? "🤖" : "📢";
+                this.remove();
+                av.textContent = isBot ? "🤖" : "📢";
               };
-              avatar.appendChild(img);
-            } else {
-              avatar.textContent = isBot ? "🤖" : "📢";
-            }
-
-            // Info
+              av.appendChild(img);
+            } else av.textContent = isBot ? "🤖" : "📢";
             const info = document.createElement("div");
-            info.className = "channel-info";
-            const nameEl = document.createElement("div");
-            nameEl.className = "channel-name";
-            nameEl.textContent = ch.name; // Безопасно — textContent
-            info.appendChild(nameEl);
-
-            // Button
+            info.className = "sub-info";
+            const nm = document.createElement("div");
+            nm.className = "sub-name";
+            nm.textContent = ch.name;
+            info.appendChild(nm);
             const btn = document.createElement("button");
-            btn.className = "channel-sub-btn";
+            btn.className = "sub-btn";
             btn.textContent = isBot ? "Открыть" : "Подписаться";
-            btn.dataset.link = ch.link;
-            btn.dataset.type = ch.type || "channel";
-            btn.dataset.id = String(ch.id);
-
             btn.addEventListener("click", (e) => {
               e.stopPropagation();
-              const link = btn.dataset.link;
-              const type = btn.dataset.type;
-              const id = btn.dataset.id;
-
               try {
-                if (link && link.includes("t.me/")) {
-                  Telegram.WebApp.openTelegramLink(link);
-                } else {
-                  Telegram.WebApp.openLink(link);
-                }
+                if (ch.link && ch.link.includes("t.me/"))
+                  Telegram.WebApp.openTelegramLink(ch.link);
+                else Telegram.WebApp.openLink(ch.link);
               } catch (err) {
-                window.open(link, "_blank");
+                window.open(ch.link, "_blank");
               }
-
-              if (type === "bot" && !openedBots.has(id)) {
-                openedBots.add(id);
+              if (isBot && !openedBots.has(ch.id)) {
+                openedBots.add(ch.id);
                 btn.textContent = "✓";
                 btn.classList.add("done");
-                updateSubProgress();
+                updateSubProg();
                 api("check-subscription", {
                   action: "mark_bot_opened",
-                  bot_id: id,
-                }).catch((e) => log("mark_bot_opened error:", e));
+                  bot_id: ch.id,
+                }).catch(() => {});
               }
             });
-
-            li.appendChild(avatar);
-            li.appendChild(info);
-            li.appendChild(btn);
+            li.append(av, info, btn);
             list.appendChild(li);
           });
-
-          updateSubProgress();
-          openSheet("modal-subscribe");
+          updateSubProg();
+          openSheet("sheet-sub");
           appState = "subscribe";
         }
 
-        /* ═══════════════════════════════
-       CHECK SUBSCRIPTION
-       ═══════════════════════════════ */
-        document
-          .getElementById("btn-check-sub")
-          .addEventListener("click", async () => {
-            if (isCheckingSub) return;
-            isCheckingSub = true;
-
-            const btn = document.getElementById("btn-check-sub");
-            btn.disabled = true;
-            const btnSpan = btn.querySelector("span");
-            if (btnSpan) btnSpan.textContent = "Проверяем...";
-
-            try {
-              const res = await api("check-subscription", { action: "check" });
-
-              if (res.all_subscribed) {
-                document.querySelectorAll(".channel-sub-btn").forEach((b) => {
-                  b.textContent = "✓";
-                  b.classList.add("done");
-                });
-                updateSubProgress();
-                toast("Подписки подтверждены!", "success");
-
-                refCount = res.referral_count || 0;
-                tSpeed = calcSpeed(refCount);
-
-                await sleep(800);
-                closeSheet("modal-subscribe", showFinal);
-              } else {
-                const items = document.querySelectorAll(".channel-item");
-                CHANNELS.forEach((ch, i) => {
-                  const b = items[i]?.querySelector(".channel-sub-btn");
-                  if (b) {
-                    const isB = ch.type === "bot";
-                    if (res.results && res.results[String(ch.id)]) {
-                      b.textContent = "✓";
-                      b.classList.add("done");
-                    } else {
-                      b.textContent = isB ? "Открыть" : "Подписаться";
-                      b.classList.remove("done");
-                    }
+        $("btn-check-sub").addEventListener("click", async () => {
+          if (isChecking) return;
+          isChecking = true;
+          const btn = $("btn-check-sub");
+          btn.disabled = true;
+          btn.querySelector("span").textContent = "Проверяем...";
+          try {
+            const res = await api("check-subscription", { action: "check" });
+            if (res.all_subscribed) {
+              document.querySelectorAll(".sub-btn").forEach((b) => {
+                b.textContent = "✓";
+                b.classList.add("done");
+              });
+              updateSubProg();
+              toast("Подписки подтверждены!", "success");
+              refCount = res.referral_count || 0;
+              tSpeed = calcSpeed(refCount);
+              await sleep(800);
+              closeSheet("sheet-sub", goToDone);
+            } else {
+              const items = document.querySelectorAll(".sub-item");
+              CHANNELS.forEach((ch, i) => {
+                const b = items[i]?.querySelector(".sub-btn");
+                if (b) {
+                  const isB = ch.type === "bot";
+                  if (res.results?.[String(ch.id)]) {
+                    b.textContent = "✓";
+                    b.classList.add("done");
+                  } else {
+                    b.textContent = isB ? "Открыть" : "Подписаться";
+                    b.classList.remove("done");
                   }
-                });
-                updateSubProgress();
-                toast("Подпишитесь на все каналы!");
-                hapticN("error");
-              }
-            } catch (e) {
-              log("check-subscription error:", e);
-              toast("Ошибка, попробуйте позже");
-            } finally {
-              btn.disabled = false;
-              if (btnSpan) btnSpan.textContent = "Проверить подписку";
-              isCheckingSub = false;
+                }
+              });
+              updateSubProg();
+              toast("Подпишитесь на все каналы!");
+              hapticNotif("error");
             }
-          });
+          } catch (e) {
+            toast("Ошибка, попробуйте позже");
+          } finally {
+            btn.disabled = false;
+            btn.querySelector("span").textContent = "Проверить подписку";
+            isChecking = false;
+          }
+        });
 
-        /* ═══════════════════════════════
-       FINAL MODAL
-       ═══════════════════════════════ */
-        function showFinal() {
+        /* ═══ DONE SCENE ═══ */
+        function goToDone() {
           killLotties();
-
           const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
-          document.getElementById("final-prize-name").textContent = pN;
-
+          $("done-prize").textContent = pN;
           const tU = wonPrize
-            ? wonPrize.key === "stars"
-              ? ASSETS.TGS_MODAL_STARS
-              : ASSETS.TGS_MODAL_PREMIUM
+            ? wonPrize.modal
             : US?.prize_key === "stars"
-              ? ASSETS.TGS_MODAL_STARS
-              : ASSETS.TGS_MODAL_PREMIUM;
-          if (tU)
-            playLottie(document.getElementById("final-sticker"), tU, false);
-
+              ? TGS.modalS
+              : TGS.modalP;
+          if (tU) playLottie($("done-sticker"), tU, false);
           if (!claimedAt) claimedAt = US?.claimed_at || Date.now() / 1000;
           refCount = US?.referral_count || refCount || 0;
           tSpeed = calcSpeed(refCount);
-
-          // Reset progress dots
-          const pd2 = document.getElementById("pd-2");
-          const pd3 = document.getElementById("pd-3");
-          const pl2 = document.getElementById("pl-2");
-          const plbl2 = document.getElementById("plbl-2");
-          const plbl3 = document.getElementById("plbl-3");
-
-          if (pd2) {
-            pd2.className = "p-dot active";
-            pd2.textContent = "2";
-          }
-          if (pd3) {
-            pd3.className = "p-dot pending";
-            pd3.textContent = "3";
-          }
-          if (pl2) pl2.className = "p-line active";
-          if (plbl2) {
-            plbl2.className = "p-label active-label";
-            plbl2.textContent = "Обработка";
-          }
-          if (plbl3) {
-            plbl3.className = "p-label";
-            plbl3.textContent = "Выдача";
-          }
-
+          resetTimerDots();
           startTimer();
-          openSheet("modal-final");
+          showScene("done");
           confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
+          // Animate in
+          gsap.from(".done-wrap", {
+            y: 40,
+            opacity: 0,
+            duration: 0.5,
+            ease: "back.out(1.5)",
+          });
           appState = "final";
         }
 
-        /* ═══════════════════════════════
-       SPEEDUP MODAL
-       ═══════════════════════════════ */
-        document.getElementById("btn-speedup").addEventListener("click", () => {
-          document.getElementById("su-ref-count").textContent = refCount;
-          document.getElementById("su-speed").textContent = "x" + tSpeed;
-
-          [2, 4, 6, 8].forEach((n) => {
-            const ms = document.getElementById("ms-" + n);
-            if (ms) {
-              if (refCount >= n) ms.classList.add("reached");
-              else ms.classList.remove("reached");
-            }
-          });
-
-          const refFill = document.getElementById("ref-fill");
-          if (refFill)
-            refFill.style.width = Math.min(100, (refCount / 8) * 100) + "%";
-
-          openSheet("modal-speedup");
-        });
-
-        document
-          .getElementById("btn-back-speedup")
-          .addEventListener("click", () => {
-            closeSheet("modal-speedup");
-          });
-
-        document.getElementById("btn-share").addEventListener("click", () => {
-          const uid = US?.telegram_id || "";
-          const link = `https://t.me/${CONFIG.BOT_USERNAME}?start=ref_${uid}`;
-          const text = "🎁 Нарисуй звезду и получи приз!";
-          const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
-
-          try {
-            Telegram.WebApp.openTelegramLink(shareUrl);
-          } catch (e) {
-            window.open(shareUrl, "_blank");
-          }
-        });
-
-        /* ═══════════════════════════════
-       EARN STARS MODAL
-       ═══════════════════════════════ */
-        document
-          .getElementById("btn-earn-stars")
-          .addEventListener("click", async () => {
-            const modal = document.getElementById("modal-stars");
-            modal.classList.remove("hidden");
-
-            const content = document.getElementById("stars-content");
-            if (!content.innerHTML) {
-              try {
-                const res = await api("get-stars-content");
-                if (res.ok && res.content) {
-                  // Безопасная вставка — если контент HTML, используем DOMParser
-                  const parser = new DOMParser();
-                  const doc = parser.parseFromString(res.content, "text/html");
-                  content.textContent = "";
-
-                  // Копируем только безопасные узлы
-                  const body = doc.body;
-                  while (body.firstChild) {
-                    content.appendChild(
-                      document.importNode(body.firstChild, true),
-                    );
-                  }
-                } else {
-                  content.textContent = "Контент загружается...";
-                }
-              } catch (e) {
-                content.textContent = "Ошибка загрузки";
-              }
-            }
-
-            if (isAdmin) {
-              document
-                .getElementById("btn-edit-stars")
-                .classList.remove("hidden");
-            }
-          });
-
-        document
-          .getElementById("btn-close-stars")
-          .addEventListener("click", () => {
-            document.getElementById("modal-stars").classList.add("hidden");
-            document.getElementById("stars-edit-wrap").classList.add("hidden");
-            document.getElementById("stars-content").classList.remove("hidden");
-          });
-
-        document
-          .getElementById("btn-edit-stars")
-          .addEventListener("click", () => {
-            const c = document.getElementById("stars-content");
-            const e = document.getElementById("stars-edit-wrap");
-            document.getElementById("stars-textarea").value = c.innerText || "";
-            c.classList.add("hidden");
-            e.classList.remove("hidden");
-          });
-
-        document
-          .getElementById("btn-cancel-edit")
-          .addEventListener("click", () => {
-            document.getElementById("stars-edit-wrap").classList.add("hidden");
-            document.getElementById("stars-content").classList.remove("hidden");
-          });
-
-        document
-          .getElementById("btn-save-stars")
-          .addEventListener("click", async () => {
-            const textarea = document.getElementById("stars-textarea");
-            const contentEl = document.getElementById("stars-content");
-            const text = textarea.value;
-
-            try {
-              const res = await api("save-stars-content", { content: text });
-              if (res.ok) {
-                contentEl.textContent = text;
-                toast("Сохранено!", "success");
-              } else {
-                toast("Ошибка сохранения: " + (res.error || ""));
-              }
-            } catch (e) {
-              toast("Ошибка сохранения");
-            }
-
-            document.getElementById("stars-edit-wrap").classList.add("hidden");
-            contentEl.classList.remove("hidden");
-          });
-
-        /* ═══════════════════════════════
-       CLEANUP
-       ═══════════════════════════════ */
-        function cleanup() {
-          log("Cleanup triggered");
-          stopTimer();
-          killLotties();
-
-          if (toastTimeout) {
-            clearTimeout(toastTimeout);
-            toastTimeout = null;
-          }
-
-          // Очищаем таймеры пулов
-          pPool.forEach((p) => {
-            if (p.timer) {
-              clearTimeout(p.timer);
-              p.timer = null;
-            }
-            p.busy = false;
-          });
-          tFxPool.forEach((t) => {
-            if (t.timer) {
-              clearTimeout(t.timer);
-              t.timer = null;
-            }
-            t.busy = false;
-          });
+        function resetTimerDots() {
+          const tp2 = $("tp2"),
+            tp3 = $("tp3"),
+            tl2 = $("tl2"),
+            tlbl2 = $("tlbl2"),
+            tlbl3 = $("tlbl3");
+          tp2.className = "tp-dot active";
+          tp2.textContent = "2";
+          tp3.className = "tp-dot pending";
+          tp3.textContent = "3";
+          tl2.className = "tp-line active";
+          tlbl2.className = "tp-label active-l";
+          tlbl2.textContent = "Обработка";
+          tlbl3.className = "tp-label";
+          tlbl3.textContent = "Выдача";
         }
 
+        /* ═══ TIMER ═══ */
+        function startTimer() {
+          if (tInt) clearInterval(tInt);
+          updTimer();
+          tInt = setInterval(updTimer, 500);
+        }
+        function updTimer() {
+          if (!claimedAt) return;
+          const rem = Math.max(
+              0,
+              T_SEC - (Date.now() / 1000 - claimedAt) * tSpeed,
+            ),
+            t = fmtTime(rem);
+          const te = $("timer-time"),
+            sp = $("timer-speed"),
+            pill = $("timer-pill"),
+            dot = $("timer-dot"),
+            st = $("timer-text");
+          if (sp) sp.textContent = "x" + tSpeed;
+          if (pill) {
+            tSpeed > 1
+              ? pill.classList.add("fast")
+              : pill.classList.remove("fast");
+          }
+          if (!t) {
+            if (te) {
+              te.textContent = "Готово!";
+              te.classList.add("done");
+            }
+            if (dot) dot.classList.add("done");
+            if (st) st.textContent = "Приз готов к выдаче!";
+            const tp2 = $("tp2"),
+              tp3 = $("tp3"),
+              tl2 = $("tl2"),
+              tlbl2 = $("tlbl2"),
+              tlbl3 = $("tlbl3");
+            if (tp2) {
+              tp2.className = "tp-dot done";
+              tp2.textContent = "✓";
+            }
+            if (tp3) {
+              tp3.className = "tp-dot done";
+              tp3.textContent = "✓";
+            }
+            if (tl2) tl2.className = "tp-line done";
+            if (tlbl2) {
+              tlbl2.className = "tp-label done-l";
+              tlbl2.textContent = "Готово";
+            }
+            if (tlbl3) {
+              tlbl3.className = "tp-label done-l";
+              tlbl3.textContent = "Выдан";
+            }
+            if (pill) pill.style.display = "none";
+            clearInterval(tInt);
+            return;
+          }
+          if (te) {
+            te.textContent = t;
+            te.classList.remove("done");
+          }
+          if (dot) dot.classList.remove("done");
+          if (st) st.textContent = "Подготавливаем приз...";
+        }
+
+        /* ═══ SPEEDUP ═══ */
+        $("btn-speedup").addEventListener("click", () => {
+          $("su-refs").textContent = refCount;
+          $("su-speed").textContent = "x" + tSpeed;
+          [2, 4, 6, 8].forEach((n) => {
+            const ms = $("ms" + n);
+            if (ms) {
+              refCount >= n
+                ? ms.classList.add("on")
+                : ms.classList.remove("on");
+            }
+          });
+          $("ref-fill").style.width = Math.min(100, (refCount / 8) * 100) + "%";
+          openSheet("sheet-speed");
+        });
+        $("btn-back-speed").addEventListener("click", () =>
+          closeSheet("sheet-speed"),
+        );
+        $("btn-share").addEventListener("click", () => {
+          const uid = US?.telegram_id || "",
+            link = `https://t.me/${BOT}?start=ref_${uid}`,
+            text = "🎁 Нарисуй звезду и получи приз!";
+          const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+          try {
+            Telegram.WebApp.openTelegramLink(url);
+          } catch (e) {
+            window.open(url, "_blank");
+          }
+        });
+
+        /* ═══ STARS ═══ */
+        $("btn-earn-stars").addEventListener("click", async () => {
+          $("modal-stars").classList.remove("hidden");
+          updateBackBtn();
+          const c = $("stars-content");
+          if (!c.innerHTML) {
+            try {
+              const res = await api("get-page", { key: "stars" });
+              if (res.ok && res.content) c.textContent = res.content;
+              else c.textContent = "Контент загружается...";
+            } catch (e) {
+              c.textContent = "Ошибка загрузки";
+            }
+          }
+          if (isAdmin) $("btn-edit-stars").classList.remove("hidden");
+        });
+        $("btn-close-stars").addEventListener("click", () => {
+          $("modal-stars").classList.add("hidden");
+          $("stars-edit").classList.add("hidden");
+          $("stars-content").classList.remove("hidden");
+          updateBackBtn();
+        });
+        $("btn-edit-stars").addEventListener("click", () => {
+          $("stars-ta").value = $("stars-content").innerText || "";
+          $("stars-content").classList.add("hidden");
+          $("stars-edit").classList.remove("hidden");
+        });
+        $("btn-cancel-edit").addEventListener("click", () => {
+          $("stars-edit").classList.add("hidden");
+          $("stars-content").classList.remove("hidden");
+        });
+        $("btn-save-stars").addEventListener("click", async () => {
+          const t = $("stars-ta").value;
+          try {
+            await api("save-page", { key: "stars", content: t });
+            $("stars-content").textContent = t;
+            toast("Сохранено!", "success");
+          } catch (e) {
+            toast("Ошибка");
+          }
+          $("stars-edit").classList.add("hidden");
+          $("stars-content").classList.remove("hidden");
+        });
+
+        /* ═══ CLEANUP ═══ */
+        function cleanup() {
+          if (tInt) clearInterval(tInt);
+          killLotties();
+          PP.forEach((p) => {
+            if (p.t) clearTimeout(p.t);
+          });
+          TP.forEach((p) => {
+            if (p.t) clearTimeout(p.t);
+          });
+        }
         window.addEventListener("beforeunload", cleanup);
 
-        // Telegram WebApp close event
-        try {
-          Telegram.WebApp.onEvent("viewportChanged", () => {
-            if (Telegram.WebApp.isClosingConfirmationEnabled === false) {
-              // App might be closing
-            }
-          });
-        } catch (e) {
-          /* noop */
-        }
-
-        /* ═══════════════════════════════
-       INITIALIZATION
-       ═══════════════════════════════ */
+        /* ═══ INIT ═══ */
         async function init() {
-          log("Init started");
-
-          // Telegram WebApp setup
           try {
             Telegram.WebApp.expand();
             Telegram.WebApp.disableVerticalSwipes();
-            Telegram.WebApp.setHeaderColor("#ffffff");
-            Telegram.WebApp.setBackgroundColor("#ffffff");
-          } catch (e) {
-            log("TG WebApp setup error:", e);
-          }
+          } catch (e) {}
 
-          // Preload icon assets
-          const iconPromises = [
-            loadTGS(ASSETS.TGS_ROCKET),
-            loadTGS(ASSETS.TGS_STAR_ICON),
-            loadTGS(ASSETS.TGS_LIGHTNING),
-            loadTGS(ASSETS.TGS_CHECK),
-            loadTGS(ASSETS.TGS_INVITE),
+          const icons = [
+            loadTGS(TGS.rocket),
+            loadTGS(TGS.star),
+            loadTGS(TGS.lightning),
+            loadTGS(TGS.check),
+            loadTGS(TGS.invite),
           ];
-
-          // Load user data
           try {
             const res = await api("get-user");
-            if (res.ok && res.user) {
+            if (res.ok) {
               US = res.user;
-              CHANNELS = validateChannels(res.channels || []);
-              isAdmin = Boolean(res.user.is_admin);
-              refCount = Number(res.user.referral_count) || 0;
+              CHANNELS = res.channels || [];
+              isAdmin = res.user.is_admin || false;
+              refCount = res.user.referral_count || 0;
               tSpeed = calcSpeed(refCount);
-              if (res.user.claimed_at) claimedAt = Number(res.user.claimed_at);
-              log("User loaded:", US.telegram_id, "state:", US.state);
-            } else {
-              log("get-user failed:", res.error);
+              if (res.user.claimed_at) claimedAt = res.user.claimed_at;
             }
-          } catch (e) {
-            log("get-user exception:", e);
-          }
-
-          // Wait for all TGS assets
+          } catch (e) {}
           await Promise.all([
-            loadTGS(ASSETS.TGS_STAR_YELLOW),
-            loadTGS(ASSETS.TGS_STAR_PURPLE),
-            loadTGS(ASSETS.TGS_MODAL_STARS),
-            loadTGS(ASSETS.TGS_MODAL_PREMIUM),
-            ...iconPromises,
+            loadTGS(TGS.starY),
+            loadTGS(TGS.starP),
+            loadTGS(TGS.modalS),
+            loadTGS(TGS.modalP),
+            ...icons,
           ]);
 
-          // Hide loading screen
-          const ls = document.getElementById("loading-screen");
-          ls.style.opacity = "0";
-          setTimeout(() => ls.classList.add("hidden"), 300);
-
+          // Hide loading
+          $("scene-loading").style.opacity = "0";
+          await sleep(300);
           try {
             Telegram.WebApp.ready();
-          } catch (e) {
-            /* noop */
-          }
+          } catch (e) {}
 
-          log("Init complete, state:", US?.state);
-
-          // Route based on user state
+          // Route
           if (US?.state === "claimed") {
-            wonPrize = US.prize_key === "stars" ? PRIZE_STARS : PRIZE_PREMIUM;
-            showFinal();
+            wonPrize = US.prize_key === "stars" ? PRIZES.stars : PRIZES.premium;
+            showScene("done", true);
+            $("done-prize").textContent = wonPrize.name;
+            playLottie($("done-sticker"), wonPrize.modal, false);
+            if (!claimedAt) claimedAt = US.claimed_at || Date.now() / 1000;
+            resetTimerDots();
+            startTimer();
+            gsap.from(".done-wrap", {
+              y: 30,
+              opacity: 0,
+              duration: 0.5,
+              delay: 0.1,
+            });
+            appState = "final";
             return;
           }
-
           if (US?.state === "rolled") {
-            wonPrize = US.prize_key === "stars" ? PRIZE_STARS : PRIZE_PREMIUM;
-            showSub();
+            wonPrize = US.prize_key === "stars" ? PRIZES.stars : PRIZES.premium;
+            showScene("done", true);
+            $("done-prize").textContent = wonPrize.name;
+            playLottie($("done-sticker"), wonPrize.modal, false);
+            resetTimerDots();
+            appState = "subscribe";
+            setTimeout(() => showSub(), 400);
             return;
           }
 
-          // Default: show drawing scene
-          gsap.set(
-            ["#draw-title", "#draw-subtitle", "#canvas-wrap", "#btn-submit"],
-            { opacity: 0, y: 20 },
-          );
-          document.getElementById("draw-scene").classList.remove("hidden");
+          // Default: draw
+          showScene("draw", true);
+          await sleep(50); // Let layout settle
           setupCanvas();
           appState = "drawing";
-          updateAttemptCounter();
-
-          gsap.to("#draw-title", {
-            y: 0,
-            opacity: 1,
-            duration: 0.4,
-            clearProps: "all",
-          });
-          gsap.to("#draw-subtitle", {
-            y: 0,
-            opacity: 1,
-            duration: 0.3,
-            delay: 0.1,
-            clearProps: "all",
-          });
-          gsap.to("#canvas-wrap", {
-            y: 0,
-            opacity: 1,
+          gsap.from(".draw-header", { y: 20, opacity: 0, duration: 0.4 });
+          gsap.from("#canvas-wrap", {
+            y: 20,
+            opacity: 0,
             duration: 0.5,
-            delay: 0.2,
+            delay: 0.15,
             ease: "back.out(1.5)",
-            clearProps: "all",
           });
-          gsap.to("#btn-submit", {
-            y: 0,
-            opacity: 1,
+          gsap.from(".draw-submit", {
+            y: 20,
+            opacity: 0,
             duration: 0.3,
-            delay: 0.35,
-            clearProps: "all",
+            delay: 0.3,
           });
         }
-
         init();
       }
     </script>
