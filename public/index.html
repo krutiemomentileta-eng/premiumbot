@@ -28,26 +28,14 @@
         height: 100vh;
         height: 100dvh;
         overflow: hidden;
-        background: var(--bg);
-        color: var(--text);
+        background: #fff;
+        color: #333;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         -webkit-tap-highlight-color: transparent;
         user-select: none;
         touch-action: manipulation;
       }
       :root {
-        --bg: #fff;
-        --bg2: #f5f5f5;
-        --text: #333;
-        --text2: #888;
-        --text3: #aaa;
-        --border: #333;
-        --card-bg: linear-gradient(135deg, #f8f9ff, #f0ecff);
-        --line: #f0f0f0;
-        --line2: #e0e0e0;
-        --line3: #e8e8e8;
-        --sheet-bg: #fff;
-        --overlay: rgba(0, 0, 0, 0.4);
         --purple: #976fff;
         --blue: #6b93ff;
         --pink: #e46ace;
@@ -56,22 +44,8 @@
         --safe-top: env(safe-area-inset-top, 0px);
         --safe-bot: env(safe-area-inset-bottom, 0px);
       }
-      body.dark {
-        --bg: #1a1a2e;
-        --bg2: #252542;
-        --text: #e0e0e0;
-        --text2: #999;
-        --text3: #666;
-        --border: #555;
-        --card-bg: linear-gradient(135deg, #1e1e3a, #2a2a4e);
-        --line: #333;
-        --line2: #444;
-        --line3: #333;
-        --sheet-bg: #1e1e34;
-        --overlay: rgba(0, 0, 0, 0.6);
-      }
 
-      /* ═══ SCENE SYSTEM ═══ */
+      /* ═══════════ SCENE SYSTEM ═══════════ */
       .scene {
         position: fixed;
         inset: 0;
@@ -84,7 +58,7 @@
           opacity 0.3s,
           visibility 0s 0.3s;
         z-index: 1;
-        background: var(--bg);
+        background: #fff;
       }
       .scene.active {
         opacity: 1;
@@ -98,7 +72,7 @@
         transition: none !important;
       }
 
-      /* ═══ LOADING ═══ */
+      /* ═══════════ LOADING ═══════════ */
       #scene-loading {
         align-items: center;
         justify-content: center;
@@ -107,13 +81,13 @@
       .loader {
         width: 36px;
         height: 36px;
-        border: 3px solid var(--line3);
+        border: 3px solid #eee;
         border-top-color: var(--purple);
         border-radius: 50%;
         animation: spin 0.7s linear infinite;
       }
       .loader-text {
-        color: var(--text3);
+        color: #bbb;
         font-size: 13px;
         margin-top: 14px;
       }
@@ -123,10 +97,13 @@
         }
       }
 
-      /* ═══ DRAW SCENE ═══ */
+      /* ═══════════ DRAW SCENE ═══════════ */
       #scene-draw {
         padding: max(12px, var(--safe-top)) 20px max(12px, var(--safe-bot));
         align-items: center;
+      }
+      .draw-spacer-top {
+        flex: 0 0 18px;
       }
       .draw-header {
         text-align: center;
@@ -135,27 +112,38 @@
       .draw-title {
         font-size: 22px;
         font-weight: 800;
-        color: var(--text);
+        color: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .draw-title .tgs-inline {
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        flex-shrink: 0;
       }
       .draw-sub {
         font-size: 14px;
-        color: var(--text2);
+        color: #888;
         margin-top: 2px;
       }
       .draw-attempts {
         font-size: 12px;
-        color: var(--text3);
+        color: #aaa;
         font-weight: 600;
         height: 18px;
         margin-top: 2px;
       }
       .draw-score {
         flex-shrink: 0;
-        height: 68px;
+        height: 62px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        margin-top: 4px;
       }
       .draw-score-val {
         font-size: 42px;
@@ -171,19 +159,19 @@
         margin-top: -2px;
       }
       .draw-canvas-area {
-        flex: 1;
+        flex: 1 1 0;
         min-height: 0;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
-        padding: 4px;
+        padding: 0 4px;
         width: 100%;
       }
       #canvas-wrap {
         position: relative;
         border-radius: 16px;
-        background: var(--bg2);
-        border: 2px solid var(--border);
+        background: #f5f5f5;
+        border: 2px solid #333;
         overflow: hidden;
         touch-action: none;
         transition: border-color 0.4s;
@@ -204,7 +192,7 @@
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: rgba(128, 128, 128, 0.12);
+        background: rgba(0, 0, 0, 0.06);
         border: none;
         font-size: 18px;
         cursor: pointer;
@@ -212,16 +200,16 @@
         align-items: center;
         justify-content: center;
         z-index: 5;
-        color: var(--text);
+        color: #333;
       }
       .draw-submit {
         flex-shrink: 0;
         width: 100%;
         max-width: 360px;
-        padding-top: 8px;
+        padding-top: 10px;
       }
 
-      /* ═══ TAP SCENE ═══ */
+      /* ═══════════ TAP SCENE ═══════════ */
       #scene-tap {
         align-items: center;
         justify-content: center;
@@ -255,7 +243,7 @@
       .tap-label {
         font-size: 18px;
         font-weight: 700;
-        color: var(--text);
+        color: #333;
         letter-spacing: 1px;
       }
       .tap-bar-wrap {
@@ -264,7 +252,7 @@
       .tap-bar {
         width: 140px;
         height: 5px;
-        background: var(--line3);
+        background: #e8e8e8;
         border-radius: 3px;
         overflow: hidden;
         margin: 0 auto 4px;
@@ -283,15 +271,14 @@
       }
       .tap-count {
         font-size: 12px;
-        color: var(--text3);
+        color: #aaa;
         font-weight: 600;
       }
 
-      /* ═══ DONE SCENE ═══ */
+      /* ═══════════ DONE SCENE ═══════════ */
       #scene-done {
         align-items: center;
-        justify-content: center;
-        padding: 20px 24px max(24px, var(--safe-bot));
+        padding: max(16px, var(--safe-top)) 24px max(24px, var(--safe-bot));
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
@@ -299,28 +286,64 @@
         width: 100%;
         max-width: 380px;
         text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .done-check {
+        width: 36px;
+        height: 36px;
+        margin-bottom: 2px;
       }
       .done-sticker {
-        width: 80px;
-        height: 80px;
-        margin: 0 auto 6px;
+        width: 180px;
+        height: 180px;
+        margin: 0 auto 4px;
         display: flex;
         align-items: center;
         justify-content: center;
       }
       .done-prize {
-        font-size: 20px;
-        font-weight: 800;
-        color: var(--text);
-        margin-bottom: 14px;
+        font-size: 26px;
+        font-weight: 900;
+        color: #333;
+        margin-bottom: 16px;
+        background: linear-gradient(90deg, #ffd700, #ffa500, #ffd700, #ffa500);
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: shiny 2.5s linear infinite;
+      }
+      .done-prize.purple-shine {
+        background: linear-gradient(
+          90deg,
+          var(--blue),
+          var(--purple),
+          var(--pink),
+          var(--purple)
+        );
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      @keyframes shiny {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
       }
       .timer-card {
-        background: var(--card-bg);
+        background: linear-gradient(135deg, #f8f9ff, #f0ecff);
         border-radius: 16px;
         padding: 20px;
         margin-bottom: 14px;
         position: relative;
         overflow: hidden;
+        width: 100%;
       }
       .timer-card::before {
         content: "";
@@ -347,9 +370,11 @@
         font-family: "Orbitron", sans-serif;
         font-size: 28px;
         font-weight: 900;
-        color: var(--text);
+        color: #333;
         letter-spacing: 2px;
         line-height: 1;
+        min-width: 185px;
+        text-align: center;
       }
       .timer-time.done {
         color: var(--green);
@@ -357,6 +382,7 @@
         font-size: 20px;
         letter-spacing: 0;
         font-weight: 800;
+        min-width: auto;
       }
       .timer-pill {
         display: inline-flex;
@@ -368,6 +394,8 @@
         padding: 5px 11px;
         border-radius: 20px;
         font-size: 12px;
+        flex-shrink: 0;
+        white-space: nowrap;
       }
       .timer-pill.fast {
         animation: pill-p 1s ease-in-out infinite;
@@ -387,7 +415,7 @@
         justify-content: center;
         gap: 6px;
         font-size: 13px;
-        color: var(--text2);
+        color: #888;
         font-weight: 600;
       }
       .timer-dot {
@@ -452,7 +480,7 @@
         background: linear-gradient(90deg, var(--purple), #ddd);
       }
       .tp-line.pending {
-        background: var(--line3);
+        background: #e8e8e8;
       }
       .timer-labels {
         display: flex;
@@ -462,7 +490,7 @@
       }
       .tp-label {
         font-size: 10px;
-        color: var(--text3);
+        color: #aaa;
         font-weight: 600;
         text-align: center;
         width: 60px;
@@ -476,10 +504,10 @@
       .done-actions {
         display: flex;
         gap: 10px;
-        margin-top: 4px;
+        width: 100%;
       }
 
-      /* ═══ BUTTONS ═══ */
+      /* ═══════════ BUTTONS ═══════════ */
       .btn-primary {
         position: relative;
         width: 100%;
@@ -575,10 +603,15 @@
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
       }
       .btn-action-icon {
-        font-size: 17px;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
       }
 
-      /* ═══ SHEETS ═══ */
+      /* ═══════════ SHEETS ═══════════ */
       .sheet-overlay {
         position: fixed;
         inset: 0;
@@ -590,12 +623,12 @@
       .sheet-bg {
         position: absolute;
         inset: 0;
-        background: var(--overlay);
+        background: rgba(0, 0, 0, 0.4);
       }
       .sheet {
         position: relative;
         z-index: 1;
-        background: var(--sheet-bg);
+        background: #fff;
         border-radius: 20px 20px 0 0;
         padding: 10px 24px max(34px, var(--safe-bot));
         max-height: 85vh;
@@ -607,17 +640,17 @@
         width: 36px;
         height: 4px;
         border-radius: 2px;
-        background: var(--line2);
+        background: #ddd;
         margin: 0 auto 18px;
       }
       .hidden {
         display: none !important;
       }
 
-      /* ═══ PRIZE SHEET ═══ */
+      /* ═══════════ PRIZE SHEET ═══════════ */
       .prize-label {
         font-size: 18px;
-        color: var(--text2);
+        color: #888;
         font-weight: 600;
         letter-spacing: 1px;
         margin-bottom: 6px;
@@ -633,7 +666,7 @@
       .prize-name {
         font-size: 22px;
         font-weight: 800;
-        color: var(--text);
+        color: #333;
         margin-bottom: 10px;
       }
       .prize-cd-wrap {
@@ -650,7 +683,7 @@
         line-height: 1;
       }
 
-      /* ═══ SUBSCRIBE SHEET ═══ */
+      /* ═══════════ SUBSCRIBE SHEET ═══════════ */
       .sub-sticker {
         width: 80px;
         height: 80px;
@@ -662,12 +695,12 @@
       .sub-prize {
         font-size: 18px;
         font-weight: 700;
-        color: var(--text);
+        color: #333;
         margin-bottom: 14px;
       }
       .sub-desc {
         font-size: 14px;
-        color: var(--text2);
+        color: #666;
         margin-bottom: 12px;
         line-height: 1.5;
       }
@@ -685,7 +718,7 @@
         display: flex;
         align-items: center;
         padding: 10px 0;
-        border-bottom: 1px solid var(--line);
+        border-bottom: 1px solid #f0f0f0;
       }
       .sub-item:last-child {
         border-bottom: none;
@@ -694,7 +727,7 @@
         width: 42px;
         height: 42px;
         border-radius: 50%;
-        background: var(--line2);
+        background: #e0e0e0;
         margin-right: 12px;
         flex-shrink: 0;
         overflow: hidden;
@@ -702,7 +735,7 @@
         align-items: center;
         justify-content: center;
         font-size: 20px;
-        color: var(--text3);
+        color: #999;
       }
       .sub-avatar img {
         width: 100%;
@@ -718,7 +751,7 @@
       .sub-name {
         font-size: 14px;
         font-weight: 600;
-        color: var(--text);
+        color: #333;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -740,7 +773,7 @@
         pointer-events: none;
       }
 
-      /* ═══ SPEEDUP SHEET ═══ */
+      /* ═══════════ SPEEDUP SHEET ═══════════ */
       .su-header {
         display: flex;
         align-items: center;
@@ -748,14 +781,22 @@
         gap: 8px;
         margin-bottom: 6px;
       }
+      .su-icon {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
       .su-title {
         font-size: 18px;
         font-weight: 800;
-        color: var(--text);
+        color: #333;
       }
       .su-desc {
         font-size: 13px;
-        color: var(--text2);
+        color: #888;
         line-height: 1.5;
         margin-bottom: 18px;
       }
@@ -764,7 +805,7 @@
         align-items: center;
         justify-content: center;
         gap: 12px;
-        background: var(--bg2);
+        background: #f8f9fa;
         border-radius: 14px;
         padding: 14px;
         margin-bottom: 20px;
@@ -772,12 +813,12 @@
       .su-stat-val {
         font-size: 26px;
         font-weight: 900;
-        color: var(--text);
+        color: #333;
         line-height: 1;
       }
       .su-stat-label {
         font-size: 11px;
-        color: var(--text3);
+        color: #999;
         margin-top: 4px;
         font-weight: 600;
         text-transform: uppercase;
@@ -786,12 +827,12 @@
       .su-divider {
         width: 1px;
         height: 40px;
-        background: var(--line2);
+        background: #e0e0e0;
       }
       .ref-track {
         position: relative;
         height: 8px;
-        background: var(--line3);
+        background: #e8e8e8;
         border-radius: 4px;
         margin: 10px 14px 52px;
       }
@@ -811,7 +852,7 @@
         height: 20px;
         border-radius: 50%;
         background: #d0d0d0;
-        border: 3px solid var(--bg);
+        border: 3px solid #fff;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
         transform: translateX(-50%);
         z-index: 2;
@@ -830,11 +871,11 @@
       .ref-ms-count {
         font-size: 11px;
         font-weight: 700;
-        color: var(--text2);
+        color: #555;
       }
       .ref-ms-speed {
         font-size: 10px;
-        color: var(--text3);
+        color: #aaa;
         font-weight: 600;
       }
       .ref-ms.on .ref-ms-count,
@@ -860,16 +901,24 @@
       .btn-share:active {
         transform: scale(0.95);
       }
+      .share-tgs {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
       .ref-hint {
         font-size: 12px;
-        color: var(--text3);
+        color: #aaa;
         margin-top: 10px;
         line-height: 1.4;
       }
       .btn-back {
         background: none;
         border: none;
-        color: var(--text3);
+        color: #999;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
@@ -877,11 +926,11 @@
         padding: 8px;
       }
 
-      /* ═══ STARS MODAL ═══ */
+      /* ═══════════ STARS MODAL ═══════════ */
       .modal-fs {
         position: fixed;
         inset: 0;
-        background: var(--bg);
+        background: #fff;
         z-index: 200;
         display: flex;
         flex-direction: column;
@@ -891,25 +940,29 @@
         align-items: center;
         justify-content: space-between;
         padding: 16px 20px;
-        border-bottom: 1px solid var(--line);
+        border-bottom: 1px solid #f0f0f0;
         flex-shrink: 0;
       }
       .modal-fs-title {
         font-size: 17px;
         font-weight: 700;
-        color: var(--text);
+        color: #333;
         display: flex;
         align-items: center;
         gap: 6px;
+      }
+      .modal-fs-title .tgs-inline {
+        width: 20px;
+        height: 20px;
       }
       .modal-fs-close {
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        background: var(--bg2);
+        background: #f0f0f0;
         border: none;
         font-size: 16px;
-        color: var(--text3);
+        color: #999;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -920,14 +973,14 @@
         overflow-y: auto;
         padding: 20px;
         font-size: 15px;
-        color: var(--text2);
+        color: #444;
         line-height: 1.7;
         white-space: pre-wrap;
         word-wrap: break-word;
       }
       .modal-fs-body:empty::after {
         content: "Загрузка...";
-        color: var(--text3);
+        color: #ccc;
       }
       .btn-admin-edit {
         position: fixed;
@@ -955,7 +1008,7 @@
       .stars-textarea {
         flex: 1;
         width: 100%;
-        border: 2px solid var(--line2);
+        border: 2px solid #e0e0e0;
         border-radius: 14px;
         padding: 14px;
         font-size: 15px;
@@ -963,8 +1016,8 @@
         resize: none;
         line-height: 1.6;
         outline: none;
-        background: var(--bg);
-        color: var(--text);
+        background: #fff;
+        color: #333;
       }
       .stars-textarea:focus {
         border-color: var(--purple);
@@ -990,14 +1043,14 @@
         padding: 14px;
         font-size: 15px;
         font-weight: 600;
-        color: var(--text2);
-        background: var(--bg2);
+        color: #666;
+        background: #f0f0f0;
         border: none;
         border-radius: 12px;
         cursor: pointer;
       }
 
-      /* ═══ FX ═══ */
+      /* ═══════════ FX ═══════════ */
       #flash {
         position: fixed;
         inset: 0;
@@ -1095,7 +1148,6 @@
         }
       }
 
-      /* ═══ REDUCED MOTION ═══ */
       @media (prefers-reduced-motion: reduce) {
         *,
         *::before,
@@ -1111,15 +1163,21 @@
     </style>
   </head>
   <body>
-    <!-- ═══ SCENES ═══ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!--              SCENES                     -->
+    <!-- ═══════════════════════════════════════ -->
+
     <div id="scene-loading" class="scene active">
       <div class="loader"></div>
       <p class="loader-text">Загрузка...</p>
     </div>
 
     <div id="scene-draw" class="scene">
+      <div class="draw-spacer-top"></div>
       <div class="draw-header">
-        <div class="draw-title">Нарисуй звезду ⭐</div>
+        <div class="draw-title">
+          Нарисуй звезду <span class="tgs-inline" id="title-star-tgs"></span>
+        </div>
         <div class="draw-sub">и получи свой приз</div>
         <div class="draw-attempts" id="draw-attempts"></div>
       </div>
@@ -1157,13 +1215,19 @@
 
     <div id="scene-done" class="scene">
       <div class="done-wrap">
+        <div class="done-check" id="done-check"></div>
         <div class="done-sticker" id="done-sticker"></div>
         <p class="done-prize" id="done-prize"></p>
         <div class="timer-card">
           <div class="timer-main">
             <div class="timer-time" id="timer-time">24:00:00</div>
             <div class="timer-pill" id="timer-pill">
-              <span>⚡</span><span id="timer-speed">x1</span>
+              <span
+                class="tgs-inline"
+                id="pill-lightning"
+                style="width: 14px; height: 14px"
+              ></span>
+              <span id="timer-speed">x1</span>
             </div>
           </div>
           <div class="timer-status">
@@ -1185,16 +1249,21 @@
         </div>
         <div class="done-actions">
           <button id="btn-speedup" class="btn-action purple">
-            <span class="btn-action-icon">🚀</span><span>Ускорить</span>
+            <span class="btn-action-icon" id="btn-rocket-tgs"></span>
+            <span>Ускорить</span>
           </button>
           <button id="btn-earn-stars" class="btn-action dark">
-            <span class="btn-action-icon">⭐</span><span>Заработать</span>
+            <span class="btn-action-icon" id="btn-star-tgs"></span>
+            <span>Заработать</span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ═══ SHEETS ═══ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!--              SHEETS                     -->
+    <!-- ═══════════════════════════════════════ -->
+
     <div id="sheet-prize" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
@@ -1231,7 +1300,7 @@
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="su-header">
-          <span style="font-size: 22px">🚀</span>
+          <div class="su-icon" id="su-rocket-tgs"></div>
           <div class="su-title">Ускорить вывод</div>
         </div>
         <p class="su-desc">
@@ -1278,7 +1347,8 @@
           </div>
         </div>
         <button id="btn-share" class="btn-share">
-          <span>📤</span><span>Пригласить друга</span>
+          <span class="share-tgs" id="share-invite-tgs"></span>
+          <span>Пригласить друга</span>
         </button>
         <p class="ref-hint">
           Ваша реферальная ссылка будет прикреплена автоматически
@@ -1287,9 +1357,15 @@
       </div>
     </div>
 
+    <!-- ═══════════════════════════════════════ -->
+    <!--           STARS MODAL                   -->
+    <!-- ═══════════════════════════════════════ -->
+
     <div id="modal-stars" class="modal-fs hidden">
       <div class="modal-fs-header">
-        <span class="modal-fs-title">⭐ Заработать звёзды</span>
+        <span class="modal-fs-title">
+          <span class="tgs-inline" id="modal-star-tgs"></span>Заработать звёзды
+        </span>
         <button
           id="btn-close-stars"
           class="modal-fs-close"
@@ -1302,17 +1378,24 @@
       <div id="stars-edit" class="stars-edit-wrap hidden">
         <textarea id="stars-ta" class="stars-textarea"></textarea>
         <div class="stars-edit-btns">
-          <button id="btn-save-stars" class="btn-save">💾 Сохранить</button
-          ><button id="btn-cancel-edit" class="btn-cancel">Отмена</button>
+          <button id="btn-save-stars" class="btn-save">💾 Сохранить</button>
+          <button id="btn-cancel-edit" class="btn-cancel">Отмена</button>
         </div>
       </div>
       <button id="btn-edit-stars" class="btn-admin-edit hidden">✏️</button>
     </div>
 
-    <!-- ═══ UTILITIES ═══ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!--            UTILITIES                    -->
+    <!-- ═══════════════════════════════════════ -->
+
     <div id="flash"></div>
     <div id="edge-glow"></div>
     <div id="toast" class="toast"></div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!--          EXTERNAL SCRIPTS               -->
+    <!-- ═══════════════════════════════════════ -->
 
     <script
       defer
@@ -1331,6 +1414,10 @@
       src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"
     ></script>
 
+    <!-- ═══════════════════════════════════════ -->
+    <!--          APPLICATION SCRIPT             -->
+    <!-- ═══════════════════════════════════════ -->
+
     <script>
       window.addEventListener("load", () => {
         const ck = setInterval(() => {
@@ -1347,12 +1434,13 @@
       });
 
       function startApp() {
-        /* ═══ CONFIG ═══ */
-        const API = "/api",
-          BOT = "fawtfbot",
-          MAX_TAPS = 10,
-          T_SEC = 86400,
-          THRESHOLD = 80;
+        /* ═══════════ CONFIG ═══════════ */
+        const API = "/api";
+        const BOT = "fawtfbot";
+        const MAX_TAPS = 10;
+        const T_SEC = 86400;
+        const THRESHOLD = 80;
+
         const TGS = {
           starY: "assets/star_yellow.tgs",
           starP: "assets/star_purple.tgs",
@@ -1364,6 +1452,7 @@
           check: "assets/true.tgs",
           invite: "assets/invite.tgs",
         };
+
         const PRIZES = {
           stars: {
             key: "stars",
@@ -1372,6 +1461,7 @@
             modal: TGS.modalS,
             glow: "rgba(255,215,0,.35)",
             fill: "gold",
+            shine: "",
           },
           premium: {
             key: "premium",
@@ -1380,10 +1470,11 @@
             modal: TGS.modalP,
             glow: "rgba(124,103,254,.35)",
             fill: "purple",
+            shine: "purple-shine",
           },
         };
 
-        /* ═══ STATE ═══ */
+        /* ═══════════ STATE ═══════════ */
         let CHANNELS = [],
           US = null,
           isAdmin = false,
@@ -1403,22 +1494,10 @@
           hasDrawn = false,
           hapticN_ = 0,
           cSize = 0;
-        let activeLotties = [];
+        let activeLotties = [],
+          iconLotties = [];
 
-        /* ═══ THEME ═══ */
-        try {
-          const th = Telegram.WebApp.colorScheme;
-          if (th === "dark") {
-            document.body.classList.add("dark");
-            Telegram.WebApp.setHeaderColor("#1a1a2e");
-            Telegram.WebApp.setBackgroundColor("#1a1a2e");
-          } else {
-            Telegram.WebApp.setHeaderColor("#ffffff");
-            Telegram.WebApp.setBackgroundColor("#ffffff");
-          }
-        } catch (e) {}
-
-        /* ═══ UTILS ═══ */
+        /* ═══════════ HELPERS ═══════════ */
         const $ = (id) => document.getElementById(id);
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         const haptic = (t) => {
@@ -1431,14 +1510,16 @@
             Telegram.WebApp.HapticFeedback.notificationOccurred(t);
           } catch (e) {}
         };
+
         function calcSpeed(r) {
           return r >= 2 ? Math.pow(2, Math.floor(r / 2)) : 1;
         }
+
         function fmtTime(s) {
           if (s <= 0) return null;
-          const h = Math.floor(s / 3600),
-            m = Math.floor((s % 3600) / 60),
-            sc = Math.floor(s % 60);
+          const h = Math.floor(s / 3600);
+          const m = Math.floor((s % 3600) / 60);
+          const sc = Math.floor(s % 60);
           return [h, m, sc].map((v) => String(v).padStart(2, "0")).join(":");
         }
 
@@ -1455,7 +1536,7 @@
           }, ms);
         }
 
-        /* ═══ SCENE MANAGER ═══ */
+        /* ═══════════ SCENE MANAGER ═══════════ */
         function showScene(id, instant = false) {
           document.querySelectorAll(".scene").forEach((s) => {
             if (instant) {
@@ -1463,7 +1544,9 @@
               s.classList.remove("active");
               void s.offsetHeight;
               s.classList.remove("instant");
-            } else s.classList.remove("active");
+            } else {
+              s.classList.remove("active");
+            }
           });
           const el = $("scene-" + id);
           if (instant) {
@@ -1471,14 +1554,16 @@
             el.classList.add("active");
             void el.offsetHeight;
             el.classList.remove("instant");
-          } else el.classList.add("active");
+          } else {
+            el.classList.add("active");
+          }
         }
 
-        /* ═══ SHEET MANAGER ═══ */
+        /* ═══════════ SHEET MANAGER ═══════════ */
         function openSheet(id) {
-          const ov = $(id),
-            bg = ov.querySelector(".sheet-bg"),
-            sh = ov.querySelector(".sheet");
+          const ov = $(id);
+          const bg = ov.querySelector(".sheet-bg");
+          const sh = ov.querySelector(".sheet");
           ov.classList.remove("hidden");
           if (bg) {
             gsap.set(bg, { opacity: 0 });
@@ -1490,10 +1575,11 @@
           }
           updateBackBtn();
         }
+
         function closeSheet(id, cb) {
-          const ov = $(id),
-            bg = ov.querySelector(".sheet-bg"),
-            sh = ov.querySelector(".sheet");
+          const ov = $(id);
+          const bg = ov.querySelector(".sheet-bg");
+          const sh = ov.querySelector(".sheet");
           if (sh) {
             gsap.to(sh, { y: "100%", duration: 0.3, ease: "power2.in" });
             if (bg) gsap.to(bg, { opacity: 0, duration: 0.25 });
@@ -1509,7 +1595,7 @@
           }
         }
 
-        /* ═══ BACK BUTTON ═══ */
+        /* ═══════════ BACK BUTTON ═══════════ */
         function updateBackBtn() {
           try {
             const stars = !$("modal-stars").classList.contains("hidden");
@@ -1518,6 +1604,7 @@
             else Telegram.WebApp.BackButton.hide();
           } catch (e) {}
         }
+
         try {
           Telegram.WebApp.BackButton.onClick(() => {
             if (!$("modal-stars").classList.contains("hidden"))
@@ -1527,7 +1614,7 @@
           });
         } catch (e) {}
 
-        /* ═══ OFFLINE ═══ */
+        /* ═══════════ OFFLINE ═══════════ */
         window.addEventListener("offline", () =>
           toast("Нет интернета", "error", 5000),
         );
@@ -1535,7 +1622,7 @@
           toast("Соединение восстановлено", "success"),
         );
 
-        /* ═══ API ═══ */
+        /* ═══════════ API ═══════════ */
         function gID() {
           try {
             return Telegram.WebApp.initData;
@@ -1543,6 +1630,7 @@
             return "";
           }
         }
+
         async function api(ep, body = {}) {
           for (let i = 0; i < 3; i++) {
             try {
@@ -1572,12 +1660,13 @@
           return { ok: false };
         }
 
-        /* ═══ TGS / LOTTIE ═══ */
+        /* ═══════════ TGS / LOTTIE ═══════════ */
         const tgsC = {},
           tgsS = {};
         try {
           lottie.setQuality(2);
         } catch (e) {}
+
         async function loadTGS(u) {
           if (tgsC[u] !== undefined) return tgsC[u];
           try {
@@ -1593,9 +1682,11 @@
             return null;
           }
         }
+
         function cloneTGS(u) {
           return tgsS[u] ? JSON.parse(tgsS[u]) : null;
         }
+
         function playLottie(c, u, loop = true) {
           activeLotties = activeLotties.filter((a) => {
             try {
@@ -1621,6 +1712,24 @@
           activeLotties.push(a);
           return a;
         }
+
+        function playIcon(c, u) {
+          c.innerHTML = "";
+          const d = cloneTGS(u);
+          if (!d) return null;
+          const a = lottie.loadAnimation({
+            container: c,
+            renderer: "svg",
+            loop: true,
+            autoplay: true,
+            animationData: d,
+          });
+          a.setSubframe(false);
+          a._c = c;
+          iconLotties.push(a);
+          return a;
+        }
+
         function killLotties() {
           activeLotties.forEach((a) => {
             try {
@@ -1629,8 +1738,16 @@
           });
           activeLotties = [];
         }
+        function killIcons() {
+          iconLotties.forEach((a) => {
+            try {
+              a.destroy();
+            } catch (e) {}
+          });
+          iconLotties = [];
+        }
 
-        /* ═══ PARTICLES ═══ */
+        /* ═══════════ PARTICLES ═══════════ */
         const PP = [],
           PC = [
             "#6B93FF",
@@ -1647,6 +1764,7 @@
           document.body.appendChild(p);
           PP.push({ el: p, busy: false, t: null });
         }
+
         function burst(x, y, n) {
           n = Math.min(n, 10);
           let u = 0;
@@ -1655,9 +1773,9 @@
             if (s.busy) continue;
             s.busy = true;
             u++;
-            const a = ((Math.PI * 2) / n) * u + Math.random() * 0.5,
-              d = 30 + Math.random() * 50,
-              sz = 3 + Math.random() * 4;
+            const a = ((Math.PI * 2) / n) * u + Math.random() * 0.5;
+            const d = 30 + Math.random() * 50;
+            const sz = 3 + Math.random() * 4;
             s.el.style.cssText = `left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;background:${PC[u % PC.length]};display:block`;
             s.el.style.animation = "none";
             void s.el.offsetHeight;
@@ -1670,8 +1788,9 @@
             }, 600);
           }
         }
+
         function megaBurst(x, y) {
-          for (let i = 0; i < 4; i++)
+          for (let i = 0; i < 4; i++) {
             setTimeout(
               () =>
                 burst(
@@ -1681,19 +1800,22 @@
                 ),
               i * 60,
             );
+          }
         }
-        const TP = [],
+
+        const TPP = [],
           TT = ["+1", "⭐", "✨", "💫", "🔥", "💎"];
         for (let i = 0; i < 6; i++) {
           const el = document.createElement("div");
           el.className = "tap-fx";
           el.style.display = "none";
           document.body.appendChild(el);
-          TP.push({ el, busy: false, t: null });
+          TPP.push({ el, busy: false, t: null });
         }
+
         function showTapFx(x, y) {
-          for (let i = 0; i < TP.length; i++) {
-            const s = TP[i];
+          for (let i = 0; i < TPP.length; i++) {
+            const s = TPP[i];
             if (s.busy) continue;
             s.busy = true;
             s.el.textContent = TT[~~(Math.random() * TT.length)];
@@ -1713,19 +1835,19 @@
           }
         }
 
-        /* ═══ STAR SCORING ═══ */
+        /* ═══════════ STAR SCORING ═══════════ */
         function genIdealStar(sz) {
           const c = document.createElement("canvas");
           c.width = c.height = sz;
-          const x = c.getContext("2d"),
-            cx = sz / 2,
+          const x = c.getContext("2d");
+          const cx = sz / 2,
             cy = sz / 2,
             oR = sz * 0.45,
             iR = sz * 0.18;
           x.beginPath();
           for (let i = 0; i < 10; i++) {
-            const r = i % 2 === 0 ? oR : iR,
-              a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
+            const r = i % 2 === 0 ? oR : iR;
+            const a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
             const px = cx + Math.cos(a) * r,
               py = cy + Math.sin(a) * r;
             i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
@@ -1738,6 +1860,7 @@
           x.stroke();
           return x.getImageData(0, 0, sz, sz);
         }
+
         function renderStrokes(st, sz) {
           const c = document.createElement("canvas");
           c.width = c.height = sz;
@@ -1755,9 +1878,9 @@
               if (p.y > MY) MY = p.y;
             }
           const w = MX - mX || 1,
-            h = MY - mY || 1,
-            sc = (sz * 0.85) / Math.max(w, h),
-            ox = (sz - w * sc) / 2 - mX * sc,
+            h = MY - mY || 1;
+          const sc = (sz * 0.85) / Math.max(w, h);
+          const ox = (sz - w * sc) / 2 - mX * sc,
             oy = (sz - h * sc) / 2 - mY * sc;
           x.strokeStyle = "#000";
           x.lineWidth = Math.max(2, sz * 0.05);
@@ -1773,10 +1896,11 @@
           }
           return x.getImageData(0, 0, sz, sz);
         }
+
         function dilate(img, rad) {
           const w = img.width,
-            h = img.height,
-            src = new Uint8Array(w * h),
+            h = img.height;
+          const src = new Uint8Array(w * h),
             dst = new Uint8Array(w * h);
           for (let i = 0; i < w * h; i++)
             src[i] = img.data[i * 4 + 3] > 30 ? 1 : 0;
@@ -1800,15 +1924,16 @@
             }
           return dst;
         }
+
         function scoreDrawing(st) {
           if (!st.length) return 0;
           let tp = 0;
           for (const s of st) tp += s.length;
           if (tp < 10) return 0;
-          const SZ = 64,
-            id = genIdealStar(SZ),
-            dd = renderStrokes(st, SZ),
-            iD = dilate(id, 3),
+          const SZ = 64;
+          const id = genIdealStar(SZ),
+            dd = renderStrokes(st, SZ);
+          const iD = dilate(id, 3),
             dD = dilate(dd, 3),
             dR = dilate(dd, 0),
             iR = dilate(id, 0);
@@ -1833,7 +1958,7 @@
           return Math.min(100, Math.round((cov * 0.55 + prec * 0.45) * 110));
         }
 
-        /* ═══ CANVAS ═══ */
+        /* ═══════════ CANVAS ═══════════ */
         const cvs = $("draw-canvas"),
           ctx = cvs.getContext("2d"),
           wrap = $("canvas-wrap");
@@ -1845,15 +1970,15 @@
             oR = sz * 0.38,
             iR = sz * 0.15;
           ctx.save();
-          ctx.strokeStyle = "rgba(128,128,128,0.1)";
+          ctx.strokeStyle = "rgba(0,0,0,0.07)";
           ctx.lineWidth = 2;
           ctx.setLineDash([6, 6]);
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
           ctx.beginPath();
           for (let i = 0; i < 10; i++) {
-            const r = i % 2 === 0 ? oR : iR,
-              a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
+            const r = i % 2 === 0 ? oR : iR;
+            const a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
             const x = cx + Math.cos(a) * r,
               y = cy + Math.sin(a) * r;
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
@@ -1892,6 +2017,7 @@
             y: (e.touches?.[0]?.clientY ?? e.clientY) - r.top,
           };
         }
+
         cvs.addEventListener("pointerdown", (e) => {
           if (appState !== "drawing") return;
           e.preventDefault();
@@ -1902,15 +2028,14 @@
           ctx.moveTo(p.x, p.y);
           hapticN_ = 0;
         });
+
         cvs.addEventListener("pointermove", (e) => {
           if (!drawing || !curStroke) return;
           e.preventDefault();
           if (curStroke.length >= 2000) return;
           const p = getPos(e);
           curStroke.push(p);
-          ctx.strokeStyle = document.body.classList.contains("dark")
-            ? "#ddd"
-            : "#000";
+          ctx.strokeStyle = "#000";
           ctx.lineWidth = 3;
           ctx.setLineDash([]);
           ctx.lineTo(p.x, p.y);
@@ -1925,12 +2050,14 @@
             $("btn-submit").classList.add("pulse");
           }
         });
+
         function endStroke() {
           if (!drawing || !curStroke) return;
           drawing = false;
           if (curStroke.length > 1) strokes.push(curStroke);
           curStroke = null;
         }
+
         cvs.addEventListener("pointerup", endStroke);
         cvs.addEventListener("pointercancel", endStroke);
         cvs.addEventListener("pointerleave", endStroke);
@@ -1955,13 +2082,14 @@
           wrap.classList.remove("ok", "fail");
           ghostStar();
         }
+
         $("btn-reset").addEventListener("click", () => {
           if (appState !== "drawing") return;
           clearCanvas();
           haptic("medium");
         });
 
-        /* ═══ SUBMIT ═══ */
+        /* ═══════════ SUBMIT ═══════════ */
         $("btn-submit").addEventListener("click", async () => {
           if (appState !== "drawing") return;
           appState = "evaluating";
@@ -1970,10 +2098,12 @@
           btn.disabled = true;
           btn.classList.remove("pulse");
           haptic("medium");
-          const score = scoreDrawing(strokes),
-            sv = $("score-val"),
+
+          const score = scoreDrawing(strokes);
+          const sv = $("score-val"),
             sh = $("score-hint");
           const o = { v: 0 };
+
           gsap.to(o, {
             v: score,
             duration: 0.8,
@@ -1989,11 +2119,13 @@
             duration: 0.4,
             ease: "back.out(2)",
           });
+
           await sleep(900);
+
           if (score >= THRESHOLD) {
-            sv.style.color = "var(--green)";
+            sv.style.color = "#4CAF50";
             sh.textContent = "Отлично!";
-            sh.style.color = "var(--green)";
+            sh.style.color = "#4CAF50";
             gsap.to(sh, { opacity: 1, duration: 0.3 });
             wrap.classList.add("ok");
             hapticNotif("success");
@@ -2007,9 +2139,9 @@
             appState = "transforming";
             await doTransform();
           } else {
-            sv.style.color = "var(--red)";
+            sv.style.color = "#FF4757";
             sh.textContent = "Попробуйте ещё раз";
-            sh.style.color = "var(--red)";
+            sh.style.color = "#FF4757";
             gsap.to(sh, { opacity: 1, duration: 0.3 });
             wrap.classList.add("fail");
             hapticNotif("error");
@@ -2021,11 +2153,12 @@
           }
         });
 
-        /* ═══ TRANSFORM → TAP ═══ */
+        /* ═══════════ TRANSFORM → TAP ═══════════ */
         async function doTransform() {
-          const wrapR = wrap.getBoundingClientRect(),
-            cx = wrapR.left + wrapR.width / 2,
-            cy = wrapR.top + wrapR.height / 2;
+          const wrapR = wrap.getBoundingClientRect();
+          const cx = wrapR.left + wrapR.width / 2;
+          const cy = wrapR.top + wrapR.height / 2;
+
           gsap.to([".draw-submit", "#btn-reset", ".draw-score"], {
             opacity: 0,
             duration: 0.3,
@@ -2071,7 +2204,7 @@
           cvs.style.transform = "";
           await sleep(400);
 
-          // Setup tap scene elements
+          // Setup tap scene
           const sticker = $("tap-sticker"),
             emoji = $("tap-emoji"),
             bottom = $("tap-bottom");
@@ -2085,7 +2218,6 @@
           $("tap-fill").className = "tap-fill";
           $("tap-count").textContent = "0 / " + MAX_TAPS;
 
-          // Switch scene instantly
           showScene("tap", true);
           gsap.from(sticker, { scale: 0, duration: 0.3, ease: "back.out(2)" });
           await sleep(200);
@@ -2126,6 +2258,7 @@
               },
             },
           );
+
           for (let r = 0; r < 18; r++) {
             emoji.textContent = emojis[idx++ % emojis.length];
             gsap.fromTo(
@@ -2137,6 +2270,7 @@
             await sleep(spd);
             spd = Math.max(50, spd - 14);
           }
+
           dRun = false;
           dAmp = 0;
           $("scene-tap").style.transform = "";
@@ -2149,7 +2283,7 @@
           hapticNotif("success");
           await sleep(100);
 
-          // Show sticker
+          // Show prize sticker
           emoji.style.display = "none";
           sticker.style.width = Math.round(cSize * 0.3) + "px";
           sticker.style.height = Math.round(cSize * 0.3) + "px";
@@ -2164,6 +2298,7 @@
           const glow = $("edge-glow");
           glow.style.setProperty("--glow", wonPrize.glow);
           glow.classList.add("on");
+
           confetti({ particleCount: 70, spread: 80, origin: { y: 0.4 } });
           confetti({
             particleCount: 35,
@@ -2176,6 +2311,7 @@
             origin: { y: 0.6, x: 0.85 },
           });
           megaBurst(cx, cy);
+
           flash.style.transition = "opacity .6s";
           flash.style.opacity = "0";
           await sleep(1000);
@@ -2188,24 +2324,27 @@
           tapN = 0;
         }
 
-        /* ═══ TAP ═══ */
+        /* ═══════════ TAP ═══════════ */
         $("tap-area").addEventListener("pointerdown", async (e) => {
           if (appState !== "tapping") return;
           e.preventDefault();
           tapN++;
           haptic("medium");
-          const st = $("tap-sticker"),
-            progress = tapN / MAX_TAPS;
+
+          const st = $("tap-sticker");
+          const progress = tapN / MAX_TAPS;
           gsap.to(st, {
             width: cSize * (0.3 + 0.55 * progress),
             height: cSize * (0.3 + 0.55 * progress),
             duration: 0.3,
             ease: "back.out(1.5)",
           });
+
           $("tap-fill").style.width = progress * 100 + "%";
           $("tap-count").textContent = tapN + " / " + MAX_TAPS;
           showTapFx(e.clientX, e.clientY);
           burst(e.clientX, e.clientY, 6);
+
           if (tapN >= MAX_TAPS) {
             appState = "revealing";
             await sleep(300);
@@ -2222,17 +2361,20 @@
           showPrize();
         }
 
-        /* ═══ PRIZE SHEET ═══ */
+        /* ═══════════ PRIZE SHEET ═══════════ */
         async function showPrize() {
           killLotties();
           $("prize-name").textContent = wonPrize.name;
           playLottie($("prize-sticker"), wonPrize.modal, false);
+
           $("btn-claim").disabled = true;
           $("btn-claim").classList.remove("pulse");
           $("prize-cd").textContent = "";
+
           openSheet("sheet-prize");
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           appState = "prize";
+
           for (let i = 3; i >= 1; i--) {
             $("prize-cd").textContent = i;
             $("prize-cd").style.color = "var(--purple)";
@@ -2244,6 +2386,7 @@
             haptic("light");
             await sleep(1000);
           }
+
           $("prize-cd").textContent = "ГОТОВО!";
           $("prize-cd").style.color = "var(--green)";
           gsap.fromTo(
@@ -2253,16 +2396,18 @@
           );
           hapticNotif("success");
           await sleep(1200);
+
           $("btn-claim").disabled = false;
           $("btn-claim").classList.add("pulse");
         }
+
         $("btn-claim").addEventListener("click", () => {
           $("btn-claim").classList.remove("pulse");
           $("edge-glow").classList.remove("on");
           closeSheet("sheet-prize", showSub);
         });
 
-        /* ═══ SUBSCRIBE SHEET ═══ */
+        /* ═══════════ SUBSCRIBE SHEET ═══════════ */
         function updateSubProg() {
           const d = document.querySelectorAll(".sub-btn.done").length;
           $("sub-progress").textContent =
@@ -2273,6 +2418,7 @@
           killLotties();
           const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
           $("sub-prize").textContent = pN;
+
           const tU = wonPrize
             ? wonPrize.modal
             : US?.prize_key === "stars"
@@ -2282,10 +2428,12 @@
 
           const list = $("sub-list");
           list.innerHTML = "";
+
           CHANNELS.forEach((ch) => {
-            const isBot = ch.type === "bot",
-              li = document.createElement("li");
+            const isBot = ch.type === "bot";
+            const li = document.createElement("li");
             li.className = "sub-item";
+
             const av = document.createElement("div");
             av.className = "sub-avatar";
             if (ch.avatar) {
@@ -2297,13 +2445,17 @@
                 av.textContent = isBot ? "🤖" : "📢";
               };
               av.appendChild(img);
-            } else av.textContent = isBot ? "🤖" : "📢";
+            } else {
+              av.textContent = isBot ? "🤖" : "📢";
+            }
+
             const info = document.createElement("div");
             info.className = "sub-info";
             const nm = document.createElement("div");
             nm.className = "sub-name";
             nm.textContent = ch.name;
             info.appendChild(nm);
+
             const btn = document.createElement("button");
             btn.className = "sub-btn";
             btn.textContent = isBot ? "Открыть" : "Подписаться";
@@ -2327,9 +2479,11 @@
                 }).catch(() => {});
               }
             });
+
             li.append(av, info, btn);
             list.appendChild(li);
           });
+
           updateSubProg();
           openSheet("sheet-sub");
           appState = "subscribe";
@@ -2341,6 +2495,7 @@
           const btn = $("btn-check-sub");
           btn.disabled = true;
           btn.querySelector("span").textContent = "Проверяем...";
+
           try {
             const res = await api("check-subscription", { action: "check" });
             if (res.all_subscribed) {
@@ -2382,25 +2537,41 @@
           }
         });
 
-        /* ═══ DONE SCENE ═══ */
+        /* ═══════════ DONE SCENE ═══════════ */
+        function setupDoneIcons() {
+          playIcon($("done-check"), TGS.check);
+          playIcon($("pill-lightning"), TGS.lightning);
+          playIcon($("btn-rocket-tgs"), TGS.rocket);
+          playIcon($("btn-star-tgs"), TGS.star);
+        }
+
         function goToDone() {
           killLotties();
+
           const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
-          $("done-prize").textContent = pN;
+          const dp = $("done-prize");
+          dp.textContent = pN;
+          dp.className =
+            "done-prize" +
+            (wonPrize && wonPrize.shine ? " " + wonPrize.shine : "");
+
           const tU = wonPrize
             ? wonPrize.modal
             : US?.prize_key === "stars"
               ? TGS.modalS
               : TGS.modalP;
           if (tU) playLottie($("done-sticker"), tU, false);
+
           if (!claimedAt) claimedAt = US?.claimed_at || Date.now() / 1000;
           refCount = US?.referral_count || refCount || 0;
           tSpeed = calcSpeed(refCount);
+
           resetTimerDots();
           startTimer();
+          setupDoneIcons();
+
           showScene("done");
           confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
-          // Animate in
           gsap.from(".done-wrap", {
             y: 40,
             opacity: 0,
@@ -2413,8 +2584,8 @@
         function resetTimerDots() {
           const tp2 = $("tp2"),
             tp3 = $("tp3"),
-            tl2 = $("tl2"),
-            tlbl2 = $("tlbl2"),
+            tl2 = $("tl2");
+          const tlbl2 = $("tlbl2"),
             tlbl3 = $("tlbl3");
           tp2.className = "tp-dot active";
           tp2.textContent = "2";
@@ -2427,30 +2598,33 @@
           tlbl3.textContent = "Выдача";
         }
 
-        /* ═══ TIMER ═══ */
+        /* ═══════════ TIMER ═══════════ */
         function startTimer() {
           if (tInt) clearInterval(tInt);
           updTimer();
           tInt = setInterval(updTimer, 500);
         }
+
         function updTimer() {
           if (!claimedAt) return;
           const rem = Math.max(
-              0,
-              T_SEC - (Date.now() / 1000 - claimedAt) * tSpeed,
-            ),
-            t = fmtTime(rem);
+            0,
+            T_SEC - (Date.now() / 1000 - claimedAt) * tSpeed,
+          );
+          const t = fmtTime(rem);
           const te = $("timer-time"),
-            sp = $("timer-speed"),
-            pill = $("timer-pill"),
+            sp = $("timer-speed");
+          const pill = $("timer-pill"),
             dot = $("timer-dot"),
             st = $("timer-text");
+
           if (sp) sp.textContent = "x" + tSpeed;
           if (pill) {
             tSpeed > 1
               ? pill.classList.add("fast")
               : pill.classList.remove("fast");
           }
+
           if (!t) {
             if (te) {
               te.textContent = "Готово!";
@@ -2460,8 +2634,8 @@
             if (st) st.textContent = "Приз готов к выдаче!";
             const tp2 = $("tp2"),
               tp3 = $("tp3"),
-              tl2 = $("tl2"),
-              tlbl2 = $("tlbl2"),
+              tl2 = $("tl2");
+            const tlbl2 = $("tlbl2"),
               tlbl3 = $("tlbl3");
             if (tp2) {
               tp2.className = "tp-dot done";
@@ -2484,6 +2658,7 @@
             clearInterval(tInt);
             return;
           }
+
           if (te) {
             te.textContent = t;
             te.classList.remove("done");
@@ -2492,7 +2667,7 @@
           if (st) st.textContent = "Подготавливаем приз...";
         }
 
-        /* ═══ SPEEDUP ═══ */
+        /* ═══════════ SPEEDUP ═══════════ */
         $("btn-speedup").addEventListener("click", () => {
           $("su-refs").textContent = refCount;
           $("su-speed").textContent = "x" + tSpeed;
@@ -2505,15 +2680,19 @@
             }
           });
           $("ref-fill").style.width = Math.min(100, (refCount / 8) * 100) + "%";
+          playIcon($("su-rocket-tgs"), TGS.rocket);
+          playIcon($("share-invite-tgs"), TGS.invite);
           openSheet("sheet-speed");
         });
+
         $("btn-back-speed").addEventListener("click", () =>
           closeSheet("sheet-speed"),
         );
+
         $("btn-share").addEventListener("click", () => {
-          const uid = US?.telegram_id || "",
-            link = `https://t.me/${BOT}?start=ref_${uid}`,
-            text = "🎁 Нарисуй звезду и получи приз!";
+          const uid = US?.telegram_id || "";
+          const link = `https://t.me/${BOT}?start=ref_${uid}`;
+          const text = "🎁 Нарисуй звезду и получи приз!";
           const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
           try {
             Telegram.WebApp.openTelegramLink(url);
@@ -2522,10 +2701,12 @@
           }
         });
 
-        /* ═══ STARS ═══ */
+        /* ═══════════ STARS MODAL ═══════════ */
         $("btn-earn-stars").addEventListener("click", async () => {
           $("modal-stars").classList.remove("hidden");
           updateBackBtn();
+          playIcon($("modal-star-tgs"), TGS.star);
+
           const c = $("stars-content");
           if (!c.innerHTML) {
             try {
@@ -2536,23 +2717,28 @@
               c.textContent = "Ошибка загрузки";
             }
           }
+
           if (isAdmin) $("btn-edit-stars").classList.remove("hidden");
         });
+
         $("btn-close-stars").addEventListener("click", () => {
           $("modal-stars").classList.add("hidden");
           $("stars-edit").classList.add("hidden");
           $("stars-content").classList.remove("hidden");
           updateBackBtn();
         });
+
         $("btn-edit-stars").addEventListener("click", () => {
           $("stars-ta").value = $("stars-content").innerText || "";
           $("stars-content").classList.add("hidden");
           $("stars-edit").classList.remove("hidden");
         });
+
         $("btn-cancel-edit").addEventListener("click", () => {
           $("stars-edit").classList.add("hidden");
           $("stars-content").classList.remove("hidden");
         });
+
         $("btn-save-stars").addEventListener("click", async () => {
           const t = $("stars-ta").value;
           try {
@@ -2566,33 +2752,32 @@
           $("stars-content").classList.remove("hidden");
         });
 
-        /* ═══ CLEANUP ═══ */
+        /* ═══════════ CLEANUP ═══════════ */
         function cleanup() {
           if (tInt) clearInterval(tInt);
           killLotties();
+          killIcons();
           PP.forEach((p) => {
             if (p.t) clearTimeout(p.t);
           });
-          TP.forEach((p) => {
+          TPP.forEach((p) => {
             if (p.t) clearTimeout(p.t);
           });
         }
         window.addEventListener("beforeunload", cleanup);
 
-        /* ═══ INIT ═══ */
+        /* ═══════════ INIT ═══════════ */
         async function init() {
           try {
             Telegram.WebApp.expand();
             Telegram.WebApp.disableVerticalSwipes();
+            Telegram.WebApp.setHeaderColor("#ffffff");
+            Telegram.WebApp.setBackgroundColor("#ffffff");
           } catch (e) {}
 
-          const icons = [
-            loadTGS(TGS.rocket),
-            loadTGS(TGS.star),
-            loadTGS(TGS.lightning),
-            loadTGS(TGS.check),
-            loadTGS(TGS.invite),
-          ];
+          // Load all TGS in parallel
+          const allTgs = Object.values(TGS).map((u) => loadTGS(u));
+
           try {
             const res = await api("get-user");
             if (res.ok) {
@@ -2604,13 +2789,8 @@
               if (res.user.claimed_at) claimedAt = res.user.claimed_at;
             }
           } catch (e) {}
-          await Promise.all([
-            loadTGS(TGS.starY),
-            loadTGS(TGS.starP),
-            loadTGS(TGS.modalS),
-            loadTGS(TGS.modalP),
-            ...icons,
-          ]);
+
+          await Promise.all(allTgs);
 
           // Hide loading
           $("scene-loading").style.opacity = "0";
@@ -2619,15 +2799,20 @@
             Telegram.WebApp.ready();
           } catch (e) {}
 
-          // Route
+          // ── Route based on user state ──
+
           if (US?.state === "claimed") {
             wonPrize = US.prize_key === "stars" ? PRIZES.stars : PRIZES.premium;
             showScene("done", true);
-            $("done-prize").textContent = wonPrize.name;
+            const dp = $("done-prize");
+            dp.textContent = wonPrize.name;
+            dp.className =
+              "done-prize" + (wonPrize.shine ? " " + wonPrize.shine : "");
             playLottie($("done-sticker"), wonPrize.modal, false);
             if (!claimedAt) claimedAt = US.claimed_at || Date.now() / 1000;
             resetTimerDots();
             startTimer();
+            setupDoneIcons();
             gsap.from(".done-wrap", {
               y: 30,
               opacity: 0,
@@ -2637,22 +2822,32 @@
             appState = "final";
             return;
           }
+
           if (US?.state === "rolled") {
             wonPrize = US.prize_key === "stars" ? PRIZES.stars : PRIZES.premium;
             showScene("done", true);
-            $("done-prize").textContent = wonPrize.name;
+            const dp = $("done-prize");
+            dp.textContent = wonPrize.name;
+            dp.className =
+              "done-prize" + (wonPrize.shine ? " " + wonPrize.shine : "");
             playLottie($("done-sticker"), wonPrize.modal, false);
             resetTimerDots();
+            setupDoneIcons();
             appState = "subscribe";
             setTimeout(() => showSub(), 400);
             return;
           }
 
-          // Default: draw
+          // ── Default: draw scene ──
           showScene("draw", true);
-          await sleep(50); // Let layout settle
+          // Wait two frames for layout to fully settle before measuring canvas
+          await new Promise((r) =>
+            requestAnimationFrame(() => requestAnimationFrame(r)),
+          );
           setupCanvas();
+          playIcon($("title-star-tgs"), TGS.star);
           appState = "drawing";
+
           gsap.from(".draw-header", { y: 20, opacity: 0, duration: 0.4 });
           gsap.from("#canvas-wrap", {
             y: 20,
@@ -2668,6 +2863,7 @@
             delay: 0.3,
           });
         }
+
         init();
       }
     </script>
