@@ -209,25 +209,70 @@
         padding-top: 10px;
       }
 
-      /* ═══════════ REVEAL OVERLAY ═══════════ */
-      #reveal-overlay {
-        position: fixed;
+      /* ═══════════ TAP SCENE ═══════════ */
+      #scene-tap {
+        align-items: center;
+        justify-content: center;
+      }
+      .tap-area {
+        position: absolute;
         inset: 0;
-        z-index: 60;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #fff;
-        pointer-events: none;
+        cursor: pointer;
+        touch-action: manipulation;
       }
-      .reveal-sticker {
+      .tap-sticker {
         display: flex;
         align-items: center;
         justify-content: center;
+        will-change: transform;
       }
-      .reveal-emoji {
-        font-size: 60px;
-        line-height: 1;
+      .tap-emoji {
+        font-size: 55px;
+      }
+      .tap-bottom {
+        position: absolute;
+        bottom: max(60px, calc(40px + var(--safe-bot)));
+        left: 0;
+        right: 0;
+        text-align: center;
+        opacity: 0;
+      }
+      .tap-label {
+        font-size: 18px;
+        font-weight: 700;
+        color: #333;
+        letter-spacing: 1px;
+      }
+      .tap-bar-wrap {
+        margin-top: 6px;
+      }
+      .tap-bar {
+        width: 140px;
+        height: 5px;
+        background: #e8e8e8;
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 0 auto 4px;
+      }
+      .tap-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 3px;
+        transition: width 0.15s;
+      }
+      .tap-fill.gold {
+        background: linear-gradient(90deg, #ffd700, #ffa500);
+      }
+      .tap-fill.purple {
+        background: linear-gradient(90deg, var(--blue), var(--purple));
+      }
+      .tap-count {
+        font-size: 12px;
+        color: #aaa;
+        font-weight: 600;
       }
 
       /* ═══════════ DONE SCENE ═══════════ */
@@ -1010,7 +1055,7 @@
         position: fixed;
         inset: 0;
         background: #fff;
-        z-index: 70;
+        z-index: 50;
         pointer-events: none;
         opacity: 0;
         transition: opacity 0.15s;
@@ -1067,7 +1112,7 @@
       .particle {
         position: fixed;
         pointer-events: none;
-        z-index: 80;
+        z-index: 50;
         border-radius: 50%;
         will-change: transform, opacity;
         animation: p-fly 0.6s ease-out forwards;
@@ -1082,6 +1127,26 @@
           transform: translate(var(--dx), var(--dy)) scale(0);
         }
       }
+      .tap-fx {
+        position: fixed;
+        font-size: 22px;
+        font-weight: 900;
+        color: var(--purple);
+        pointer-events: none;
+        z-index: 150;
+        will-change: transform, opacity;
+        animation: t-fly 0.5s ease-out forwards;
+      }
+      @keyframes t-fly {
+        0% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-50px) scale(1.2);
+        }
+      }
 
       @media (prefers-reduced-motion: reduce) {
         *,
@@ -1090,14 +1155,17 @@
           animation-duration: 0.01ms !important;
           transition-duration: 0.01ms !important;
         }
-        .particle {
+        .particle,
+        .tap-fx {
           display: none !important;
         }
       }
     </style>
   </head>
   <body>
-    <!-- ═══════════ SCENES ═══════════ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!--              SCENES                     -->
+    <!-- ═══════════════════════════════════════ -->
 
     <div id="scene-loading" class="scene active">
       <div class="loader"></div>
@@ -1127,6 +1195,21 @@
         <button id="btn-submit" class="btn-primary" disabled>
           <span>Готово</span><span class="btn-shine"></span>
         </button>
+      </div>
+    </div>
+
+    <div id="scene-tap" class="scene">
+      <div class="tap-area" id="tap-area">
+        <div class="tap-sticker" id="tap-sticker">
+          <div class="tap-emoji" id="tap-emoji">❓</div>
+        </div>
+      </div>
+      <div class="tap-bottom" id="tap-bottom">
+        <div class="tap-label">Тапай! 👆</div>
+        <div class="tap-bar-wrap">
+          <div class="tap-bar"><div class="tap-fill" id="tap-fill"></div></div>
+          <span class="tap-count" id="tap-count">0 / 10</span>
+        </div>
       </div>
     </div>
 
@@ -1182,14 +1265,9 @@
       </div>
     </div>
 
-    <!-- ═══════════ REVEAL OVERLAY ═══════════ -->
-    <div id="reveal-overlay" class="hidden">
-      <div class="reveal-sticker" id="reveal-sticker">
-        <div class="reveal-emoji" id="reveal-emoji">❓</div>
-      </div>
-    </div>
-
-    <!-- ═══════════ SHEETS ═══════════ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!--              SHEETS                     -->
+    <!-- ═══════════════════════════════════════ -->
 
     <div id="sheet-prize" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
@@ -1284,7 +1362,9 @@
       </div>
     </div>
 
-    <!-- ═══════════ STARS MODAL ═══════════ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!--           STARS MODAL                   -->
+    <!-- ═══════════════════════════════════════ -->
 
     <div id="modal-stars" class="modal-fs hidden">
       <div class="modal-fs-header">
@@ -1310,13 +1390,17 @@
       <button id="btn-edit-stars" class="btn-admin-edit hidden">✏️</button>
     </div>
 
-    <!-- ═══════════ FX ═══════════ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!--            UTILITIES                    -->
+    <!-- ═══════════════════════════════════════ -->
 
     <div id="flash"></div>
     <div id="edge-glow"></div>
     <div id="toast" class="toast"></div>
 
-    <!-- ═══════════ EXTERNAL SCRIPTS ═══════════ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!--          EXTERNAL SCRIPTS               -->
+    <!-- ═══════════════════════════════════════ -->
 
     <script
       defer
@@ -1335,7 +1419,9 @@
       src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"
     ></script>
 
-    <!-- ═══════════ APPLICATION ═══════════ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!--          APPLICATION SCRIPT             -->
+    <!-- ═══════════════════════════════════════ -->
 
     <script>
       window.addEventListener("load", () => {
@@ -1355,6 +1441,7 @@
       function startApp() {
         /* ═══════════ CONFIG ═══════════ */
         const BOT = "fawtfbot";
+        const MAX_TAPS = 10;
         const T_SEC = 86400;
         const THRESHOLD = 80;
 
@@ -1371,10 +1458,18 @@
         };
 
         const PRIZE_META = {
-          stars: { modal: TGS.modalS, glow: "rgba(255,215,0,.35)", shine: "" },
+          stars: {
+            tgs: TGS.starY,
+            modal: TGS.modalS,
+            glow: "rgba(255,215,0,.35)",
+            fill: "gold",
+            shine: "",
+          },
           premium: {
+            tgs: TGS.starP,
             modal: TGS.modalP,
             glow: "rgba(124,103,254,.35)",
+            fill: "purple",
             shine: "purple-shine",
           },
         };
@@ -1391,6 +1486,7 @@
           tInt = null;
         let wonPrize = null,
           appState = "loading",
+          tapN = 0,
           isChecking = false;
         let strokes = [],
           curStroke = null,
@@ -1414,16 +1510,19 @@
             Telegram.WebApp.HapticFeedback.notificationOccurred(t);
           } catch (e) {}
         };
+
         function calcSpeed(r) {
           return r >= 2 ? Math.pow(2, Math.floor(r / 2)) : 1;
         }
+
         function fmtTime(s) {
           if (s <= 0) return null;
-          const h = Math.floor(s / 3600),
-            m = Math.floor((s % 3600) / 60),
-            sc = Math.floor(s % 60);
+          const h = Math.floor(s / 3600);
+          const m = Math.floor((s % 3600) / 60);
+          const sc = Math.floor(s % 60);
           return [h, m, sc].map((v) => String(v).padStart(2, "0")).join(":");
         }
+
         let toastTimer = null;
         function toast(t, tp = "error", ms = 3000) {
           const el = $("toast");
@@ -1435,6 +1534,10 @@
             el.classList.remove("show");
             toastTimer = null;
           }, ms);
+        }
+
+        function getMeta(key) {
+          return PRIZE_META[key] || PRIZE_META.stars;
         }
 
         /* ═══════════ SCENE MANAGER ═══════════ */
@@ -1462,9 +1565,9 @@
 
         /* ═══════════ SHEET MANAGER ═══════════ */
         function openSheet(id) {
-          const ov = $(id),
-            bg = ov.querySelector(".sheet-bg"),
-            sh = ov.querySelector(".sheet");
+          const ov = $(id);
+          const bg = ov.querySelector(".sheet-bg");
+          const sh = ov.querySelector(".sheet");
           ov.classList.remove("hidden");
           if (bg) {
             gsap.set(bg, { opacity: 0 });
@@ -1476,10 +1579,11 @@
           }
           updateBackBtn();
         }
+
         function closeSheet(id, cb) {
-          const ov = $(id),
-            bg = ov.querySelector(".sheet-bg"),
-            sh = ov.querySelector(".sheet");
+          const ov = $(id);
+          const bg = ov.querySelector(".sheet-bg");
+          const sh = ov.querySelector(".sheet");
           if (sh) {
             gsap.to(sh, { y: "100%", duration: 0.3, ease: "power2.in" });
             if (bg) gsap.to(bg, { opacity: 0, duration: 0.25 });
@@ -1504,6 +1608,7 @@
             else Telegram.WebApp.BackButton.hide();
           } catch (e) {}
         }
+
         try {
           Telegram.WebApp.BackButton.onClick(() => {
             if (!$("modal-stars").classList.contains("hidden"))
@@ -1529,6 +1634,7 @@
             return "";
           }
         }
+
         async function api(ep, body = {}) {
           for (let i = 0; i < 3; i++) {
             try {
@@ -1564,6 +1670,7 @@
         try {
           lottie.setQuality(2);
         } catch (e) {}
+
         async function loadTGS(u) {
           if (tgsC[u] !== undefined) return tgsC[u];
           try {
@@ -1579,9 +1686,11 @@
             return null;
           }
         }
+
         function cloneTGS(u) {
           return tgsS[u] ? JSON.parse(tgsS[u]) : null;
         }
+
         function playLottie(c, u, loop = true) {
           activeLotties = activeLotties.filter((a) => {
             try {
@@ -1607,6 +1716,7 @@
           activeLotties.push(a);
           return a;
         }
+
         function playIcon(c, u) {
           iconLotties = iconLotties.filter((a) => {
             try {
@@ -1632,6 +1742,7 @@
           iconLotties.push(a);
           return a;
         }
+
         function killLotties() {
           activeLotties.forEach((a) => {
             try {
@@ -1666,6 +1777,7 @@
           document.body.appendChild(p);
           PP.push({ el: p, busy: false, t: null });
         }
+
         function burst(x, y, n) {
           n = Math.min(n, 10);
           let u = 0;
@@ -1674,9 +1786,9 @@
             if (s.busy) continue;
             s.busy = true;
             u++;
-            const a = ((Math.PI * 2) / n) * u + Math.random() * 0.5,
-              d = 30 + Math.random() * 50,
-              sz = 3 + Math.random() * 4;
+            const a = ((Math.PI * 2) / n) * u + Math.random() * 0.5;
+            const d = 30 + Math.random() * 50;
+            const sz = 3 + Math.random() * 4;
             s.el.style.cssText = `left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;background:${PC[u % PC.length]};display:block`;
             s.el.style.animation = "none";
             void s.el.offsetHeight;
@@ -1689,8 +1801,9 @@
             }, 600);
           }
         }
+
         function megaBurst(x, y) {
-          for (let i = 0; i < 4; i++)
+          for (let i = 0; i < 4; i++) {
             setTimeout(
               () =>
                 burst(
@@ -1700,6 +1813,39 @@
                 ),
               i * 60,
             );
+          }
+        }
+
+        const TPP = [],
+          TT = ["+1", "⭐", "✨", "💫", "🔥", "💎"];
+        for (let i = 0; i < 6; i++) {
+          const el = document.createElement("div");
+          el.className = "tap-fx";
+          el.style.display = "none";
+          document.body.appendChild(el);
+          TPP.push({ el, busy: false, t: null });
+        }
+
+        function showTapFx(x, y) {
+          for (let i = 0; i < TPP.length; i++) {
+            const s = TPP[i];
+            if (s.busy) continue;
+            s.busy = true;
+            s.el.textContent = TT[~~(Math.random() * TT.length)];
+            s.el.style.left = x + (Math.random() - 0.5) * 30 + "px";
+            s.el.style.top = y - 10 + "px";
+            s.el.style.display = "block";
+            s.el.style.animation = "none";
+            void s.el.offsetHeight;
+            s.el.style.animation = "";
+            if (s.t) clearTimeout(s.t);
+            s.t = setTimeout(() => {
+              s.el.style.display = "none";
+              s.busy = false;
+              s.t = null;
+            }, 500);
+            return;
+          }
         }
 
         /* ═══════════ STAR SCORING ═══════════ */
@@ -1713,8 +1859,8 @@
             iR = sz * 0.18;
           x.beginPath();
           for (let i = 0; i < 10; i++) {
-            const r = i % 2 === 0 ? oR : iR,
-              a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
+            const r = i % 2 === 0 ? oR : iR;
+            const a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
             const px = cx + Math.cos(a) * r,
               py = cy + Math.sin(a) * r;
             i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
@@ -1727,6 +1873,7 @@
           x.stroke();
           return x.getImageData(0, 0, sz, sz);
         }
+
         function renderStrokes(st, sz) {
           const c = document.createElement("canvas");
           c.width = c.height = sz;
@@ -1744,8 +1891,8 @@
               if (p.y > MY) MY = p.y;
             }
           const w = MX - mX || 1,
-            h = MY - mY || 1,
-            sc = (sz * 0.85) / Math.max(w, h);
+            h = MY - mY || 1;
+          const sc = (sz * 0.85) / Math.max(w, h);
           const ox = (sz - w * sc) / 2 - mX * sc,
             oy = (sz - h * sc) / 2 - mY * sc;
           x.strokeStyle = "#000";
@@ -1762,6 +1909,7 @@
           }
           return x.getImageData(0, 0, sz, sz);
         }
+
         function dilate(img, rad) {
           const w = img.width,
             h = img.height;
@@ -1789,13 +1937,14 @@
             }
           return dst;
         }
+
         function scoreDrawing(st) {
           if (!st.length) return 0;
           let tp = 0;
           for (const s of st) tp += s.length;
           if (tp < 10) return 0;
-          const SZ = 64,
-            id = genIdealStar(SZ),
+          const SZ = 64;
+          const id = genIdealStar(SZ),
             dd = renderStrokes(st, SZ);
           const iD = dilate(id, 3),
             dD = dilate(dd, 3),
@@ -1826,6 +1975,7 @@
         const cvs = $("draw-canvas"),
           ctx = cvs.getContext("2d"),
           wrap = $("canvas-wrap");
+
         function ghostStar() {
           const sz = cSize,
             cx = sz / 2,
@@ -1840,8 +1990,8 @@
           ctx.lineJoin = "round";
           ctx.beginPath();
           for (let i = 0; i < 10; i++) {
-            const r = i % 2 === 0 ? oR : iR,
-              a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
+            const r = i % 2 === 0 ? oR : iR;
+            const a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
             const x = cx + Math.cos(a) * r,
               y = cy + Math.sin(a) * r;
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
@@ -1850,11 +2000,12 @@
           ctx.stroke();
           ctx.restore();
         }
+
         function setupCanvas() {
           const area = document.querySelector(".draw-canvas-area");
           if (!area) return;
-          const r = area.getBoundingClientRect(),
-            avail = Math.min(r.width - 16, r.height - 16);
+          const r = area.getBoundingClientRect();
+          const avail = Math.min(r.width - 16, r.height - 16);
           cSize = Math.min(Math.max(Math.floor(avail), 160), 400);
           wrap.style.width = cSize + "px";
           wrap.style.height = cSize + "px";
@@ -1871,6 +2022,7 @@
           ctx.lineJoin = "round";
           ghostStar();
         }
+
         function getPos(e) {
           const r = cvs.getBoundingClientRect();
           return {
@@ -1878,6 +2030,7 @@
             y: (e.touches?.[0]?.clientY ?? e.clientY) - r.top,
           };
         }
+
         cvs.addEventListener("pointerdown", (e) => {
           if (appState !== "drawing") return;
           e.preventDefault();
@@ -1888,6 +2041,7 @@
           ctx.moveTo(p.x, p.y);
           hapticN_ = 0;
         });
+
         cvs.addEventListener("pointermove", (e) => {
           if (!drawing || !curStroke) return;
           e.preventDefault();
@@ -1909,15 +2063,18 @@
             $("btn-submit").classList.add("pulse");
           }
         });
+
         function endStroke() {
           if (!drawing || !curStroke) return;
           drawing = false;
           if (curStroke.length > 1) strokes.push(curStroke);
           curStroke = null;
         }
+
         cvs.addEventListener("pointerup", endStroke);
         cvs.addEventListener("pointercancel", endStroke);
         cvs.addEventListener("pointerleave", endStroke);
+
         function clearCanvas() {
           const dpr = Math.min(window.devicePixelRatio || 1, 2);
           ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1938,6 +2095,7 @@
           wrap.classList.remove("ok", "fail");
           ghostStar();
         }
+
         $("btn-reset").addEventListener("click", () => {
           if (appState !== "drawing") return;
           clearCanvas();
@@ -1953,10 +2111,12 @@
           btn.disabled = true;
           btn.classList.remove("pulse");
           haptic("medium");
+
           const score = scoreDrawing(strokes);
           const sv = $("score-val"),
             sh = $("score-hint");
           const o = { v: 0 };
+
           gsap.to(o, {
             v: score,
             duration: 0.8,
@@ -1972,6 +2132,7 @@
             duration: 0.4,
             ease: "back.out(2)",
           });
+
           await sleep(900);
 
           if (score >= THRESHOLD) {
@@ -1982,6 +2143,7 @@
             wrap.classList.add("ok");
             hapticNotif("success");
 
+            /* SERVER determines the prize */
             const res = await api("process-action", {
               action: "complete_draw",
             });
@@ -1995,9 +2157,10 @@
               return;
             }
             wonPrize = res.prize;
-            await sleep(500);
+
+            await sleep(800);
             appState = "transforming";
-            await doTransformAndReveal();
+            await doTransform();
           } else {
             sv.style.color = "#FF4757";
             sh.textContent = "Попробуйте ещё раз";
@@ -2013,20 +2176,19 @@
           }
         });
 
-        /* ═══════════ TRANSFORM & REVEAL ANIMATION ═══════════ */
-        async function doTransformAndReveal() {
+        /* ═══════════ TRANSFORM → TAP ═══════════ */
+        async function doTransform() {
+          const meta = getMeta(wonPrize.key);
           const wrapR = wrap.getBoundingClientRect();
           const cx = wrapR.left + wrapR.width / 2;
           const cy = wrapR.top + wrapR.height / 2;
-          const meta = PRIZE_META[wonPrize.key] || PRIZE_META.stars;
 
-          /* Fade out UI */
-          gsap.to(
-            [".draw-submit", "#btn-reset", ".draw-score", ".draw-header"],
-            { opacity: 0, duration: 0.3 },
-          );
+          gsap.to([".draw-submit", "#btn-reset", ".draw-score"], {
+            opacity: 0,
+            duration: 0.3,
+          });
 
-          /* Phase 1: Shake canvas */
+          // Shake canvas
           let amp = 0,
             run = true;
           const shake = () => {
@@ -2052,7 +2214,6 @@
             haptic("light");
           }
 
-          /* Phase 2: Explode canvas */
           haptic("heavy");
           megaBurst(cx, cy);
           gsap.to(cvs, {
@@ -2067,21 +2228,25 @@
           cvs.style.transform = "";
           await sleep(400);
 
-          /* Phase 3: Show reveal overlay with drumroll */
-          const overlay = $("reveal-overlay");
-          const sticker = $("reveal-sticker");
-          const emoji = $("reveal-emoji");
-          overlay.classList.remove("hidden");
-          overlay.style.opacity = "1";
-          overlay.style.pointerEvents = "none";
+          // Setup tap scene
+          const sticker = $("tap-sticker"),
+            emoji = $("tap-emoji"),
+            bottom = $("tap-bottom");
+          const startSz = Math.round(cSize * 0.35);
+          sticker.style.width = startSz + "px";
+          sticker.style.height = startSz + "px";
+          emoji.textContent = "❓";
           emoji.style.display = "";
-          sticker.style.width = Math.round(cSize * 0.35) + "px";
-          sticker.style.height = Math.round(cSize * 0.35) + "px";
+          bottom.style.opacity = "0";
+          $("tap-fill").style.width = "0%";
+          $("tap-fill").className = "tap-fill";
+          $("tap-count").textContent = "0 / " + MAX_TAPS;
 
+          showScene("tap", true);
           gsap.from(sticker, { scale: 0, duration: 0.3, ease: "back.out(2)" });
           await sleep(200);
 
-          /* Drumroll */
+          // Drumroll
           const emojis = [
             "❓",
             "🎁",
@@ -2100,7 +2265,8 @@
             dRun = true;
           const dShake = () => {
             if (!dRun) return;
-            overlay.style.transform = `translate(${(Math.random() - 0.5) * dAmp * 2}px,${(Math.random() - 0.5) * dAmp * 2}px)`;
+            $("scene-tap").style.transform =
+              `translate(${(Math.random() - 0.5) * dAmp * 2}px,${(Math.random() - 0.5) * dAmp * 2}px)`;
             requestAnimationFrame(dShake);
           };
           dAmp = 1;
@@ -2116,6 +2282,7 @@
               },
             },
           );
+
           for (let r = 0; r < 18; r++) {
             emoji.textContent = emojis[idx++ % emojis.length];
             gsap.fromTo(
@@ -2127,11 +2294,12 @@
             await sleep(spd);
             spd = Math.max(50, spd - 14);
           }
+
           dRun = false;
           dAmp = 0;
-          overlay.style.transform = "";
+          $("scene-tap").style.transform = "";
 
-          /* Phase 4: Flash reveal */
+          // Flash reveal
           const flash = $("flash");
           flash.style.transition = "opacity .08s";
           flash.style.opacity = "1";
@@ -2139,24 +2307,17 @@
           hapticNotif("success");
           await sleep(100);
 
-          /* Show prize sticker */
+          // Show prize sticker
           emoji.style.display = "none";
-          sticker.style.width = Math.round(cSize * 0.4) + "px";
-          sticker.style.height = Math.round(cSize * 0.4) + "px";
-          await loadTGS(meta.modal);
-          playLottie(sticker, meta.modal, false);
-          gsap.fromTo(
-            sticker,
-            { scale: 2, opacity: 0 },
-            { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.8)" },
-          );
+          sticker.style.width = Math.round(cSize * 0.3) + "px";
+          sticker.style.height = Math.round(cSize * 0.3) + "px";
+          await loadTGS(meta.tgs);
+          playLottie(sticker, meta.tgs);
 
-          /* Edge glow */
           const glow = $("edge-glow");
           glow.style.setProperty("--glow", meta.glow);
           glow.classList.add("on");
 
-          /* Confetti cascade */
           confetti({ particleCount: 70, spread: 80, origin: { y: 0.4 } });
           confetti({
             particleCount: 35,
@@ -2172,32 +2333,68 @@
 
           flash.style.transition = "opacity .6s";
           flash.style.opacity = "0";
-          await sleep(1500);
+          await sleep(1000);
 
-          /* Phase 5: Fade out overlay, show prize sheet */
-          gsap.to(overlay, {
-            opacity: 0,
+          // Show tap UI
+          bottom.style.opacity = "1";
+          gsap.from(bottom, { opacity: 0, y: 10, duration: 0.3 });
+          $("tap-fill").classList.add(meta.fill);
+          appState = "tapping";
+          tapN = 0;
+        }
+
+        /* ═══════════ TAP ═══════════ */
+        $("tap-area").addEventListener("pointerdown", async (e) => {
+          if (appState !== "tapping") return;
+          e.preventDefault();
+          tapN++;
+          haptic("medium");
+
+          const st = $("tap-sticker");
+          const progress = tapN / MAX_TAPS;
+          gsap.to(st, {
+            width: cSize * (0.3 + 0.55 * progress),
+            height: cSize * (0.3 + 0.55 * progress),
             duration: 0.3,
-            onComplete() {
-              overlay.classList.add("hidden");
-            },
+            ease: "back.out(1.5)",
           });
+
+          $("tap-fill").style.width = progress * 100 + "%";
+          $("tap-count").textContent = tapN + " / " + MAX_TAPS;
+          showTapFx(e.clientX, e.clientY);
+          burst(e.clientX, e.clientY, 6);
+
+          if (tapN >= MAX_TAPS) {
+            appState = "revealing";
+            await sleep(300);
+            await doReveal();
+          }
+        });
+
+        async function doReveal() {
+          confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } });
+          hapticNotif("success");
+          await sleep(600);
+          gsap.to($("tap-bottom"), { opacity: 0, duration: 0.2 });
           await sleep(300);
-          showPrizeSheet();
+          showPrize();
         }
 
         /* ═══════════ PRIZE SHEET ═══════════ */
-        async function showPrizeSheet() {
+        async function showPrize() {
           killLotties();
-          const meta = PRIZE_META[wonPrize.key] || PRIZE_META.stars;
+          const meta = getMeta(wonPrize.key);
           $("prize-name").textContent = wonPrize.name;
           playLottie($("prize-sticker"), meta.modal, false);
+
           $("btn-claim").disabled = true;
           $("btn-claim").classList.remove("pulse");
           $("prize-cd").textContent = "";
+
           openSheet("sheet-prize");
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           appState = "prize";
+
           for (let i = 3; i >= 1; i--) {
             $("prize-cd").textContent = i;
             $("prize-cd").style.color = "var(--purple)";
@@ -2209,6 +2406,7 @@
             haptic("light");
             await sleep(1000);
           }
+
           $("prize-cd").textContent = "ГОТОВО!";
           $("prize-cd").style.color = "var(--green)";
           gsap.fromTo(
@@ -2218,9 +2416,11 @@
           );
           hapticNotif("success");
           await sleep(1200);
+
           $("btn-claim").disabled = false;
           $("btn-claim").classList.add("pulse");
         }
+
         $("btn-claim").addEventListener("click", () => {
           $("btn-claim").classList.remove("pulse");
           $("edge-glow").classList.remove("on");
@@ -2229,22 +2429,28 @@
 
         /* ═══════════ SUBSCRIBE SHEET ═══════════ */
         function updateSubProg() {
+          const d = document.querySelectorAll(".sub-btn.done").length;
           $("sub-progress").textContent =
-            `Подписано ${document.querySelectorAll(".sub-btn.done").length} из ${CHANNELS.length}`;
+            `Подписано ${d} из ${CHANNELS.length}`;
         }
+
         function showSub() {
           killLotties();
           const pKey = wonPrize ? wonPrize.key : US?.prize_key || "stars";
           const pName = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
-          const meta = PRIZE_META[pKey] || PRIZE_META.stars;
+          const meta = getMeta(pKey);
+
           $("sub-prize").textContent = pName;
           if (meta.modal) playLottie($("sub-sticker"), meta.modal, false);
+
           const list = $("sub-list");
           list.innerHTML = "";
+
           CHANNELS.forEach((ch) => {
             const isBot = ch.type === "bot";
             const li = document.createElement("li");
             li.className = "sub-item";
+
             const av = document.createElement("div");
             av.className = "sub-avatar";
             if (ch.avatar) {
@@ -2259,12 +2465,14 @@
             } else {
               av.textContent = isBot ? "🤖" : "📢";
             }
+
             const info = document.createElement("div");
             info.className = "sub-info";
             const nm = document.createElement("div");
             nm.className = "sub-name";
             nm.textContent = ch.name;
             info.appendChild(nm);
+
             const btn = document.createElement("button");
             btn.className = "sub-btn";
             btn.textContent = isBot ? "Открыть" : "Подписаться";
@@ -2288,19 +2496,23 @@
                 }).catch(() => {});
               }
             });
+
             li.append(av, info, btn);
             list.appendChild(li);
           });
+
           updateSubProg();
           openSheet("sheet-sub");
           appState = "subscribe";
         }
+
         $("btn-check-sub").addEventListener("click", async () => {
           if (isChecking) return;
           isChecking = true;
           const btn = $("btn-check-sub");
           btn.disabled = true;
           btn.querySelector("span").textContent = "Проверяем...";
+
           try {
             const res = await api("process-action", {
               action: "check_subscriptions",
@@ -2355,6 +2567,7 @@
           playIcon($("btn-rocket-tgs"), TGS.rocket);
           playIcon($("btn-star-tgs"), TGS.star);
         }
+
         function resetTimerDots() {
           $("tp2").className = "tp-dot active";
           $("tp2").textContent = "2";
@@ -2366,23 +2579,30 @@
           $("tlbl3").className = "tp-label";
           $("tlbl3").textContent = "Выдача";
         }
+
         function goToDone() {
           killLotties();
           const pKey = wonPrize ? wonPrize.key : US?.prize_key || "stars";
           const pName = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
-          const meta = PRIZE_META[pKey] || PRIZE_META.stars;
+          const meta = getMeta(pKey);
+
           const dp = $("done-prize");
           dp.textContent = pName;
           dp.className = "done-prize" + (meta.shine ? " " + meta.shine : "");
+
           playLottie($("done-sticker"), meta.modal, false);
+
           if (!claimedAt) claimedAt = US?.claimed_at || Date.now() / 1000;
           refCount = US?.referral_count || refCount || 0;
           tSpeed = calcSpeed(refCount);
+
           $("done-actions-timer").classList.remove("hidden");
           $("done-actions-final").classList.add("hidden");
+
           resetTimerDots();
           startTimer();
           setupDoneIcons();
+
           showScene("done");
           confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
           gsap.from(".done-wrap", {
@@ -2400,6 +2620,7 @@
           updTimer();
           tInt = setInterval(updTimer, 500);
         }
+
         function updTimer() {
           if (!claimedAt) return;
           const rem = Math.max(
@@ -2408,16 +2629,18 @@
           );
           const t = fmtTime(rem);
           const te = $("timer-time"),
-            sp = $("timer-speed"),
-            pill = $("timer-pill"),
+            sp = $("timer-speed");
+          const pill = $("timer-pill"),
             dot = $("timer-dot"),
             st = $("timer-text");
+
           if (sp) sp.textContent = "x" + tSpeed;
           if (pill) {
             tSpeed > 1
               ? pill.classList.add("fast")
               : pill.classList.remove("fast");
           }
+
           if (!t) {
             if (te) {
               te.textContent = "Готово!";
@@ -2425,21 +2648,35 @@
             }
             if (dot) dot.classList.add("done");
             if (st) st.textContent = "Приз готов к выдаче!";
-            ["tp2", "tp3"].forEach((id) => {
-              $(id).className = "tp-dot done";
-              $(id).textContent = "✓";
-            });
-            $("tl2").className = "tp-line done";
-            $("tlbl2").className = "tp-label done-l";
-            $("tlbl2").textContent = "Готово";
-            $("tlbl3").className = "tp-label done-l";
-            $("tlbl3").textContent = "Выдан";
+            const tp2 = $("tp2"),
+              tp3 = $("tp3"),
+              tl2 = $("tl2");
+            const tlbl2 = $("tlbl2"),
+              tlbl3 = $("tlbl3");
+            if (tp2) {
+              tp2.className = "tp-dot done";
+              tp2.textContent = "✓";
+            }
+            if (tp3) {
+              tp3.className = "tp-dot done";
+              tp3.textContent = "✓";
+            }
+            if (tl2) tl2.className = "tp-line done";
+            if (tlbl2) {
+              tlbl2.className = "tp-label done-l";
+              tlbl2.textContent = "Готово";
+            }
+            if (tlbl3) {
+              tlbl3.className = "tp-label done-l";
+              tlbl3.textContent = "Выдан";
+            }
             if (pill) pill.style.display = "none";
             $("done-actions-timer").classList.add("hidden");
             $("done-actions-final").classList.remove("hidden");
             clearInterval(tInt);
             return;
           }
+
           if (te) {
             te.textContent = t;
             te.classList.remove("done");
@@ -2454,11 +2691,17 @@
           btn.disabled = true;
           btn.classList.remove("pulse");
           btn.querySelector("span").textContent = "Обработка...";
-          const res = await api("process-action", { action: "finalize_claim" });
+          const res = await api("process-action", {
+            action: "finalize_claim",
+          });
           if (res.ok) {
             hapticNotif("success");
             toast("🎉 Приз получен!", "success");
-            confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
+            confetti({
+              particleCount: 100,
+              spread: 100,
+              origin: { y: 0.5 },
+            });
             btn.querySelector("span").textContent = "✅ Получено";
           } else {
             toast(res.error || "Ошибка", "error");
@@ -2485,9 +2728,11 @@
           playIcon($("share-invite-tgs"), TGS.invite);
           openSheet("sheet-speed");
         });
+
         $("btn-back-speed").addEventListener("click", () =>
           closeSheet("sheet-speed"),
         );
+
         $("btn-share").addEventListener("click", () => {
           const uid = US?.telegram_id || "";
           const link = `https://t.me/${BOT}?start=ref_${uid}`;
@@ -2505,6 +2750,7 @@
           $("modal-stars").classList.remove("hidden");
           updateBackBtn();
           playIcon($("modal-star-tgs"), TGS.star);
+
           const c = $("stars-content");
           if (!c.innerHTML) {
             try {
@@ -2515,23 +2761,28 @@
               c.textContent = "Ошибка загрузки";
             }
           }
+
           if (isAdmin) $("btn-edit-stars").classList.remove("hidden");
         });
+
         $("btn-close-stars").addEventListener("click", () => {
           $("modal-stars").classList.add("hidden");
           $("stars-edit").classList.add("hidden");
           $("stars-content").classList.remove("hidden");
           updateBackBtn();
         });
+
         $("btn-edit-stars").addEventListener("click", () => {
           $("stars-ta").value = $("stars-content").innerText || "";
           $("stars-content").classList.add("hidden");
           $("stars-edit").classList.remove("hidden");
         });
+
         $("btn-cancel-edit").addEventListener("click", () => {
           $("stars-edit").classList.add("hidden");
           $("stars-content").classList.remove("hidden");
         });
+
         $("btn-save-stars").addEventListener("click", async () => {
           const t = $("stars-ta").value;
           try {
@@ -2553,6 +2804,9 @@
           PP.forEach((p) => {
             if (p.t) clearTimeout(p.t);
           });
+          TPP.forEach((p) => {
+            if (p.t) clearTimeout(p.t);
+          });
         }
         window.addEventListener("beforeunload", cleanup);
 
@@ -2564,7 +2818,10 @@
             Telegram.WebApp.setHeaderColor("#ffffff");
             Telegram.WebApp.setBackgroundColor("#ffffff");
           } catch (e) {}
+
+          // Load all TGS in parallel
           const allTgs = Object.values(TGS).map((u) => loadTGS(u));
+
           try {
             const res = await api("get-user");
             if (res.ok) {
@@ -2576,7 +2833,10 @@
               if (res.user.claimed_at) claimedAt = res.user.claimed_at;
             }
           } catch (e) {}
+
           await Promise.all(allTgs);
+
+          // Hide loading
           $("scene-loading").style.opacity = "0";
           await sleep(300);
           try {
@@ -2588,17 +2848,17 @@
             return;
           }
 
-          /* ══════ STATE ROUTING (SECURE) ══════ */
+          // ══════ SECURE STATE ROUTING ══════
 
-          /* completed = prize already received */
+          /* completed = prize already fully received */
           if (US.state === "completed") {
+            const meta = getMeta(US.prize_key || "stars");
             showScene("done", true);
-            const meta =
-              PRIZE_META[US.prize_key || "stars"] || PRIZE_META.stars;
-            $("done-prize").textContent = US.prize_name || "Приз";
-            $("done-prize").className =
-              "done-prize" + (meta.shine ? " " + meta.shine : "");
+            const dp = $("done-prize");
+            dp.textContent = US.prize_name || "Приз";
+            dp.className = "done-prize" + (meta.shine ? " " + meta.shine : "");
             playLottie($("done-sticker"), meta.modal, false);
+
             $("timer-time").textContent = "Получено!";
             $("timer-time").classList.add("done");
             $("timer-dot").classList.add("done");
@@ -2643,7 +2903,7 @@
             return;
           }
 
-          /* rolled = drew star, needs to subscribe (NO TIMER!) */
+          /* rolled = drew star but NOT yet subscribed — show sub sheet only, NO timer */
           if (US.state === "rolled") {
             wonPrize = {
               key: US.prize_key || "stars",
@@ -2655,7 +2915,7 @@
             return;
           }
 
-          /* new = start drawing */
+          // ── Default: new user, draw scene ──
           showScene("draw", true);
           await new Promise((r) =>
             requestAnimationFrame(() => requestAnimationFrame(r)),
@@ -2663,6 +2923,7 @@
           setupCanvas();
           playIcon($("title-star-tgs"), TGS.star);
           appState = "drawing";
+
           gsap.from(".draw-header", { y: 20, opacity: 0, duration: 0.4 });
           gsap.from("#canvas-wrap", {
             y: 20,
@@ -2678,6 +2939,7 @@
             delay: 0.3,
           });
         }
+
         init();
       }
     </script>
