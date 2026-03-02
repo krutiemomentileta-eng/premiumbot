@@ -6,6 +6,15 @@
       name="viewport"
       content="width=device-width,initial-scale=1.0,user-scalable=no"
     />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com;
+               font-src https://fonts.gstatic.com;
+               img-src 'self' data: https:;
+               connect-src 'self';"
+    />
     <title>⭐ Draw & Win!</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -28,6 +37,10 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         -webkit-tap-highlight-color: transparent;
         user-select: none;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
       }
       .hidden {
         display: none !important;
@@ -128,7 +141,8 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 12px 24px 16px;
+        padding: max(12px, env(safe-area-inset-top)) 24px
+          max(16px, env(safe-area-inset-bottom));
         z-index: 2;
         overflow: hidden;
       }
@@ -358,7 +372,7 @@
         z-index: 1;
         background: #fff;
         border-radius: 20px 20px 0 0;
-        padding: 10px 24px 34px;
+        padding: 10px 24px max(34px, env(safe-area-inset-bottom));
         max-height: 85vh;
         overflow-y: auto;
         text-align: center;
@@ -1156,14 +1170,15 @@
       <div class="modal-fs-header">
         <span class="modal-fs-title"
           ><span class="header-icon-inline">⭐</span>Заработать звёзды</span
-        ><button id="btn-close-stars" class="modal-fs-close">✕</button>
+        >
+        <button id="btn-close-stars" class="modal-fs-close">✕</button>
       </div>
       <div id="stars-content" class="modal-fs-body"></div>
       <div id="stars-edit-wrap" class="stars-edit-wrap hidden">
         <textarea id="stars-textarea" class="stars-textarea"></textarea>
         <div class="stars-edit-btns">
-          <button id="btn-save-stars" class="btn-save">💾 Сохранить</button
-          ><button id="btn-cancel-edit" class="btn-cancel">Отмена</button>
+          <button id="btn-save-stars" class="btn-save">💾 Сохранить</button>
+          <button id="btn-cancel-edit" class="btn-cancel">Отмена</button>
         </div>
       </div>
       <button id="btn-edit-stars" class="btn-admin-edit hidden">✏️</button>
@@ -1202,108 +1217,302 @@
       });
 
       function startApp() {
-        const TGS_STAR_YELLOW = "assets/star_yellow.tgs",
-          TGS_STAR_PURPLE = "assets/star_purple.tgs";
-        const TGS_MODAL_STARS = "assets/modalstars.tgs",
-          TGS_MODAL_PREMIUM = "assets/modalpremium.tgs";
-        const TGS_ROCKET = "assets/rocket.tgs",
-          TGS_STAR_ICON = "assets/star.tgs",
-          TGS_LIGHTNING = "assets/lightning.tgs",
-          TGS_CHECK = "assets/true.tgs",
-          TGS_INVITE = "assets/invite.tgs";
-        const API = "/api",
-          BOT = "fawtfbot",
-          MAX_TAPS = 10,
-          T_SEC = 86400,
-          SCORE_THRESHOLD = 80;
+        /* ═══════════════════════════════
+       CONSTANTS & CONFIG
+       ═══════════════════════════════ */
+        const CONFIG = {
+          API_BASE: "/api",
+          BOT_USERNAME: "fawtfbot",
+          MAX_TAPS: 10,
+          TIMER_DURATION_SEC: 86400,
+          SCORE_THRESHOLD: 80,
+          PARTICLE_POOL_SIZE: 24,
+          TAP_FX_POOL_SIZE: 6,
+          STAR_GRID_SIZE: 64,
+          MAX_DPR: 2,
+          MAX_CANVAS_SIZE: 400,
+          MIN_CANVAS_SIZE: 180,
+          MIN_STROKE_POINTS: 10,
+          MAX_STROKE_POINTS: 2000,
+          API_RETRIES: 3,
+          API_RETRY_DELAY_MS: 1000,
+          LOTTIE_QUALITY: 2,
+          DEBUG: false,
+        };
+
+        const ASSETS = {
+          TGS_STAR_YELLOW: "assets/star_yellow.tgs",
+          TGS_STAR_PURPLE: "assets/star_purple.tgs",
+          TGS_MODAL_STARS: "assets/modalstars.tgs",
+          TGS_MODAL_PREMIUM: "assets/modalpremium.tgs",
+          TGS_ROCKET: "assets/rocket.tgs",
+          TGS_STAR_ICON: "assets/star.tgs",
+          TGS_LIGHTNING: "assets/lightning.tgs",
+          TGS_CHECK: "assets/true.tgs",
+          TGS_INVITE: "assets/invite.tgs",
+        };
+
         const PRIZE_STARS = {
           key: "stars",
           name: "500 Stars",
-          tgs: TGS_STAR_YELLOW,
+          tgs: ASSETS.TGS_STAR_YELLOW,
           glowColor: "rgba(255,215,0,.35)",
           fillClass: "gold",
         };
+
         const PRIZE_PREMIUM = {
           key: "premium",
           name: "Telegram Premium",
-          tgs: TGS_STAR_PURPLE,
+          tgs: ASSETS.TGS_STAR_PURPLE,
           glowColor: "rgba(124,103,254,.35)",
           fillClass: "purple",
         };
 
-        let CHANNELS = [],
-          US = null,
-          isAdmin = false,
-          attemptCount = 0;
+        /* ═══════════════════════════════
+       STATE
+       ═══════════════════════════════ */
+        let CHANNELS = [];
+        let US = null;
+        let isAdmin = false;
+        let attemptCount = 0;
         const openedBots = new Set();
-        let claimedAt = null,
-          refCount = 0,
-          tSpeed = 1,
-          tInt = null;
-        let wonPrize = null,
-          appState = "loading",
-          tapCount = 0;
-        let isCheckingSub = false,
-          savedWrapSize = 300;
+        let claimedAt = null;
+        let refCount = 0;
+        let tSpeed = 1;
+        let tInt = null;
+        let wonPrize = null;
+        let appState = "loading";
+        let tapCount = 0;
+        let isCheckingSub = false;
+        let savedWrapSize = 300;
+        let strokes = [];
+        let currentStroke = null;
+        let isDrawing = false;
+        let hasDrawn = false;
+        let hapticCounter = 0;
+        let canvasSize = 0;
+        let activeLotties = [];
 
+        /* ═══════════════════════════════
+       LOGGING
+       ═══════════════════════════════ */
+        function log(...args) {
+          if (CONFIG.DEBUG) console.log("[DrawWin]", ...args);
+        }
+
+        /* ═══════════════════════════════
+       UTILITY FUNCTIONS
+       ═══════════════════════════════ */
         function calcSpeed(r) {
           return r >= 2 ? Math.pow(2, Math.floor(r / 2)) : 1;
         }
+
         function fmtT(s) {
           if (s <= 0) return null;
-          const h = Math.floor(s / 3600),
-            m = Math.floor((s % 3600) / 60),
-            sc = Math.floor(s % 60);
+          const h = Math.floor(s / 3600);
+          const m = Math.floor((s % 3600) / 60);
+          const sc = Math.floor(s % 60);
           return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sc).padStart(2, "0")}`;
         }
+
         function sleep(ms) {
           return new Promise((r) => setTimeout(r, ms));
         }
+
         function haptic(t) {
           try {
             Telegram.WebApp.HapticFeedback.impactOccurred(t);
-          } catch (e) {}
+          } catch (e) {
+            /* noop */
+          }
         }
+
         function hapticN(t) {
           try {
             Telegram.WebApp.HapticFeedback.notificationOccurred(t);
-          } catch (e) {}
+          } catch (e) {
+            /* noop */
+          }
         }
 
+        function escapeHtml(str) {
+          const div = document.createElement("div");
+          div.textContent = str;
+          return div.innerHTML;
+        }
+
+        function sanitizeUrl(url) {
+          if (!url || typeof url !== "string") return "";
+          try {
+            const parsed = new URL(url, "https://t.me");
+            if (parsed.protocol === "https:" || parsed.protocol === "http:")
+              return url;
+            return "";
+          } catch (e) {
+            return "";
+          }
+        }
+
+        /* ═══════════════════════════════
+       VALIDATION
+       ═══════════════════════════════ */
+        function validateChannels(channels) {
+          if (!Array.isArray(channels)) return [];
+          return channels
+            .filter(
+              (ch) =>
+                ch &&
+                (typeof ch.id === "number" || typeof ch.id === "string") &&
+                typeof ch.name === "string" &&
+                ch.name.length > 0 &&
+                typeof ch.link === "string" &&
+                ch.link.length > 0,
+            )
+            .map((ch) => ({
+              id: ch.id,
+              name: String(ch.name).substring(0, 100),
+              link: String(ch.link),
+              type: ch.type === "bot" ? "bot" : "channel",
+              avatar: ch.avatar ? String(ch.avatar) : null,
+            }));
+        }
+
+        /* ═══════════════════════════════
+       TELEGRAM INIT DATA
+       ═══════════════════════════════ */
+        function getInitData() {
+          try {
+            const initData = Telegram.WebApp.initData;
+            if (!initData) {
+              log("No initData — development mode?");
+              return "";
+            }
+            return initData;
+          } catch (e) {
+            log("Failed to get initData:", e);
+            return "";
+          }
+        }
+
+        /* ═══════════════════════════════
+       API WITH RETRY
+       ═══════════════════════════════ */
+        async function api(ep, body = {}) {
+          let lastError = null;
+
+          for (let attempt = 0; attempt < CONFIG.API_RETRIES; attempt++) {
+            try {
+              log("API call:", ep, "attempt:", attempt + 1);
+
+              const r = await fetch(`${CONFIG.API_BASE}/${ep}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ initData: getInitData(), ...body }),
+              });
+
+              if (!r.ok) {
+                const errData = await r.json().catch(() => ({}));
+                const errMsg = errData.error || `HTTP ${r.status}`;
+                log("API HTTP error:", errMsg);
+
+                // Не ретраим 4xx (кроме 429)
+                if (r.status >= 400 && r.status < 500 && r.status !== 429) {
+                  return { ok: false, error: errMsg };
+                }
+
+                lastError = errMsg;
+                if (attempt < CONFIG.API_RETRIES - 1) {
+                  await sleep(CONFIG.API_RETRY_DELAY_MS * (attempt + 1));
+                  continue;
+                }
+                return { ok: false, error: lastError };
+              }
+
+              const data = await r.json();
+              log("API response:", ep, data.ok);
+              return data;
+            } catch (e) {
+              log("API network error:", ep, e.message);
+              lastError = e.message || "network";
+
+              if (attempt < CONFIG.API_RETRIES - 1) {
+                await sleep(CONFIG.API_RETRY_DELAY_MS * (attempt + 1));
+                continue;
+              }
+            }
+          }
+
+          return { ok: false, error: lastError || "network" };
+        }
+
+        /* ═══════════════════════════════
+       TOAST
+       ═══════════════════════════════ */
+        let toastTimeout = null;
+
+        function toast(t, tp = "error", ms = 3000) {
+          const el = document.getElementById("toast");
+          el.textContent = t;
+          el.className = "toast " + tp;
+          if (toastTimeout) clearTimeout(toastTimeout);
+          requestAnimationFrame(() => el.classList.add("show"));
+          toastTimeout = setTimeout(() => {
+            el.classList.remove("show");
+            toastTimeout = null;
+          }, ms);
+        }
+
+        /* ═══════════════════════════════
+       TIMER
+       ═══════════════════════════════ */
         function startTimer() {
-          if (tInt) clearInterval(tInt);
+          stopTimer();
           updTimer();
           tInt = setInterval(updTimer, 500);
         }
+
+        function stopTimer() {
+          if (tInt) {
+            clearInterval(tInt);
+            tInt = null;
+          }
+        }
+
         function updTimer() {
           if (!claimedAt) return;
-          const rem = Math.max(
-            0,
-            T_SEC - (Date.now() / 1000 - claimedAt) * tSpeed,
-          );
+
+          const elapsed = (Date.now() / 1000 - claimedAt) * tSpeed;
+          const rem = Math.max(0, CONFIG.TIMER_DURATION_SEC - elapsed);
           const t = fmtT(rem);
+
           const timeEl = document.getElementById("timer-time");
           const speedEl = document.getElementById("speed-text");
           const pillEl = document.getElementById("speed-pill");
           const dotEl = document.getElementById("status-dot");
           const statusEl = document.getElementById("status-text");
+
           if (speedEl) speedEl.textContent = "x" + tSpeed;
+
           if (pillEl) {
             if (tSpeed > 1) pillEl.classList.add("fast");
             else pillEl.classList.remove("fast");
           }
+
           if (!t) {
+            // Таймер завершён
             if (timeEl) {
               timeEl.textContent = "Готово!";
               timeEl.classList.add("done");
             }
             if (dotEl) dotEl.classList.add("done");
             if (statusEl) statusEl.textContent = "Приз готов к выдаче!";
-            const pd2 = document.getElementById("pd-2"),
-              pd3 = document.getElementById("pd-3"),
-              pl2 = document.getElementById("pl-2"),
-              plbl2 = document.getElementById("plbl-2"),
-              plbl3 = document.getElementById("plbl-3");
+
+            const pd2 = document.getElementById("pd-2");
+            const pd3 = document.getElementById("pd-3");
+            const pl2 = document.getElementById("pl-2");
+            const plbl2 = document.getElementById("plbl-2");
+            const plbl3 = document.getElementById("plbl-3");
+
             if (pd2) {
               pd2.className = "p-dot done";
               pd2.textContent = "✓";
@@ -1322,9 +1531,11 @@
               plbl3.textContent = "Выдан";
             }
             if (pillEl) pillEl.style.display = "none";
-            clearInterval(tInt);
+
+            stopTimer();
             return;
           }
+
           if (timeEl) {
             timeEl.textContent = t;
             timeEl.classList.remove("done");
@@ -1333,16 +1544,23 @@
           if (statusEl) statusEl.textContent = "Подготавливаем приз...";
         }
 
-        const tgsCache = {},
-          tgsStr = {};
+        /* ═══════════════════════════════
+       TGS / LOTTIE
+       ═══════════════════════════════ */
+        const tgsCache = {};
+        const tgsStr = {};
+
         try {
-          lottie.setQuality(2);
-        } catch (e) {}
+          lottie.setQuality(CONFIG.LOTTIE_QUALITY);
+        } catch (e) {
+          /* noop */
+        }
+
         async function loadTGS(u) {
           if (tgsCache[u] !== undefined) return tgsCache[u];
           try {
             const r = await fetch(u);
-            if (!r.ok) throw 0;
+            if (!r.ok) throw new Error(`TGS fetch failed: ${r.status}`);
             const b = await r.arrayBuffer();
             const j = pako.inflate(new Uint8Array(b), { to: "string" });
             const p = JSON.parse(j);
@@ -1350,82 +1568,79 @@
             tgsStr[u] = j;
             return p;
           } catch (e) {
+            log("TGS load error:", u, e.message);
             tgsCache[u] = null;
             return null;
           }
         }
+
         function cloneTGS(u) {
           return tgsStr[u] ? JSON.parse(tgsStr[u]) : null;
         }
-        let activeLotties = [];
-        function playLottie(c, u, loop = true) {
-          c.innerHTML = "";
-          const d = cloneTGS(u);
+
+        function playLottie(container, tgsUrl, loop = true) {
+          // Уничтожаем старые анимации, привязанные к этому контейнеру
+          activeLotties = activeLotties.filter((a) => {
+            try {
+              if (a.wrapper === container || a._container === container) {
+                a.destroy();
+                return false;
+              }
+            } catch (e) {
+              /* noop */
+            }
+            return true;
+          });
+
+          container.innerHTML = "";
+          const d = cloneTGS(tgsUrl);
           if (!d) return null;
+
           const a = lottie.loadAnimation({
-            container: c,
+            container: container,
             renderer: "svg",
-            loop,
+            loop: loop,
             autoplay: true,
             animationData: d,
           });
           a.setSubframe(false);
+          a._container = container; // Сохраняем ссылку для cleanup
           activeLotties.push(a);
           return a;
         }
+
         function killLotties() {
           activeLotties.forEach((a) => {
             try {
               a.destroy();
-            } catch (e) {}
+            } catch (e) {
+              /* noop */
+            }
           });
           activeLotties = [];
         }
 
-        function gID() {
-          try {
-            return Telegram.WebApp.initData;
-          } catch (e) {
-            return "";
-          }
-        }
-        async function api(ep, body = {}) {
-          try {
-            const r = await fetch(`${API}/${ep}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ initData: gID(), ...body }),
-            });
-            return r.json();
-          } catch (e) {
-            return { ok: false, error: "network" };
-          }
-        }
-        function toast(t, tp = "error", ms = 3000) {
-          const el = document.getElementById("toast");
-          el.textContent = t;
-          el.className = "toast " + tp;
-          requestAnimationFrame(() => el.classList.add("show"));
-          setTimeout(() => el.classList.remove("show"), ms);
-        }
+        /* ═══════════════════════════════
+       PARTICLE SYSTEM
+       ═══════════════════════════════ */
+        const pPool = [];
+        const PC = [
+          "#6B93FF",
+          "#976FFF",
+          "#E46ACE",
+          "#FFD700",
+          "#FF6B6B",
+          "#4CAF50",
+        ];
 
-        const pPool = [],
-          MP = 24,
-          PC = [
-            "#6B93FF",
-            "#976FFF",
-            "#E46ACE",
-            "#FFD700",
-            "#FF6B6B",
-            "#4CAF50",
-          ];
-        for (let i = 0; i < MP; i++) {
+        for (let i = 0; i < CONFIG.PARTICLE_POOL_SIZE; i++) {
           const p = document.createElement("div");
           p.className = "particle";
           p.style.display = "none";
           document.body.appendChild(p);
-          pPool.push({ el: p, busy: false });
+          pPool.push({ el: p, busy: false, timer: null });
         }
+
         function burst(x, y, n) {
           n = Math.min(n, 10);
           let u = 0;
@@ -1434,22 +1649,25 @@
             if (s.busy) continue;
             s.busy = true;
             u++;
-            const a = ((Math.PI * 2) / n) * u + Math.random() * 0.5,
-              d = 30 + Math.random() * 50,
-              sz = 3 + Math.random() * 4,
-              el = s.el;
+            const a = ((Math.PI * 2) / n) * u + Math.random() * 0.5;
+            const d = 30 + Math.random() * 50;
+            const sz = 3 + Math.random() * 4;
+            const el = s.el;
             el.style.cssText = `left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;background:${PC[u % PC.length]};display:block`;
             el.style.animation = "none";
-            el.offsetHeight;
+            void el.offsetHeight; // force reflow
             el.style.animation = "";
-            setTimeout(() => {
+            if (s.timer) clearTimeout(s.timer);
+            s.timer = setTimeout(() => {
               el.style.display = "none";
               s.busy = false;
+              s.timer = null;
             }, 600);
           }
         }
+
         function megaBurst(x, y) {
-          for (let i = 0; i < 4; i++)
+          for (let i = 0; i < 4; i++) {
             setTimeout(
               () =>
                 burst(
@@ -1459,43 +1677,55 @@
                 ),
               i * 60,
             );
+          }
         }
-        const tFxPool = [],
-          MTF = 6,
-          TFT = ["+1", "⭐", "✨", "💫", "🔥", "💎"];
-        for (let i = 0; i < MTF; i++) {
+
+        /* ═══════════════════════════════
+       TAP EFFECTS
+       ═══════════════════════════════ */
+        const tFxPool = [];
+        const TFT = ["+1", "⭐", "✨", "💫", "🔥", "💎"];
+
+        for (let i = 0; i < CONFIG.TAP_FX_POOL_SIZE; i++) {
           const el = document.createElement("div");
           el.className = "tap-effect";
           el.style.display = "none";
           document.body.appendChild(el);
-          tFxPool.push({ el, busy: false });
+          tFxPool.push({ el: el, busy: false, timer: null });
         }
+
         function showTapFx(x, y) {
           for (let i = 0; i < tFxPool.length; i++) {
             const s = tFxPool[i];
             if (s.busy) continue;
             s.busy = true;
             const el = s.el;
-            el.textContent = TFT[~~(Math.random() * TFT.length)];
+            el.textContent = TFT[Math.floor(Math.random() * TFT.length)];
             el.style.left = x + (Math.random() - 0.5) * 30 + "px";
             el.style.top = y - 10 + "px";
             el.style.display = "block";
             el.style.animation = "none";
-            el.offsetHeight;
+            void el.offsetHeight;
             el.style.animation = "";
-            setTimeout(() => {
+            if (s.timer) clearTimeout(s.timer);
+            s.timer = setTimeout(() => {
               el.style.display = "none";
               s.busy = false;
+              s.timer = null;
             }, 500);
             return;
           }
         }
 
+        /* ═══════════════════════════════
+       SHEET ANIMATIONS
+       ═══════════════════════════════ */
         function openSheet(id) {
-          const ov = document.getElementById(id),
-            bg = ov.querySelector(".sheet-bg"),
-            sh = ov.querySelector(".sheet");
+          const ov = document.getElementById(id);
+          const bg = ov.querySelector(".sheet-bg");
+          const sh = ov.querySelector(".sheet");
           ov.classList.remove("hidden");
+
           if (bg) {
             gsap.set(bg, { opacity: 0 });
             gsap.to(bg, { opacity: 1, duration: 0.25 });
@@ -1505,10 +1735,12 @@
             gsap.to(sh, { y: "0%", duration: 0.4, ease: "power3.out" });
           }
         }
+
         function closeSheet(id, cb) {
-          const ov = document.getElementById(id),
-            bg = ov.querySelector(".sheet-bg"),
-            sh = ov.querySelector(".sheet");
+          const ov = document.getElementById(id);
+          const bg = ov.querySelector(".sheet-bg");
+          const sh = ov.querySelector(".sheet");
+
           if (sh) {
             gsap.to(sh, { y: "100%", duration: 0.3, ease: "power2.in" });
             if (bg) gsap.to(bg, { opacity: 0, duration: 0.25 });
@@ -1522,14 +1754,18 @@
           }
         }
 
+        /* ═══════════════════════════════
+       STAR DRAWING & SCORING
+       ═══════════════════════════════ */
         function generateIdealStar(size) {
           const c = document.createElement("canvas");
           c.width = c.height = size;
           const ctx = c.getContext("2d");
           const cx = size / 2,
-            cy = size / 2,
-            oR = size * 0.45,
+            cy = size / 2;
+          const oR = size * 0.45,
             iR = size * 0.18;
+
           ctx.beginPath();
           for (let i = 0; i < 10; i++) {
             const r = i % 2 === 0 ? oR : iR;
@@ -1547,52 +1783,63 @@
           ctx.stroke();
           return ctx.getImageData(0, 0, size, size);
         }
-        function renderDrawingToGrid(strokes, size) {
+
+        function renderDrawingToGrid(drawnStrokes, size) {
           const c = document.createElement("canvas");
           c.width = c.height = size;
           const ctx = c.getContext("2d");
-          if (!strokes.length) return ctx.getImageData(0, 0, size, size);
+
+          if (!drawnStrokes.length) return ctx.getImageData(0, 0, size, size);
+
           let minX = Infinity,
             minY = Infinity,
             maxX = -Infinity,
             maxY = -Infinity;
-          for (const s of strokes)
+          for (const s of drawnStrokes) {
             for (const p of s) {
               if (p.x < minX) minX = p.x;
               if (p.y < minY) minY = p.y;
               if (p.x > maxX) maxX = p.x;
               if (p.y > maxY) maxY = p.y;
             }
-          const w = maxX - minX || 1,
-            h = maxY - minY || 1;
+          }
+
+          const w = maxX - minX || 1;
+          const h = maxY - minY || 1;
           const scale = (size * 0.85) / Math.max(w, h);
           const offX = (size - w * scale) / 2 - minX * scale;
           const offY = (size - h * scale) / 2 - minY * scale;
+
           ctx.strokeStyle = "#000";
           ctx.lineWidth = Math.max(2, size * 0.05);
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
-          for (const s of strokes) {
+
+          for (const s of drawnStrokes) {
             if (s.length < 2) continue;
             ctx.beginPath();
             ctx.moveTo(s[0].x * scale + offX, s[0].y * scale + offY);
-            for (let i = 1; i < s.length; i++)
+            for (let i = 1; i < s.length; i++) {
               ctx.lineTo(s[i].x * scale + offX, s[i].y * scale + offY);
+            }
             ctx.stroke();
           }
+
           return ctx.getImageData(0, 0, size, size);
         }
+
         function dilate(imgData, radius) {
           const w = imgData.width,
             h = imgData.height;
           const src = new Uint8Array(w * h);
-          for (let i = 0; i < w * h; i++)
+          for (let i = 0; i < w * h; i++) {
             src[i] = imgData.data[i * 4 + 3] > 30 ? 1 : 0;
+          }
           const dst = new Uint8Array(w * h);
-          for (let y = 0; y < h; y++)
+          for (let y = 0; y < h; y++) {
             for (let x = 0; x < w; x++) {
               let f = false;
-              for (let dy = -radius; dy <= radius && !f; dy++)
+              for (let dy = -radius; dy <= radius && !f; dy++) {
                 for (let dx = -radius; dx <= radius && !f; dx++) {
                   const nx = x + dx,
                     ny = y + dy;
@@ -1605,22 +1852,28 @@
                   )
                     f = true;
                 }
+              }
               dst[y * w + x] = f ? 1 : 0;
             }
+          }
           return dst;
         }
-        function scoreDrawing(strokes) {
-          if (!strokes.length) return 0;
+
+        function scoreDrawing(drawnStrokes) {
+          if (!drawnStrokes.length) return 0;
+
           let tp = 0;
-          for (const s of strokes) tp += s.length;
-          if (tp < 10) return 0;
-          const SZ = 64,
-            id = generateIdealStar(SZ),
-            dd = renderDrawingToGrid(strokes, SZ),
-            iDil = dilate(id, 3),
-            dDil = dilate(dd, 3),
-            dRaw = dilate(dd, 0),
-            iRaw = dilate(id, 0);
+          for (const s of drawnStrokes) tp += s.length;
+          if (tp < CONFIG.MIN_STROKE_POINTS) return 0;
+
+          const SZ = CONFIG.STAR_GRID_SIZE;
+          const id = generateIdealStar(SZ);
+          const dd = renderDrawingToGrid(drawnStrokes, SZ);
+          const iDil = dilate(id, 3);
+          const dDil = dilate(dd, 3);
+          const dRaw = dilate(dd, 0);
+          const iRaw = dilate(id, 0);
+
           let ip = 0,
             cp = 0;
           for (let i = 0; i < SZ * SZ; i++) {
@@ -1630,6 +1883,7 @@
             }
           }
           const cov = ip > 0 ? cp / ip : 0;
+
           let dp = 0,
             pp = 0;
           for (let i = 0; i < SZ * SZ; i++) {
@@ -1639,25 +1893,24 @@
             }
           }
           const prec = dp > 0 ? pp / dp : 0;
+
           return Math.min(100, Math.round((cov * 0.55 + prec * 0.45) * 110));
         }
 
-        const canvasEl = document.getElementById("draw-canvas"),
-          canvasCtx = canvasEl.getContext("2d"),
-          canvasWrap = document.getElementById("canvas-wrap");
-        let strokes = [],
-          currentStroke = null,
-          isDrawing = false,
-          hasDrawn = false,
-          hapticCounter = 0,
-          canvasSize = 0;
+        /* ═══════════════════════════════
+       CANVAS SETUP & DRAWING
+       ═══════════════════════════════ */
+        const canvasEl = document.getElementById("draw-canvas");
+        const canvasCtx = canvasEl.getContext("2d");
+        const canvasWrap = document.getElementById("canvas-wrap");
 
         function drawGhostStar() {
-          const sz = canvasSize,
-            cx = sz / 2,
-            cy = sz / 2,
-            oR = sz * 0.38,
+          const sz = canvasSize;
+          const cx = sz / 2,
+            cy = sz / 2;
+          const oR = sz * 0.38,
             iR = sz * 0.15;
+
           canvasCtx.save();
           canvasCtx.strokeStyle = "rgba(0,0,0,0.07)";
           canvasCtx.lineWidth = 2;
@@ -1682,21 +1935,27 @@
           const totalH = window.innerHeight;
           const maxW = window.innerWidth - 48;
           const availH = totalH - 240;
-          canvasSize = Math.min(availH, maxW, 400);
-          canvasSize = Math.max(canvasSize, 180);
+
+          canvasSize = Math.min(availH, maxW, CONFIG.MAX_CANVAS_SIZE);
+          canvasSize = Math.max(canvasSize, CONFIG.MIN_CANVAS_SIZE);
           savedWrapSize = canvasSize;
+
           canvasWrap.style.width = canvasSize + "px";
           canvasWrap.style.height = canvasSize + "px";
-          const dpr = window.devicePixelRatio || 1;
+
+          const dpr = Math.min(window.devicePixelRatio || 1, CONFIG.MAX_DPR);
           canvasEl.width = canvasSize * dpr;
           canvasEl.height = canvasSize * dpr;
           canvasEl.style.width = canvasSize + "px";
           canvasEl.style.height = canvasSize + "px";
+
           canvasCtx.scale(dpr, dpr);
           canvasCtx.strokeStyle = "#000";
           canvasCtx.lineWidth = 3;
           canvasCtx.lineCap = "round";
           canvasCtx.lineJoin = "round";
+          canvasCtx.imageSmoothingEnabled = false;
+
           drawGhostStar();
         }
 
@@ -1717,11 +1976,17 @@
           canvasCtx.moveTo(p.x, p.y);
           hapticCounter = 0;
         });
+
         canvasEl.addEventListener("pointermove", (e) => {
           if (!isDrawing || !currentStroke) return;
           e.preventDefault();
+
+          // Ограничиваем количество точек
+          if (currentStroke.length >= CONFIG.MAX_STROKE_POINTS) return;
+
           const p = getCanvasPos(e);
           currentStroke.push(p);
+
           canvasCtx.strokeStyle = "#000";
           canvasCtx.lineWidth = 3;
           canvasCtx.setLineDash([]);
@@ -1729,8 +1994,10 @@
           canvasCtx.stroke();
           canvasCtx.beginPath();
           canvasCtx.moveTo(p.x, p.y);
+
           hapticCounter++;
           if (hapticCounter % 3 === 0) haptic("light");
+
           if (!hasDrawn) {
             hasDrawn = true;
             const btn = document.getElementById("btn-submit");
@@ -1738,18 +2005,20 @@
             btn.classList.add("pulse-active");
           }
         });
+
         function endStroke() {
           if (!isDrawing || !currentStroke) return;
           isDrawing = false;
           if (currentStroke.length > 1) strokes.push(currentStroke);
           currentStroke = null;
         }
+
         canvasEl.addEventListener("pointerup", endStroke);
         canvasEl.addEventListener("pointercancel", endStroke);
         canvasEl.addEventListener("pointerleave", endStroke);
 
         function clearCanvas() {
-          const dpr = window.devicePixelRatio || 1;
+          const dpr = Math.min(window.devicePixelRatio || 1, CONFIG.MAX_DPR);
           canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
           canvasCtx.clearRect(0, 0, canvasEl.width, canvasEl.height);
           canvasCtx.scale(dpr, dpr);
@@ -1758,41 +2027,53 @@
           canvasCtx.lineCap = "round";
           canvasCtx.lineJoin = "round";
           canvasCtx.setLineDash([]);
+
           strokes = [];
           currentStroke = null;
           hasDrawn = false;
+
           const btn = document.getElementById("btn-submit");
           btn.disabled = true;
           btn.classList.remove("pulse-active");
+
           document.getElementById("score-display").style.opacity = "0";
           document.getElementById("score-hint").style.opacity = "0";
           canvasWrap.classList.remove("border-success", "border-fail");
+
           drawGhostStar();
         }
+
         document.getElementById("btn-reset").addEventListener("click", () => {
           if (appState !== "drawing") return;
           clearCanvas();
           haptic("medium");
         });
+
         function updateAttemptCounter() {
           const el = document.getElementById("attempt-counter");
           el.textContent =
             attemptCount > 0 ? "Попытка " + (attemptCount + 1) : "";
         }
 
+        /* ═══════════════════════════════
+       SUBMIT DRAWING
+       ═══════════════════════════════ */
         document
           .getElementById("btn-submit")
           .addEventListener("click", async () => {
             if (appState !== "drawing") return;
             appState = "evaluating";
             endStroke();
+
             const btn = document.getElementById("btn-submit");
             btn.disabled = true;
             btn.classList.remove("pulse-active");
             haptic("medium");
-            const score = scoreDrawing(strokes),
-              scoreEl = document.getElementById("score-display"),
-              hintEl = document.getElementById("score-hint");
+
+            const score = scoreDrawing(strokes);
+            const scoreEl = document.getElementById("score-display");
+            const hintEl = document.getElementById("score-hint");
+
             const obj = { val: 0 };
             gsap.to(obj, {
               val: score,
@@ -1809,20 +2090,26 @@
               duration: 0.4,
               ease: "back.out(2)",
             });
+
             await sleep(900);
-            if (score >= SCORE_THRESHOLD) {
+
+            if (score >= CONFIG.SCORE_THRESHOLD) {
               scoreEl.style.color = "#4CAF50";
               hintEl.textContent = "Отлично!";
               hintEl.style.color = "#4CAF50";
               gsap.to(hintEl, { opacity: 1, duration: 0.3 });
               canvasWrap.classList.add("border-success");
               hapticN("success");
+
               wonPrize = Math.random() < 0.5 ? PRIZE_STARS : PRIZE_PREMIUM;
+
+              // Fire-and-forget, но с retry
               api("check-subscription", {
                 action: "save_roll",
                 prize_key: wonPrize.key,
                 prize_name: wonPrize.name,
-              }).catch(() => {});
+              }).catch((e) => log("save_roll error:", e));
+
               await sleep(800);
               appState = "transforming";
               await animateTransform();
@@ -1835,47 +2122,60 @@
               hapticN("error");
               attemptCount++;
               updateAttemptCounter();
+
               await sleep(1500);
               clearCanvas();
               appState = "drawing";
             }
           });
 
-        /* ══════ Tap handler ══════ */
+        /* ═══════════════════════════════
+       TAP HANDLER
+       ═══════════════════════════════ */
         async function handleTap(e) {
           if (appState !== "tapping") return;
           e.preventDefault();
           tapCount++;
           haptic("medium");
+
           const sc = document.getElementById("sticker-container");
-          const progress = tapCount / MAX_TAPS;
+          const progress = tapCount / CONFIG.MAX_TAPS;
           const newSize = savedWrapSize * (0.3 + 0.55 * progress);
+
           gsap.to(sc, {
             width: newSize,
             height: newSize,
             duration: 0.3,
             ease: "back.out(1.5)",
           });
-          document.getElementById("tap-fill").style.width =
-            progress * 100 + "%";
-          document.getElementById("tap-counter").textContent =
-            tapCount + " / " + MAX_TAPS;
+
+          const tapFill = document.getElementById("tap-fill");
+          if (tapFill) tapFill.style.width = progress * 100 + "%";
+
+          const tapCounter = document.getElementById("tap-counter");
+          if (tapCounter)
+            tapCounter.textContent = tapCount + " / " + CONFIG.MAX_TAPS;
+
           showTapFx(e.clientX, e.clientY);
           burst(e.clientX, e.clientY, 6);
-          if (tapCount >= MAX_TAPS) {
+
+          if (tapCount >= CONFIG.MAX_TAPS) {
             appState = "revealing";
             await sleep(300);
             await revealPrize();
           }
         }
 
-        /* ══════ Transform ══════ */
+        /* ═══════════════════════════════
+       TRANSFORM ANIMATION
+       ═══════════════════════════════ */
         async function animateTransform() {
-          const canvas = document.getElementById("draw-canvas"),
-            flash = document.getElementById("flash");
-          const wrapRect = canvasWrap.getBoundingClientRect(),
-            cx = wrapRect.left + wrapRect.width / 2,
-            cy = wrapRect.top + wrapRect.height / 2;
+          const canvas = document.getElementById("draw-canvas");
+          const flash = document.getElementById("flash");
+          const wrapRect = canvasWrap.getBoundingClientRect();
+          const cx = wrapRect.left + wrapRect.width / 2;
+          const cy = wrapRect.top + wrapRect.height / 2;
+
           gsap.to(
             [
               "#btn-submit",
@@ -1884,11 +2184,17 @@
               "#score-hint",
               "#attempt-counter",
             ],
-            { opacity: 0, duration: 0.3 },
+            {
+              opacity: 0,
+              duration: 0.3,
+            },
           );
+
+          // Shake effect
           let shakeAmp = 0;
+          let shakeRunning = true;
           const shakeLoop = () => {
-            if (shakeAmp <= 0) return;
+            if (!shakeRunning || shakeAmp <= 0) return;
             canvas.style.transform = `translate(${(Math.random() - 0.5) * shakeAmp * 2}px,${(Math.random() - 0.5) * shakeAmp * 2}px)`;
             requestAnimationFrame(shakeLoop);
           };
@@ -1905,10 +2211,12 @@
               },
             },
           );
+
           for (let i = 0; i < 6; i++) {
             await sleep(150);
             haptic("light");
           }
+
           haptic("heavy");
           megaBurst(cx, cy);
           gsap.to(canvas, {
@@ -1918,8 +2226,10 @@
             duration: 0.35,
             ease: "power3.in",
           });
+          shakeRunning = false;
           shakeAmp = 0;
           canvas.style.transform = "";
+
           await sleep(400);
           canvas.style.display = "none";
           canvasWrap.classList.remove("border-success");
@@ -1927,24 +2237,66 @@
           /* Build tap scene */
           const suspenseSize = Math.round(savedWrapSize * 0.35);
           const tapScene = document.getElementById("tap-scene");
-          tapScene.innerHTML = `
-        <div id="sticker-tap-area" style="cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;position:absolute;inset:0">
-          <div id="sticker-container" style="width:${suspenseSize}px;height:${suspenseSize}px;display:flex;align-items:center;justify-content:center">
-            <div id="suspense-text" style="font-size:55px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">❓</div>
-          </div>
-        </div>
-        <div id="tap-ui-inner" style="text-align:center;position:absolute;bottom:60px;left:0;right:0;display:none">
-          <div style="font-size:18px;font-weight:700;color:#333;letter-spacing:1px">Тапай! 👆</div>
-          <div style="margin-top:6px">
-            <div style="width:140px;height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin:0 auto 4px">
-              <div id="tap-fill" style="height:100%;width:0%;border-radius:3px;transition:width .15s ease-out"></div>
-            </div>
-            <span id="tap-counter" style="font-size:12px;color:#999;font-weight:600">0 / ${MAX_TAPS}</span>
-          </div>
-        </div>`;
+
+          // Безопасное построение DOM
+          tapScene.innerHTML = "";
+
+          const stickerTapArea = document.createElement("div");
+          stickerTapArea.id = "sticker-tap-area";
+          stickerTapArea.style.cssText =
+            "cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;position:absolute;inset:0";
+
+          const stickerContainer = document.createElement("div");
+          stickerContainer.id = "sticker-container";
+          stickerContainer.style.cssText = `width:${suspenseSize}px;height:${suspenseSize}px;display:flex;align-items:center;justify-content:center`;
+
+          const suspenseText = document.createElement("div");
+          suspenseText.id = "suspense-text";
+          suspenseText.style.cssText =
+            "font-size:55px;display:flex;align-items:center;justify-content:center;width:100%;height:100%";
+          suspenseText.textContent = "❓";
+
+          stickerContainer.appendChild(suspenseText);
+          stickerTapArea.appendChild(stickerContainer);
+
+          const tapUiInner = document.createElement("div");
+          tapUiInner.id = "tap-ui-inner";
+          tapUiInner.style.cssText =
+            "text-align:center;position:absolute;bottom:60px;left:0;right:0;display:none";
+
+          const tapTitle = document.createElement("div");
+          tapTitle.style.cssText =
+            "font-size:18px;font-weight:700;color:#333;letter-spacing:1px";
+          tapTitle.textContent = "Тапай! 👆";
+
+          const tapProgressWrap = document.createElement("div");
+          tapProgressWrap.style.cssText = "margin-top:6px";
+
+          const tapTrack = document.createElement("div");
+          tapTrack.style.cssText =
+            "width:140px;height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin:0 auto 4px";
+
+          const tapFillEl = document.createElement("div");
+          tapFillEl.id = "tap-fill";
+          tapFillEl.style.cssText =
+            "height:100%;width:0%;border-radius:3px;transition:width .15s ease-out";
+
+          const tapCounterEl = document.createElement("span");
+          tapCounterEl.id = "tap-counter";
+          tapCounterEl.style.cssText =
+            "font-size:12px;color:#999;font-weight:600";
+          tapCounterEl.textContent = "0 / " + CONFIG.MAX_TAPS;
+
+          tapTrack.appendChild(tapFillEl);
+          tapProgressWrap.appendChild(tapTrack);
+          tapProgressWrap.appendChild(tapCounterEl);
+          tapUiInner.appendChild(tapTitle);
+          tapUiInner.appendChild(tapProgressWrap);
+
+          tapScene.appendChild(stickerTapArea);
+          tapScene.appendChild(tapUiInner);
           tapScene.classList.remove("hidden");
 
-          const stickerContainer = document.getElementById("sticker-container");
           gsap.from(stickerContainer, {
             scale: 0,
             duration: 0.3,
@@ -1952,6 +2304,7 @@
           });
           await sleep(200);
 
+          // Drumroll
           const emojis = [
             "❓",
             "🎁",
@@ -1964,12 +2317,13 @@
             "⭐",
             "💎",
           ];
-          const suspenseText = document.getElementById("suspense-text");
           let idx = 0,
-            spd = 280,
-            drumAmp = 0;
+            spd = 280;
+          let drumAmp = 0;
+          let drumRunning = true;
+
           const drumLoop = () => {
-            if (drumAmp <= 0) return;
+            if (!drumRunning || drumAmp <= 0) return;
             tapScene.style.transform = `translate(${(Math.random() - 0.5) * drumAmp * 2}px,${(Math.random() - 0.5) * drumAmp * 2}px)`;
             requestAnimationFrame(drumLoop);
           };
@@ -1986,6 +2340,7 @@
               },
             },
           );
+
           for (let round = 0; round < 18; round++) {
             suspenseText.textContent = emojis[idx % emojis.length];
             gsap.fromTo(
@@ -1998,9 +2353,12 @@
             await sleep(spd);
             spd = Math.max(50, spd - 14);
           }
+
+          drumRunning = false;
           drumAmp = 0;
           tapScene.style.transform = "";
 
+          // Flash reveal
           flash.style.transition = "opacity .08s";
           flash.style.opacity = "1";
           haptic("heavy");
@@ -2013,6 +2371,7 @@
           stickerContainer.style.height = startSize + "px";
           await loadTGS(wonPrize.tgs);
           playLottie(stickerContainer, wonPrize.tgs);
+
           gsap.fromTo(
             stickerContainer,
             { scale: 2, opacity: 0 },
@@ -2022,6 +2381,7 @@
           const glowEl = document.getElementById("edge-glow");
           glowEl.style.setProperty("--glow-color", wonPrize.glowColor);
           glowEl.classList.add("active");
+
           confetti({ particleCount: 70, spread: 80, origin: { y: 0.4 } });
           confetti({
             particleCount: 35,
@@ -2034,56 +2394,73 @@
             origin: { y: 0.6, x: 0.85 },
           });
           megaBurst(cx, cy);
+
           flash.style.transition = "opacity .6s";
           flash.style.opacity = "0";
           await sleep(1000);
 
-          const tapUiInner = document.getElementById("tap-ui-inner");
           tapUiInner.style.display = "block";
           gsap.from(tapUiInner, { opacity: 0, y: 10, duration: 0.3 });
 
-          const tapFill = document.getElementById("tap-fill");
-          tapFill.classList.remove("gold", "purple");
-          tapFill.classList.add(wonPrize.fillClass);
+          tapFillEl.classList.remove("gold", "purple");
+          tapFillEl.classList.add(wonPrize.fillClass);
+
           appState = "tapping";
           tapCount = 0;
-          document.getElementById("tap-counter").textContent =
-            "0 / " + MAX_TAPS;
-          tapFill.style.width = "0%";
 
-          document
-            .getElementById("sticker-tap-area")
-            .addEventListener("pointerdown", handleTap);
+          const tapCounterRefresh = document.getElementById("tap-counter");
+          if (tapCounterRefresh)
+            tapCounterRefresh.textContent = "0 / " + CONFIG.MAX_TAPS;
+          tapFillEl.style.width = "0%";
+
+          stickerTapArea.addEventListener("pointerdown", handleTap);
         }
 
+        /* ═══════════════════════════════
+       REVEAL PRIZE
+       ═══════════════════════════════ */
         async function revealPrize() {
           confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } });
           hapticN("success");
           await sleep(600);
+
           const ui = document.getElementById("tap-ui-inner");
           if (ui) gsap.to(ui, { opacity: 0, duration: 0.2 });
           await sleep(300);
+
           document.getElementById("tap-scene").classList.add("hidden");
           showPrizeModal();
         }
 
+        /* ═══════════════════════════════
+       PRIZE MODAL
+       ═══════════════════════════════ */
         async function showPrizeModal() {
           killLotties();
           document.getElementById("modal-prize-name").textContent =
             wonPrize.name;
+
+          const stickerUrl =
+            wonPrize.key === "stars"
+              ? ASSETS.TGS_MODAL_STARS
+              : ASSETS.TGS_MODAL_PREMIUM;
           playLottie(
             document.getElementById("modal-prize-sticker"),
-            wonPrize.key === "stars" ? TGS_MODAL_STARS : TGS_MODAL_PREMIUM,
+            stickerUrl,
             false,
           );
+
           const claimBtn = document.getElementById("btn-claim");
           claimBtn.disabled = true;
           claimBtn.classList.remove("pulse-active");
+
           const cd = document.getElementById("claim-cd");
           cd.textContent = "";
+
           openSheet("modal-prize");
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           appState = "prize";
+
           for (let i = 3; i >= 1; i--) {
             cd.textContent = i;
             cd.style.color = "#976FFF";
@@ -2095,6 +2472,7 @@
             haptic("light");
             await sleep(1000);
           }
+
           cd.textContent = "ГОТОВО!";
           cd.style.color = "#4CAF50";
           gsap.fromTo(
@@ -2104,62 +2482,101 @@
           );
           hapticN("success");
           await sleep(1200);
+
           claimBtn.disabled = false;
           claimBtn.classList.add("pulse-active");
         }
+
         document.getElementById("btn-claim").addEventListener("click", () => {
           document.getElementById("btn-claim").classList.remove("pulse-active");
           closeSheet("modal-prize", showSub);
           document.getElementById("edge-glow").classList.remove("active");
         });
 
+        /* ═══════════════════════════════
+       SUBSCRIBE MODAL (XSS-safe)
+       ═══════════════════════════════ */
         function updateSubProgress() {
           const done = document.querySelectorAll(
             ".channel-sub-btn.done",
           ).length;
-          document.getElementById("sub-progress").textContent =
-            `Подписано ${done} из ${CHANNELS.length}`;
+          const el = document.getElementById("sub-progress");
+          el.textContent = `Подписано ${done} из ${CHANNELS.length}`;
         }
 
         function showSub() {
           killLotties();
+
           const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
           document.getElementById("sub-prize-name").textContent = pN;
+
           const tU = wonPrize
             ? wonPrize.key === "stars"
-              ? TGS_MODAL_STARS
-              : TGS_MODAL_PREMIUM
+              ? ASSETS.TGS_MODAL_STARS
+              : ASSETS.TGS_MODAL_PREMIUM
             : US?.prize_key === "stars"
-              ? TGS_MODAL_STARS
-              : TGS_MODAL_PREMIUM;
+              ? ASSETS.TGS_MODAL_STARS
+              : ASSETS.TGS_MODAL_PREMIUM;
           if (tU) playLottie(document.getElementById("sub-sticker"), tU, false);
+
           const list = document.getElementById("channel-list");
           list.innerHTML = "";
+
           CHANNELS.forEach((ch) => {
             const isBot = ch.type === "bot";
+
             const li = document.createElement("li");
             li.className = "channel-item";
-            const avI = ch.avatar
-              ? `<img src="${ch.avatar}" loading="lazy">`
-              : isBot
-                ? "🤖"
-                : "📢";
-            li.innerHTML = `<div class="channel-avatar">${avI}</div><div class="channel-info"><div class="channel-name">${ch.name}</div></div><button class="channel-sub-btn" data-link="${ch.link}" data-type="${ch.type || "channel"}" data-id="${ch.id}">${isBot ? "Открыть" : "Подписаться"}</button>`;
-            list.appendChild(li);
-          });
-          list.querySelectorAll(".channel-sub-btn").forEach((btn) => {
+
+            // Avatar
+            const avatar = document.createElement("div");
+            avatar.className = "channel-avatar";
+            if (ch.avatar) {
+              const img = document.createElement("img");
+              img.src = sanitizeUrl(ch.avatar) || "";
+              img.loading = "lazy";
+              img.alt = "";
+              img.onerror = function () {
+                this.style.display = "none";
+                avatar.textContent = isBot ? "🤖" : "📢";
+              };
+              avatar.appendChild(img);
+            } else {
+              avatar.textContent = isBot ? "🤖" : "📢";
+            }
+
+            // Info
+            const info = document.createElement("div");
+            info.className = "channel-info";
+            const nameEl = document.createElement("div");
+            nameEl.className = "channel-name";
+            nameEl.textContent = ch.name; // Безопасно — textContent
+            info.appendChild(nameEl);
+
+            // Button
+            const btn = document.createElement("button");
+            btn.className = "channel-sub-btn";
+            btn.textContent = isBot ? "Открыть" : "Подписаться";
+            btn.dataset.link = ch.link;
+            btn.dataset.type = ch.type || "channel";
+            btn.dataset.id = String(ch.id);
+
             btn.addEventListener("click", (e) => {
               e.stopPropagation();
-              const link = btn.getAttribute("data-link"),
-                type = btn.getAttribute("data-type"),
-                id = btn.getAttribute("data-id");
+              const link = btn.dataset.link;
+              const type = btn.dataset.type;
+              const id = btn.dataset.id;
+
               try {
-                if (link && link.includes("t.me/"))
+                if (link && link.includes("t.me/")) {
                   Telegram.WebApp.openTelegramLink(link);
-                else Telegram.WebApp.openLink(link);
+                } else {
+                  Telegram.WebApp.openLink(link);
+                }
               } catch (err) {
                 window.open(link, "_blank");
               }
+
               if (type === "bot" && !openedBots.has(id)) {
                 openedBots.add(id);
                 btn.textContent = "✓";
@@ -2168,25 +2585,38 @@
                 api("check-subscription", {
                   action: "mark_bot_opened",
                   bot_id: id,
-                }).catch(() => {});
+                }).catch((e) => log("mark_bot_opened error:", e));
               }
             });
+
+            li.appendChild(avatar);
+            li.appendChild(info);
+            li.appendChild(btn);
+            list.appendChild(li);
           });
+
           updateSubProgress();
           openSheet("modal-subscribe");
           appState = "subscribe";
         }
 
+        /* ═══════════════════════════════
+       CHECK SUBSCRIPTION
+       ═══════════════════════════════ */
         document
           .getElementById("btn-check-sub")
           .addEventListener("click", async () => {
             if (isCheckingSub) return;
             isCheckingSub = true;
+
             const btn = document.getElementById("btn-check-sub");
             btn.disabled = true;
-            btn.querySelector("span").textContent = "Проверяем...";
+            const btnSpan = btn.querySelector("span");
+            if (btnSpan) btnSpan.textContent = "Проверяем...";
+
             try {
               const res = await api("check-subscription", { action: "check" });
+
               if (res.all_subscribed) {
                 document.querySelectorAll(".channel-sub-btn").forEach((b) => {
                   b.textContent = "✓";
@@ -2194,8 +2624,10 @@
                 });
                 updateSubProgress();
                 toast("Подписки подтверждены!", "success");
+
                 refCount = res.referral_count || 0;
                 tSpeed = calcSpeed(refCount);
+
                 await sleep(800);
                 closeSheet("modal-subscribe", showFinal);
               } else {
@@ -2204,7 +2636,7 @@
                   const b = items[i]?.querySelector(".channel-sub-btn");
                   if (b) {
                     const isB = ch.type === "bot";
-                    if (res.results[String(ch.id)]) {
+                    if (res.results && res.results[String(ch.id)]) {
                       b.textContent = "✓";
                       b.classList.add("done");
                     } else {
@@ -2218,34 +2650,45 @@
                 hapticN("error");
               }
             } catch (e) {
+              log("check-subscription error:", e);
               toast("Ошибка, попробуйте позже");
+            } finally {
+              btn.disabled = false;
+              if (btnSpan) btnSpan.textContent = "Проверить подписку";
+              isCheckingSub = false;
             }
-            btn.disabled = false;
-            btn.querySelector("span").textContent = "Проверить подписку";
-            isCheckingSub = false;
           });
 
+        /* ═══════════════════════════════
+       FINAL MODAL
+       ═══════════════════════════════ */
         function showFinal() {
           killLotties();
+
           const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
           document.getElementById("final-prize-name").textContent = pN;
+
           const tU = wonPrize
             ? wonPrize.key === "stars"
-              ? TGS_MODAL_STARS
-              : TGS_MODAL_PREMIUM
+              ? ASSETS.TGS_MODAL_STARS
+              : ASSETS.TGS_MODAL_PREMIUM
             : US?.prize_key === "stars"
-              ? TGS_MODAL_STARS
-              : TGS_MODAL_PREMIUM;
+              ? ASSETS.TGS_MODAL_STARS
+              : ASSETS.TGS_MODAL_PREMIUM;
           if (tU)
             playLottie(document.getElementById("final-sticker"), tU, false);
+
           if (!claimedAt) claimedAt = US?.claimed_at || Date.now() / 1000;
           refCount = US?.referral_count || refCount || 0;
           tSpeed = calcSpeed(refCount);
-          const pd2 = document.getElementById("pd-2"),
-            pd3 = document.getElementById("pd-3"),
-            pl2 = document.getElementById("pl-2"),
-            plbl2 = document.getElementById("plbl-2"),
-            plbl3 = document.getElementById("plbl-3");
+
+          // Reset progress dots
+          const pd2 = document.getElementById("pd-2");
+          const pd3 = document.getElementById("pd-3");
+          const pl2 = document.getElementById("pl-2");
+          const plbl2 = document.getElementById("plbl-2");
+          const plbl3 = document.getElementById("plbl-3");
+
           if (pd2) {
             pd2.className = "p-dot active";
             pd2.textContent = "2";
@@ -2263,15 +2706,20 @@
             plbl3.className = "p-label";
             plbl3.textContent = "Выдача";
           }
+
           startTimer();
           openSheet("modal-final");
           confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
           appState = "final";
         }
 
+        /* ═══════════════════════════════
+       SPEEDUP MODAL
+       ═══════════════════════════════ */
         document.getElementById("btn-speedup").addEventListener("click", () => {
           document.getElementById("su-ref-count").textContent = refCount;
           document.getElementById("su-speed").textContent = "x" + tSpeed;
+
           [2, 4, 6, 8].forEach((n) => {
             const ms = document.getElementById("ms-" + n);
             if (ms) {
@@ -2279,48 +2727,74 @@
               else ms.classList.remove("reached");
             }
           });
-          document.getElementById("ref-fill").style.width =
-            Math.min(100, (refCount / 8) * 100) + "%";
+
+          const refFill = document.getElementById("ref-fill");
+          if (refFill)
+            refFill.style.width = Math.min(100, (refCount / 8) * 100) + "%";
+
           openSheet("modal-speedup");
-        });
-        document
-          .getElementById("btn-back-speedup")
-          .addEventListener("click", () => closeSheet("modal-speedup"));
-        document.getElementById("btn-share").addEventListener("click", () => {
-          const uid = US?.telegram_id || "";
-          const link = `https://t.me/${BOT}?start=ref_${uid}`;
-          const text = "🎁 Нарисуй звезду и получи приз!";
-          try {
-            Telegram.WebApp.openTelegramLink(
-              `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`,
-            );
-          } catch (e) {
-            window.open(
-              `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`,
-              "_blank",
-            );
-          }
         });
 
         document
+          .getElementById("btn-back-speedup")
+          .addEventListener("click", () => {
+            closeSheet("modal-speedup");
+          });
+
+        document.getElementById("btn-share").addEventListener("click", () => {
+          const uid = US?.telegram_id || "";
+          const link = `https://t.me/${CONFIG.BOT_USERNAME}?start=ref_${uid}`;
+          const text = "🎁 Нарисуй звезду и получи приз!";
+          const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+
+          try {
+            Telegram.WebApp.openTelegramLink(shareUrl);
+          } catch (e) {
+            window.open(shareUrl, "_blank");
+          }
+        });
+
+        /* ═══════════════════════════════
+       EARN STARS MODAL
+       ═══════════════════════════════ */
+        document
           .getElementById("btn-earn-stars")
           .addEventListener("click", async () => {
-            document.getElementById("modal-stars").classList.remove("hidden");
+            const modal = document.getElementById("modal-stars");
+            modal.classList.remove("hidden");
+
             const content = document.getElementById("stars-content");
             if (!content.innerHTML) {
               try {
                 const res = await api("get-stars-content");
-                if (res.ok)
-                  content.innerHTML = res.content || "Контент загружается...";
+                if (res.ok && res.content) {
+                  // Безопасная вставка — если контент HTML, используем DOMParser
+                  const parser = new DOMParser();
+                  const doc = parser.parseFromString(res.content, "text/html");
+                  content.textContent = "";
+
+                  // Копируем только безопасные узлы
+                  const body = doc.body;
+                  while (body.firstChild) {
+                    content.appendChild(
+                      document.importNode(body.firstChild, true),
+                    );
+                  }
+                } else {
+                  content.textContent = "Контент загружается...";
+                }
               } catch (e) {
                 content.textContent = "Ошибка загрузки";
               }
             }
-            if (isAdmin)
+
+            if (isAdmin) {
               document
                 .getElementById("btn-edit-stars")
                 .classList.remove("hidden");
+            }
           });
+
         document
           .getElementById("btn-close-stars")
           .addEventListener("click", () => {
@@ -2328,84 +2802,169 @@
             document.getElementById("stars-edit-wrap").classList.add("hidden");
             document.getElementById("stars-content").classList.remove("hidden");
           });
+
         document
           .getElementById("btn-edit-stars")
           .addEventListener("click", () => {
-            const c = document.getElementById("stars-content"),
-              e = document.getElementById("stars-edit-wrap");
+            const c = document.getElementById("stars-content");
+            const e = document.getElementById("stars-edit-wrap");
             document.getElementById("stars-textarea").value = c.innerText || "";
             c.classList.add("hidden");
             e.classList.remove("hidden");
           });
+
         document
           .getElementById("btn-cancel-edit")
           .addEventListener("click", () => {
             document.getElementById("stars-edit-wrap").classList.add("hidden");
             document.getElementById("stars-content").classList.remove("hidden");
           });
+
         document
           .getElementById("btn-save-stars")
           .addEventListener("click", async () => {
-            const t = document.getElementById("stars-textarea").value;
+            const textarea = document.getElementById("stars-textarea");
+            const contentEl = document.getElementById("stars-content");
+            const text = textarea.value;
+
             try {
-              await api("save-stars-content", { content: t });
-              document.getElementById("stars-content").innerHTML = t;
-              toast("Сохранено!", "success");
+              const res = await api("save-stars-content", { content: text });
+              if (res.ok) {
+                contentEl.textContent = text;
+                toast("Сохранено!", "success");
+              } else {
+                toast("Ошибка сохранения: " + (res.error || ""));
+              }
             } catch (e) {
               toast("Ошибка сохранения");
             }
+
             document.getElementById("stars-edit-wrap").classList.add("hidden");
-            document.getElementById("stars-content").classList.remove("hidden");
+            contentEl.classList.remove("hidden");
           });
 
+        /* ═══════════════════════════════
+       CLEANUP
+       ═══════════════════════════════ */
+        function cleanup() {
+          log("Cleanup triggered");
+          stopTimer();
+          killLotties();
+
+          if (toastTimeout) {
+            clearTimeout(toastTimeout);
+            toastTimeout = null;
+          }
+
+          // Очищаем таймеры пулов
+          pPool.forEach((p) => {
+            if (p.timer) {
+              clearTimeout(p.timer);
+              p.timer = null;
+            }
+            p.busy = false;
+          });
+          tFxPool.forEach((t) => {
+            if (t.timer) {
+              clearTimeout(t.timer);
+              t.timer = null;
+            }
+            t.busy = false;
+          });
+        }
+
+        window.addEventListener("beforeunload", cleanup);
+
+        // Telegram WebApp close event
+        try {
+          Telegram.WebApp.onEvent("viewportChanged", () => {
+            if (Telegram.WebApp.isClosingConfirmationEnabled === false) {
+              // App might be closing
+            }
+          });
+        } catch (e) {
+          /* noop */
+        }
+
+        /* ═══════════════════════════════
+       INITIALIZATION
+       ═══════════════════════════════ */
         async function init() {
+          log("Init started");
+
+          // Telegram WebApp setup
           try {
             Telegram.WebApp.expand();
             Telegram.WebApp.disableVerticalSwipes();
             Telegram.WebApp.setHeaderColor("#ffffff");
             Telegram.WebApp.setBackgroundColor("#ffffff");
-          } catch (e) {}
-          const iconP = [
-            loadTGS(TGS_ROCKET),
-            loadTGS(TGS_STAR_ICON),
-            loadTGS(TGS_LIGHTNING),
-            loadTGS(TGS_CHECK),
-            loadTGS(TGS_INVITE),
+          } catch (e) {
+            log("TG WebApp setup error:", e);
+          }
+
+          // Preload icon assets
+          const iconPromises = [
+            loadTGS(ASSETS.TGS_ROCKET),
+            loadTGS(ASSETS.TGS_STAR_ICON),
+            loadTGS(ASSETS.TGS_LIGHTNING),
+            loadTGS(ASSETS.TGS_CHECK),
+            loadTGS(ASSETS.TGS_INVITE),
           ];
+
+          // Load user data
           try {
             const res = await api("get-user");
-            if (res.ok) {
+            if (res.ok && res.user) {
               US = res.user;
-              CHANNELS = res.channels || [];
-              isAdmin = res.user.is_admin || false;
-              refCount = res.user.referral_count || 0;
+              CHANNELS = validateChannels(res.channels || []);
+              isAdmin = Boolean(res.user.is_admin);
+              refCount = Number(res.user.referral_count) || 0;
               tSpeed = calcSpeed(refCount);
-              if (res.user.claimed_at) claimedAt = res.user.claimed_at;
+              if (res.user.claimed_at) claimedAt = Number(res.user.claimed_at);
+              log("User loaded:", US.telegram_id, "state:", US.state);
+            } else {
+              log("get-user failed:", res.error);
             }
-          } catch (e) {}
+          } catch (e) {
+            log("get-user exception:", e);
+          }
+
+          // Wait for all TGS assets
           await Promise.all([
-            loadTGS(TGS_STAR_YELLOW),
-            loadTGS(TGS_STAR_PURPLE),
-            loadTGS(TGS_MODAL_STARS),
-            loadTGS(TGS_MODAL_PREMIUM),
-            ...iconP,
+            loadTGS(ASSETS.TGS_STAR_YELLOW),
+            loadTGS(ASSETS.TGS_STAR_PURPLE),
+            loadTGS(ASSETS.TGS_MODAL_STARS),
+            loadTGS(ASSETS.TGS_MODAL_PREMIUM),
+            ...iconPromises,
           ]);
+
+          // Hide loading screen
           const ls = document.getElementById("loading-screen");
           ls.style.opacity = "0";
           setTimeout(() => ls.classList.add("hidden"), 300);
+
           try {
             Telegram.WebApp.ready();
-          } catch (e) {}
+          } catch (e) {
+            /* noop */
+          }
+
+          log("Init complete, state:", US?.state);
+
+          // Route based on user state
           if (US?.state === "claimed") {
             wonPrize = US.prize_key === "stars" ? PRIZE_STARS : PRIZE_PREMIUM;
             showFinal();
             return;
           }
+
           if (US?.state === "rolled") {
             wonPrize = US.prize_key === "stars" ? PRIZE_STARS : PRIZE_PREMIUM;
             showSub();
             return;
           }
+
+          // Default: show drawing scene
           gsap.set(
             ["#draw-title", "#draw-subtitle", "#canvas-wrap", "#btn-submit"],
             { opacity: 0, y: 20 },
@@ -2414,6 +2973,7 @@
           setupCanvas();
           appState = "drawing";
           updateAttemptCounter();
+
           gsap.to("#draw-title", {
             y: 0,
             opacity: 1,
@@ -2443,6 +3003,7 @@
             clearProps: "all",
           });
         }
+
         init();
       }
     </script>
