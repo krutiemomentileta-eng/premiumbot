@@ -1,9 +1,2871 @@
-const TGS_STAR_YELLOW = "assets/star_yellow.tgs"; // Stars prize sticker
-const TGS_STAR_PURPLE = "assets/star_purple.tgs"; // Premium prize sticker
-const TGS_ROCKET = "assets/rocket.tgs";
-const TGS_STAR_ICON = "assets/star.tgs";
-const TGS_LIGHTNING = "assets/lightning.tgs";
-const TGS_CHECK = "assets/true.tgs";
-const TGS_INVITE = "assets/invite.tgs";
-const TGS_MODAL_STARS = "assets/modalstars.tgs";
-const TGS_MODAL_PREMIUM = "assets/modalpremium.tgs";
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1.0,user-scalable=no"
+    />
+    <title>⭐ Draw & Win!</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap"
+      as="style"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+        background: #fff;
+        color: #333;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        touch-action: manipulation;
+      }
+      :root {
+        --purple: #976fff;
+        --blue: #6b93ff;
+        --pink: #e46ace;
+        --green: #4caf50;
+        --red: #ff4757;
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-bot: env(safe-area-inset-bottom, 0px);
+      }
+
+      /* ═══════════ SCENE SYSTEM ═══════════ */
+      .scene {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+          opacity 0.3s,
+          visibility 0s 0.3s;
+        z-index: 1;
+        background: #fff;
+      }
+      .scene.active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition:
+          opacity 0.3s,
+          visibility 0s;
+      }
+      .scene.instant {
+        transition: none !important;
+      }
+
+      /* ═══════════ LOADING ═══════════ */
+      #scene-loading {
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+      }
+      .loader {
+        width: 36px;
+        height: 36px;
+        border: 3px solid #eee;
+        border-top-color: var(--purple);
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      .loader-text {
+        color: #bbb;
+        font-size: 13px;
+        margin-top: 14px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* ═══════════ DRAW SCENE ═══════════ */
+      #scene-draw {
+        padding: max(12px, var(--safe-top)) 20px max(12px, var(--safe-bot));
+        align-items: center;
+      }
+      .draw-spacer-top {
+        flex: 0 0 18px;
+      }
+      .draw-header {
+        text-align: center;
+        flex-shrink: 0;
+      }
+      .draw-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .draw-title .tgs-inline {
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        flex-shrink: 0;
+      }
+      .draw-sub {
+        font-size: 14px;
+        color: #888;
+        margin-top: 2px;
+      }
+      .draw-attempts {
+        font-size: 12px;
+        color: #aaa;
+        font-weight: 600;
+        height: 18px;
+        margin-top: 2px;
+      }
+      .draw-score {
+        flex-shrink: 0;
+        height: 62px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-top: 4px;
+      }
+      .draw-score-val {
+        font-size: 42px;
+        font-weight: 900;
+        opacity: 0;
+        transition: color 0.3s;
+      }
+      .draw-score-hint {
+        font-size: 14px;
+        font-weight: 600;
+        opacity: 0;
+        transition: opacity 0.3s;
+        margin-top: -2px;
+      }
+      .draw-canvas-area {
+        flex: 1 1 0;
+        min-height: 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 0 4px;
+        width: 100%;
+      }
+      #canvas-wrap {
+        position: relative;
+        border-radius: 16px;
+        background: #f5f5f5;
+        border: 2px solid #333;
+        overflow: hidden;
+        touch-action: none;
+        transition: border-color 0.4s;
+      }
+      #canvas-wrap.ok {
+        border-color: var(--green);
+      }
+      #canvas-wrap.fail {
+        border-color: var(--red);
+      }
+      #draw-canvas {
+        display: block;
+      }
+      #btn-reset {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.06);
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        color: #333;
+      }
+      .draw-submit {
+        flex-shrink: 0;
+        width: 100%;
+        max-width: 360px;
+        padding-top: 10px;
+      }
+
+      /* ═══════════ TAP SCENE ═══════════ */
+      #scene-tap {
+        align-items: center;
+        justify-content: center;
+      }
+      .tap-area {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .tap-sticker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        will-change: transform;
+      }
+      .tap-emoji {
+        font-size: 55px;
+      }
+      .tap-bottom {
+        position: absolute;
+        bottom: max(60px, calc(40px + var(--safe-bot)));
+        left: 0;
+        right: 0;
+        text-align: center;
+        opacity: 0;
+      }
+      .tap-label {
+        font-size: 18px;
+        font-weight: 700;
+        color: #333;
+        letter-spacing: 1px;
+      }
+      .tap-bar-wrap {
+        margin-top: 6px;
+      }
+      .tap-bar {
+        width: 140px;
+        height: 5px;
+        background: #e8e8e8;
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 0 auto 4px;
+      }
+      .tap-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 3px;
+        transition: width 0.15s;
+      }
+      .tap-fill.gold {
+        background: linear-gradient(90deg, #ffd700, #ffa500);
+      }
+      .tap-fill.purple {
+        background: linear-gradient(90deg, var(--blue), var(--purple));
+      }
+      .tap-count {
+        font-size: 12px;
+        color: #aaa;
+        font-weight: 600;
+      }
+
+      /* ═══════════ DONE SCENE ═══════════ */
+      #scene-done {
+        align-items: center;
+        padding: max(16px, var(--safe-top)) 24px max(24px, var(--safe-bot));
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .done-wrap {
+        width: 100%;
+        max-width: 380px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .done-check {
+        width: 36px;
+        height: 36px;
+        margin-bottom: 2px;
+      }
+      .done-sticker {
+        width: 180px;
+        height: 180px;
+        margin: 0 auto 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .done-prize {
+        font-size: 26px;
+        font-weight: 900;
+        color: #333;
+        margin-bottom: 16px;
+        background: linear-gradient(90deg, #ffd700, #ffa500, #ffd700, #ffa500);
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: shiny 2.5s linear infinite;
+      }
+      .done-prize.purple-shine {
+        background: linear-gradient(
+          90deg,
+          var(--blue),
+          var(--purple),
+          var(--pink),
+          var(--purple)
+        );
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      @keyframes shiny {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+      .timer-card {
+        background: linear-gradient(135deg, #f8f9ff, #f0ecff);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 14px;
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+      }
+      .timer-card::before {
+        content: "";
+        position: absolute;
+        top: -40px;
+        right: -40px;
+        width: 120px;
+        height: 120px;
+        background: radial-gradient(
+          circle,
+          rgba(151, 111, 255, 0.06),
+          transparent 70%
+        );
+        border-radius: 50%;
+      }
+      .timer-main {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .timer-time {
+        font-family: "Orbitron", sans-serif;
+        font-size: 28px;
+        font-weight: 900;
+        color: #333;
+        letter-spacing: 2px;
+        line-height: 1;
+        min-width: 185px;
+        text-align: center;
+      }
+      .timer-time.done {
+        color: var(--green);
+        font-family: inherit;
+        font-size: 20px;
+        letter-spacing: 0;
+        font-weight: 800;
+        min-width: auto;
+      }
+      .timer-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: linear-gradient(135deg, var(--blue), var(--purple));
+        color: #fff;
+        font-weight: 800;
+        padding: 5px 11px;
+        border-radius: 20px;
+        font-size: 12px;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      .timer-pill.fast {
+        animation: pill-p 1s ease-in-out infinite;
+      }
+      @keyframes pill-p {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.06);
+        }
+      }
+      .timer-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #888;
+        font-weight: 600;
+      }
+      .timer-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--purple);
+        animation: dot-b 1.5s ease-in-out infinite;
+        flex-shrink: 0;
+      }
+      .timer-dot.done {
+        background: var(--green);
+        animation: none;
+      }
+      @keyframes dot-b {
+        0%,
+        100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      .timer-progress {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 14px;
+      }
+      .tp-dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+        transition: background 0.3s;
+      }
+      .tp-dot.done {
+        background: var(--green);
+      }
+      .tp-dot.active {
+        background: linear-gradient(135deg, var(--blue), var(--purple));
+      }
+      .tp-dot.pending {
+        background: #ddd;
+      }
+      .tp-line {
+        width: 40px;
+        height: 3px;
+        border-radius: 2px;
+        transition: background 0.3s;
+      }
+      .tp-line.done {
+        background: var(--green);
+      }
+      .tp-line.active {
+        background: linear-gradient(90deg, var(--purple), #ddd);
+      }
+      .tp-line.pending {
+        background: #e8e8e8;
+      }
+      .timer-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        padding: 0 4px;
+      }
+      .tp-label {
+        font-size: 10px;
+        color: #aaa;
+        font-weight: 600;
+        text-align: center;
+        width: 60px;
+      }
+      .tp-label.done-l {
+        color: var(--green);
+      }
+      .tp-label.active-l {
+        color: var(--purple);
+      }
+      .done-actions {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+      }
+
+      /* ═══════════ BUTTONS ═══════════ */
+      .btn-primary {
+        position: relative;
+        width: 100%;
+        padding: 15px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(
+          135deg,
+          var(--blue),
+          var(--purple),
+          var(--pink)
+        );
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(151, 111, 255, 0.3);
+        transition:
+          transform 0.1s,
+          opacity 0.3s;
+      }
+      .btn-primary:active {
+        transform: scale(0.95);
+      }
+      .btn-primary:disabled {
+        opacity: 0.35;
+        pointer-events: none;
+        box-shadow: none;
+      }
+      .btn-primary.pulse {
+        animation: btn-glow 1.5s ease-in-out infinite;
+      }
+      @keyframes btn-glow {
+        0%,
+        100% {
+          box-shadow: 0 4px 15px rgba(151, 111, 255, 0.3);
+        }
+        50% {
+          box-shadow:
+            0 4px 30px rgba(151, 111, 255, 0.6),
+            0 0 20px rgba(228, 106, 206, 0.3);
+        }
+      }
+      .btn-shine {
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.25),
+          transparent
+        );
+        animation: shine 2.5s ease-in-out infinite;
+      }
+      @keyframes shine {
+        0% {
+          left: -100%;
+        }
+        50%,
+        100% {
+          left: 100%;
+        }
+      }
+      .btn-action {
+        flex: 1;
+        padding: 13px 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #fff;
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: transform 0.1s;
+        line-height: 1.3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+      .btn-action:active {
+        transform: scale(0.95);
+      }
+      .btn-action.purple {
+        background: linear-gradient(135deg, var(--blue), var(--purple));
+        box-shadow: 0 4px 15px rgba(151, 111, 255, 0.25);
+      }
+      .btn-action.dark {
+        background: linear-gradient(135deg, #555, #333);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      }
+      .btn-action-icon {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      /* ═══════════ SHEETS ═══════════ */
+      .sheet-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+      }
+      .sheet-bg {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+      }
+      .sheet {
+        position: relative;
+        z-index: 1;
+        background: #fff;
+        border-radius: 20px 20px 0 0;
+        padding: 10px 24px max(34px, var(--safe-bot));
+        max-height: 85vh;
+        overflow-y: auto;
+        text-align: center;
+        -webkit-overflow-scrolling: touch;
+      }
+      .sheet-handle {
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: #ddd;
+        margin: 0 auto 18px;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      /* ═══════════ PRIZE SHEET ═══════════ */
+      .prize-label {
+        font-size: 18px;
+        color: #888;
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+      .prize-sticker {
+        width: 130px;
+        height: 130px;
+        margin: 0 auto 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .prize-name {
+        font-size: 22px;
+        font-weight: 800;
+        color: #333;
+        margin-bottom: 10px;
+      }
+      .prize-cd-wrap {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+      #prize-cd {
+        font-size: 42px;
+        font-weight: 900;
+        color: var(--purple);
+        line-height: 1;
+      }
+
+      /* ═══════════ SUBSCRIBE SHEET ═══════════ */
+      .sub-sticker {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .sub-prize {
+        font-size: 18px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 14px;
+      }
+      .sub-desc {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 12px;
+        line-height: 1.5;
+      }
+      .sub-progress {
+        font-size: 13px;
+        color: var(--purple);
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      .sub-list {
+        list-style: none;
+        margin-bottom: 20px;
+      }
+      .sub-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .sub-item:last-child {
+        border-bottom: none;
+      }
+      .sub-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: #e0e0e0;
+        margin-right: 12px;
+        flex-shrink: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: #999;
+      }
+      .sub-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+      .sub-info {
+        flex: 1;
+        text-align: left;
+        min-width: 0;
+      }
+      .sub-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sub-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        background: #3390ec;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        flex-shrink: 0;
+        margin-left: 10px;
+      }
+      .sub-btn.done {
+        background: var(--green);
+        pointer-events: none;
+      }
+
+      /* ═══════════ SPEEDUP SHEET ═══════════ */
+      .su-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+      .su-icon {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .su-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #333;
+      }
+      .su-desc {
+        font-size: 13px;
+        color: #888;
+        line-height: 1.5;
+        margin-bottom: 18px;
+      }
+      .su-stats {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: #f8f9fa;
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 20px;
+      }
+      .su-stat-val {
+        font-size: 26px;
+        font-weight: 900;
+        color: #333;
+        line-height: 1;
+      }
+      .su-stat-label {
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .su-divider {
+        width: 1px;
+        height: 40px;
+        background: #e0e0e0;
+      }
+      .ref-track {
+        position: relative;
+        height: 8px;
+        background: #e8e8e8;
+        border-radius: 4px;
+        margin: 10px 14px 52px;
+      }
+      .ref-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background: linear-gradient(90deg, var(--blue), var(--purple));
+        border-radius: 4px;
+        transition: width 0.6s;
+      }
+      .ref-ms {
+        position: absolute;
+        top: -6px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #d0d0d0;
+        border: 3px solid #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+        transform: translateX(-50%);
+        z-index: 2;
+      }
+      .ref-ms.on {
+        background: linear-gradient(135deg, var(--blue), var(--purple));
+      }
+      .ref-ms-info {
+        position: absolute;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+        white-space: nowrap;
+      }
+      .ref-ms-count {
+        font-size: 11px;
+        font-weight: 700;
+        color: #555;
+      }
+      .ref-ms-speed {
+        font-size: 10px;
+        color: #aaa;
+        font-weight: 600;
+      }
+      .ref-ms.on .ref-ms-count,
+      .ref-ms.on .ref-ms-speed {
+        color: var(--purple);
+      }
+      .btn-share {
+        width: 100%;
+        padding: 14px;
+        font-size: 15px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #0088cc, #0077b5);
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .btn-share:active {
+        transform: scale(0.95);
+      }
+      .share-tgs {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .ref-hint {
+        font-size: 12px;
+        color: #aaa;
+        margin-top: 10px;
+        line-height: 1.4;
+      }
+      .btn-back {
+        background: none;
+        border: none;
+        color: #999;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 12px;
+        padding: 8px;
+      }
+
+      /* ═══════════ STARS MODAL ═══════════ */
+      .modal-fs {
+        position: fixed;
+        inset: 0;
+        background: #fff;
+        z-index: 200;
+        display: flex;
+        flex-direction: column;
+      }
+      .modal-fs-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #f0f0f0;
+        flex-shrink: 0;
+      }
+      .modal-fs-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .modal-fs-title .tgs-inline {
+        width: 20px;
+        height: 20px;
+      }
+      .modal-fs-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f0f0f0;
+        border: none;
+        font-size: 16px;
+        color: #999;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-fs-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        font-size: 15px;
+        color: #444;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .modal-fs-body:empty::after {
+        content: "Загрузка...";
+        color: #ccc;
+      }
+      .btn-admin-edit {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--blue), var(--purple));
+        border: none;
+        font-size: 20px;
+        box-shadow: 0 4px 20px rgba(151, 111, 255, 0.4);
+        cursor: pointer;
+        z-index: 215;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .stars-edit-wrap {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .stars-textarea {
+        flex: 1;
+        width: 100%;
+        border: 2px solid #e0e0e0;
+        border-radius: 14px;
+        padding: 14px;
+        font-size: 15px;
+        font-family: inherit;
+        resize: none;
+        line-height: 1.6;
+        outline: none;
+        background: #fff;
+        color: #333;
+      }
+      .stars-textarea:focus {
+        border-color: var(--purple);
+      }
+      .stars-edit-btns {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .btn-save {
+        flex: 1;
+        padding: 14px;
+        font-size: 15px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #4caf50, #43a047);
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+      }
+      .btn-cancel {
+        flex: 1;
+        padding: 14px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #666;
+        background: #f0f0f0;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+      }
+
+      /* ═══════════ FX ═══════════ */
+      #flash {
+        position: fixed;
+        inset: 0;
+        background: #fff;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      #edge-glow {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 3;
+        opacity: 0;
+        transition: opacity 0.5s;
+        background: radial-gradient(
+          ellipse at center,
+          transparent 35%,
+          var(--glow, rgba(255, 215, 0, 0.35)) 100%
+        );
+      }
+      #edge-glow.on {
+        opacity: 1;
+        animation: glow-p 2s ease-in-out infinite;
+      }
+      @keyframes glow-p {
+        0%,
+        100% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        z-index: 9999;
+        transition: transform 0.3s;
+        pointer-events: none;
+        color: #fff;
+      }
+      .toast.error {
+        background: var(--red);
+      }
+      .toast.success {
+        background: var(--green);
+      }
+      .toast.show {
+        transform: translateX(-50%) translateY(0);
+      }
+      .particle {
+        position: fixed;
+        pointer-events: none;
+        z-index: 50;
+        border-radius: 50%;
+        will-change: transform, opacity;
+        animation: p-fly 0.6s ease-out forwards;
+      }
+      @keyframes p-fly {
+        0% {
+          opacity: 1;
+          transform: translate(0, 0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(var(--dx), var(--dy)) scale(0);
+        }
+      }
+      .tap-fx {
+        position: fixed;
+        font-size: 22px;
+        font-weight: 900;
+        color: var(--purple);
+        pointer-events: none;
+        z-index: 150;
+        will-change: transform, opacity;
+        animation: t-fly 0.5s ease-out forwards;
+      }
+      @keyframes t-fly {
+        0% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-50px) scale(1.2);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+        .particle,
+        .tap-fx {
+          display: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ═══════════════════════════════════════ -->
+    <!--              SCENES                     -->
+    <!-- ═══════════════════════════════════════ -->
+
+    <div id="scene-loading" class="scene active">
+      <div class="loader"></div>
+      <p class="loader-text">Загрузка...</p>
+    </div>
+
+    <div id="scene-draw" class="scene">
+      <div class="draw-spacer-top"></div>
+      <div class="draw-header">
+        <div class="draw-title">
+          Нарисуй звезду <span class="tgs-inline" id="title-star-tgs"></span>
+        </div>
+        <div class="draw-sub">и получи свой приз</div>
+        <div class="draw-attempts" id="draw-attempts"></div>
+      </div>
+      <div class="draw-score">
+        <div class="draw-score-val" id="score-val"></div>
+        <div class="draw-score-hint" id="score-hint"></div>
+      </div>
+      <div class="draw-canvas-area">
+        <div id="canvas-wrap">
+          <canvas id="draw-canvas"></canvas>
+          <button id="btn-reset" aria-label="Сброс">↻</button>
+        </div>
+      </div>
+      <div class="draw-submit">
+        <button id="btn-submit" class="btn-primary" disabled>
+          <span>Готово</span><span class="btn-shine"></span>
+        </button>
+      </div>
+    </div>
+
+    <div id="scene-tap" class="scene">
+      <div class="tap-area" id="tap-area">
+        <div class="tap-sticker" id="tap-sticker">
+          <div class="tap-emoji" id="tap-emoji">❓</div>
+        </div>
+      </div>
+      <div class="tap-bottom" id="tap-bottom">
+        <div class="tap-label">Тапай! 👆</div>
+        <div class="tap-bar-wrap">
+          <div class="tap-bar"><div class="tap-fill" id="tap-fill"></div></div>
+          <span class="tap-count" id="tap-count">0 / 10</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="scene-done" class="scene">
+      <div class="done-wrap">
+        <div class="done-check" id="done-check"></div>
+        <div class="done-sticker" id="done-sticker"></div>
+        <p class="done-prize" id="done-prize"></p>
+        <div class="timer-card">
+          <div class="timer-main">
+            <div class="timer-time" id="timer-time">24:00:00</div>
+            <div class="timer-pill" id="timer-pill">
+              <span
+                class="tgs-inline"
+                id="pill-lightning"
+                style="width: 14px; height: 14px"
+              ></span>
+              <span id="timer-speed">x1</span>
+            </div>
+          </div>
+          <div class="timer-status">
+            <div class="timer-dot" id="timer-dot"></div>
+            <span id="timer-text">Подготавливаем приз...</span>
+          </div>
+          <div class="timer-progress">
+            <div id="tp1" class="tp-dot done">✓</div>
+            <div id="tl1" class="tp-line done"></div>
+            <div id="tp2" class="tp-dot active">2</div>
+            <div id="tl2" class="tp-line active"></div>
+            <div id="tp3" class="tp-dot pending">3</div>
+          </div>
+          <div class="timer-labels">
+            <div id="tlbl1" class="tp-label done-l">Получен</div>
+            <div id="tlbl2" class="tp-label active-l">Обработка</div>
+            <div id="tlbl3" class="tp-label">Выдача</div>
+          </div>
+        </div>
+        <div class="done-actions">
+          <button id="btn-speedup" class="btn-action purple">
+            <span class="btn-action-icon" id="btn-rocket-tgs"></span>
+            <span>Ускорить</span>
+          </button>
+          <button id="btn-earn-stars" class="btn-action dark">
+            <span class="btn-action-icon" id="btn-star-tgs"></span>
+            <span>Заработать</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!--              SHEETS                     -->
+    <!-- ═══════════════════════════════════════ -->
+
+    <div id="sheet-prize" class="sheet-overlay hidden">
+      <div class="sheet-bg"></div>
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="prize-label">ВАМ ВЫПАЛО:</div>
+        <div class="prize-sticker" id="prize-sticker"></div>
+        <p class="prize-name" id="prize-name"></p>
+        <div class="prize-cd-wrap"><div id="prize-cd"></div></div>
+        <button id="btn-claim" class="btn-primary" disabled>
+          <span>ЗАБРАТЬ</span><span class="btn-shine"></span>
+        </button>
+      </div>
+    </div>
+
+    <div id="sheet-sub" class="sheet-overlay hidden">
+      <div class="sheet-bg"></div>
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sub-sticker" id="sub-sticker"></div>
+        <p class="sub-prize" id="sub-prize"></p>
+        <p class="sub-desc">
+          Чтобы получить приз, подпишитесь на&nbsp;наших спонсоров:
+        </p>
+        <div class="sub-progress" id="sub-progress"></div>
+        <ul class="sub-list" id="sub-list"></ul>
+        <button id="btn-check-sub" class="btn-primary">
+          <span>Проверить подписку</span><span class="btn-shine"></span>
+        </button>
+      </div>
+    </div>
+
+    <div id="sheet-speed" class="sheet-overlay hidden">
+      <div class="sheet-bg"></div>
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="su-header">
+          <div class="su-icon" id="su-rocket-tgs"></div>
+          <div class="su-title">Ускорить вывод</div>
+        </div>
+        <p class="su-desc">
+          Пригласи друзей — каждые 2 друга ускоряют таймер вдвое!
+        </p>
+        <div class="su-stats">
+          <div style="text-align: center">
+            <div class="su-stat-val" id="su-refs">0</div>
+            <div class="su-stat-label">Друзей</div>
+          </div>
+          <div class="su-divider"></div>
+          <div style="text-align: center">
+            <div class="su-stat-val" id="su-speed">x1</div>
+            <div class="su-stat-label">Скорость</div>
+          </div>
+        </div>
+        <div style="margin-bottom: 20px">
+          <div class="ref-track">
+            <div class="ref-fill" id="ref-fill" style="width: 0"></div>
+            <div class="ref-ms" id="ms2" style="left: 25%">
+              <div class="ref-ms-info">
+                <div class="ref-ms-count">2</div>
+                <div class="ref-ms-speed">x2</div>
+              </div>
+            </div>
+            <div class="ref-ms" id="ms4" style="left: 50%">
+              <div class="ref-ms-info">
+                <div class="ref-ms-count">4</div>
+                <div class="ref-ms-speed">x4</div>
+              </div>
+            </div>
+            <div class="ref-ms" id="ms6" style="left: 75%">
+              <div class="ref-ms-info">
+                <div class="ref-ms-count">6</div>
+                <div class="ref-ms-speed">x8</div>
+              </div>
+            </div>
+            <div class="ref-ms" id="ms8" style="left: 100%">
+              <div class="ref-ms-info">
+                <div class="ref-ms-count">8</div>
+                <div class="ref-ms-speed">x16</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button id="btn-share" class="btn-share">
+          <span class="share-tgs" id="share-invite-tgs"></span>
+          <span>Пригласить друга</span>
+        </button>
+        <p class="ref-hint">
+          Ваша реферальная ссылка будет прикреплена автоматически
+        </p>
+        <button id="btn-back-speed" class="btn-back">← Назад</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!--           STARS MODAL                   -->
+    <!-- ═══════════════════════════════════════ -->
+
+    <div id="modal-stars" class="modal-fs hidden">
+      <div class="modal-fs-header">
+        <span class="modal-fs-title">
+          <span class="tgs-inline" id="modal-star-tgs"></span>Заработать звёзды
+        </span>
+        <button
+          id="btn-close-stars"
+          class="modal-fs-close"
+          aria-label="Закрыть"
+        >
+          ✕
+        </button>
+      </div>
+      <div id="stars-content" class="modal-fs-body"></div>
+      <div id="stars-edit" class="stars-edit-wrap hidden">
+        <textarea id="stars-ta" class="stars-textarea"></textarea>
+        <div class="stars-edit-btns">
+          <button id="btn-save-stars" class="btn-save">💾 Сохранить</button>
+          <button id="btn-cancel-edit" class="btn-cancel">Отмена</button>
+        </div>
+      </div>
+      <button id="btn-edit-stars" class="btn-admin-edit hidden">✏️</button>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!--            UTILITIES                    -->
+    <!-- ═══════════════════════════════════════ -->
+
+    <div id="flash"></div>
+    <div id="edge-glow"></div>
+    <div id="toast" class="toast"></div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!--          EXTERNAL SCRIPTS               -->
+    <!-- ═══════════════════════════════════════ -->
+
+    <script
+      defer
+      src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
+    ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"
+    ></script>
+    <script
+      defer
+      src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"
+    ></script>
+    <script
+      defer
+      src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"
+    ></script>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!--          APPLICATION SCRIPT             -->
+    <!-- ═══════════════════════════════════════ -->
+
+    <script>
+      window.addEventListener("load", () => {
+        const ck = setInterval(() => {
+          if (
+            typeof gsap !== "undefined" &&
+            typeof confetti !== "undefined" &&
+            typeof lottie !== "undefined" &&
+            typeof pako !== "undefined"
+          ) {
+            clearInterval(ck);
+            startApp();
+          }
+        }, 30);
+      });
+
+      function startApp() {
+        /* ═══════════ CONFIG ═══════════ */
+        const API = "/api";
+        const BOT = "fawtfbot";
+        const MAX_TAPS = 10;
+        const T_SEC = 86400;
+        const THRESHOLD = 80;
+
+        const TGS = {
+          starY: "assets/star_yellow.tgs",
+          starP: "assets/star_purple.tgs",
+          modalS: "assets/modalstars.tgs",
+          modalP: "assets/modalpremium.tgs",
+          rocket: "assets/rocket.tgs",
+          star: "assets/star.tgs",
+          lightning: "assets/lightning.tgs",
+          check: "assets/true.tgs",
+          invite: "assets/invite.tgs",
+        };
+
+        const PRIZES = {
+          stars: {
+            key: "stars",
+            name: "500 Stars",
+            tgs: TGS.starY,
+            modal: TGS.modalS,
+            glow: "rgba(255,215,0,.35)",
+            fill: "gold",
+            shine: "",
+          },
+          premium: {
+            key: "premium",
+            name: "Telegram Premium",
+            tgs: TGS.starP,
+            modal: TGS.modalP,
+            glow: "rgba(124,103,254,.35)",
+            fill: "purple",
+            shine: "purple-shine",
+          },
+        };
+
+        /* ═══════════ STATE ═══════════ */
+        let CHANNELS = [],
+          US = null,
+          isAdmin = false,
+          attemptN = 0;
+        const openedBots = new Set();
+        let claimedAt = null,
+          refCount = 0,
+          tSpeed = 1,
+          tInt = null;
+        let wonPrize = null,
+          appState = "loading",
+          tapN = 0,
+          isChecking = false;
+        let strokes = [],
+          curStroke = null,
+          drawing = false,
+          hasDrawn = false,
+          hapticN_ = 0,
+          cSize = 0;
+        let activeLotties = [],
+          iconLotties = [];
+
+        /* ═══════════ HELPERS ═══════════ */
+        const $ = (id) => document.getElementById(id);
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const haptic = (t) => {
+          try {
+            Telegram.WebApp.HapticFeedback.impactOccurred(t);
+          } catch (e) {}
+        };
+        const hapticNotif = (t) => {
+          try {
+            Telegram.WebApp.HapticFeedback.notificationOccurred(t);
+          } catch (e) {}
+        };
+
+        function calcSpeed(r) {
+          return r >= 2 ? Math.pow(2, Math.floor(r / 2)) : 1;
+        }
+
+        function fmtTime(s) {
+          if (s <= 0) return null;
+          const h = Math.floor(s / 3600);
+          const m = Math.floor((s % 3600) / 60);
+          const sc = Math.floor(s % 60);
+          return [h, m, sc].map((v) => String(v).padStart(2, "0")).join(":");
+        }
+
+        let toastTimer = null;
+        function toast(t, tp = "error", ms = 3000) {
+          const el = $("toast");
+          el.textContent = t;
+          el.className = "toast " + tp;
+          if (toastTimer) clearTimeout(toastTimer);
+          requestAnimationFrame(() => el.classList.add("show"));
+          toastTimer = setTimeout(() => {
+            el.classList.remove("show");
+            toastTimer = null;
+          }, ms);
+        }
+
+        /* ═══════════ SCENE MANAGER ═══════════ */
+        function showScene(id, instant = false) {
+          document.querySelectorAll(".scene").forEach((s) => {
+            if (instant) {
+              s.classList.add("instant");
+              s.classList.remove("active");
+              void s.offsetHeight;
+              s.classList.remove("instant");
+            } else {
+              s.classList.remove("active");
+            }
+          });
+          const el = $("scene-" + id);
+          if (instant) {
+            el.classList.add("instant");
+            el.classList.add("active");
+            void el.offsetHeight;
+            el.classList.remove("instant");
+          } else {
+            el.classList.add("active");
+          }
+        }
+
+        /* ═══════════ SHEET MANAGER ═══════════ */
+        function openSheet(id) {
+          const ov = $(id);
+          const bg = ov.querySelector(".sheet-bg");
+          const sh = ov.querySelector(".sheet");
+          ov.classList.remove("hidden");
+          if (bg) {
+            gsap.set(bg, { opacity: 0 });
+            gsap.to(bg, { opacity: 1, duration: 0.25 });
+          }
+          if (sh) {
+            gsap.set(sh, { y: "100%" });
+            gsap.to(sh, { y: "0%", duration: 0.4, ease: "power3.out" });
+          }
+          updateBackBtn();
+        }
+
+        function closeSheet(id, cb) {
+          const ov = $(id);
+          const bg = ov.querySelector(".sheet-bg");
+          const sh = ov.querySelector(".sheet");
+          if (sh) {
+            gsap.to(sh, { y: "100%", duration: 0.3, ease: "power2.in" });
+            if (bg) gsap.to(bg, { opacity: 0, duration: 0.25 });
+            gsap.delayedCall(0.35, () => {
+              ov.classList.add("hidden");
+              updateBackBtn();
+              if (cb) cb();
+            });
+          } else {
+            ov.classList.add("hidden");
+            updateBackBtn();
+            if (cb) cb();
+          }
+        }
+
+        /* ═══════════ BACK BUTTON ═══════════ */
+        function updateBackBtn() {
+          try {
+            const stars = !$("modal-stars").classList.contains("hidden");
+            const speed = !$("sheet-speed").classList.contains("hidden");
+            if (stars || speed) Telegram.WebApp.BackButton.show();
+            else Telegram.WebApp.BackButton.hide();
+          } catch (e) {}
+        }
+
+        try {
+          Telegram.WebApp.BackButton.onClick(() => {
+            if (!$("modal-stars").classList.contains("hidden"))
+              $("btn-close-stars").click();
+            else if (!$("sheet-speed").classList.contains("hidden"))
+              closeSheet("sheet-speed");
+          });
+        } catch (e) {}
+
+        /* ═══════════ OFFLINE ═══════════ */
+        window.addEventListener("offline", () =>
+          toast("Нет интернета", "error", 5000),
+        );
+        window.addEventListener("online", () =>
+          toast("Соединение восстановлено", "success"),
+        );
+
+        /* ═══════════ API ═══════════ */
+        function gID() {
+          try {
+            return Telegram.WebApp.initData;
+          } catch (e) {
+            return "";
+          }
+        }
+
+        async function api(ep, body = {}) {
+          for (let i = 0; i < 3; i++) {
+            try {
+              const r = await fetch(`${API}/${ep}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ initData: gID(), ...body }),
+              });
+              if (!r.ok) {
+                if (r.status >= 400 && r.status < 500 && r.status !== 429)
+                  return { ok: false };
+                if (i < 2) {
+                  await sleep(1000 * (i + 1));
+                  continue;
+                }
+                return { ok: false };
+              }
+              return await r.json();
+            } catch (e) {
+              if (i < 2) {
+                await sleep(1000 * (i + 1));
+                continue;
+              }
+              return { ok: false, error: "network" };
+            }
+          }
+          return { ok: false };
+        }
+
+        /* ═══════════ TGS / LOTTIE ═══════════ */
+        const tgsC = {},
+          tgsS = {};
+        try {
+          lottie.setQuality(2);
+        } catch (e) {}
+
+        async function loadTGS(u) {
+          if (tgsC[u] !== undefined) return tgsC[u];
+          try {
+            const r = await fetch(u);
+            if (!r.ok) throw 0;
+            const b = await r.arrayBuffer();
+            const j = pako.inflate(new Uint8Array(b), { to: "string" });
+            tgsC[u] = JSON.parse(j);
+            tgsS[u] = j;
+            return tgsC[u];
+          } catch (e) {
+            tgsC[u] = null;
+            return null;
+          }
+        }
+
+        function cloneTGS(u) {
+          return tgsS[u] ? JSON.parse(tgsS[u]) : null;
+        }
+
+        function playLottie(c, u, loop = true) {
+          activeLotties = activeLotties.filter((a) => {
+            try {
+              if (a._c === c) {
+                a.destroy();
+                return false;
+              }
+            } catch (e) {}
+            return true;
+          });
+          c.innerHTML = "";
+          const d = cloneTGS(u);
+          if (!d) return null;
+          const a = lottie.loadAnimation({
+            container: c,
+            renderer: "svg",
+            loop,
+            autoplay: true,
+            animationData: d,
+          });
+          a.setSubframe(false);
+          a._c = c;
+          activeLotties.push(a);
+          return a;
+        }
+
+        function playIcon(c, u) {
+          c.innerHTML = "";
+          const d = cloneTGS(u);
+          if (!d) return null;
+          const a = lottie.loadAnimation({
+            container: c,
+            renderer: "svg",
+            loop: true,
+            autoplay: true,
+            animationData: d,
+          });
+          a.setSubframe(false);
+          a._c = c;
+          iconLotties.push(a);
+          return a;
+        }
+
+        function killLotties() {
+          activeLotties.forEach((a) => {
+            try {
+              a.destroy();
+            } catch (e) {}
+          });
+          activeLotties = [];
+        }
+        function killIcons() {
+          iconLotties.forEach((a) => {
+            try {
+              a.destroy();
+            } catch (e) {}
+          });
+          iconLotties = [];
+        }
+
+        /* ═══════════ PARTICLES ═══════════ */
+        const PP = [],
+          PC = [
+            "#6B93FF",
+            "#976FFF",
+            "#E46ACE",
+            "#FFD700",
+            "#FF6B6B",
+            "#4CAF50",
+          ];
+        for (let i = 0; i < 24; i++) {
+          const p = document.createElement("div");
+          p.className = "particle";
+          p.style.display = "none";
+          document.body.appendChild(p);
+          PP.push({ el: p, busy: false, t: null });
+        }
+
+        function burst(x, y, n) {
+          n = Math.min(n, 10);
+          let u = 0;
+          for (let i = 0; i < PP.length && u < n; i++) {
+            const s = PP[i];
+            if (s.busy) continue;
+            s.busy = true;
+            u++;
+            const a = ((Math.PI * 2) / n) * u + Math.random() * 0.5;
+            const d = 30 + Math.random() * 50;
+            const sz = 3 + Math.random() * 4;
+            s.el.style.cssText = `left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;background:${PC[u % PC.length]};display:block`;
+            s.el.style.animation = "none";
+            void s.el.offsetHeight;
+            s.el.style.animation = "";
+            if (s.t) clearTimeout(s.t);
+            s.t = setTimeout(() => {
+              s.el.style.display = "none";
+              s.busy = false;
+              s.t = null;
+            }, 600);
+          }
+        }
+
+        function megaBurst(x, y) {
+          for (let i = 0; i < 4; i++) {
+            setTimeout(
+              () =>
+                burst(
+                  x + (Math.random() - 0.5) * 80,
+                  y + (Math.random() - 0.5) * 60,
+                  10,
+                ),
+              i * 60,
+            );
+          }
+        }
+
+        const TPP = [],
+          TT = ["+1", "⭐", "✨", "💫", "🔥", "💎"];
+        for (let i = 0; i < 6; i++) {
+          const el = document.createElement("div");
+          el.className = "tap-fx";
+          el.style.display = "none";
+          document.body.appendChild(el);
+          TPP.push({ el, busy: false, t: null });
+        }
+
+        function showTapFx(x, y) {
+          for (let i = 0; i < TPP.length; i++) {
+            const s = TPP[i];
+            if (s.busy) continue;
+            s.busy = true;
+            s.el.textContent = TT[~~(Math.random() * TT.length)];
+            s.el.style.left = x + (Math.random() - 0.5) * 30 + "px";
+            s.el.style.top = y - 10 + "px";
+            s.el.style.display = "block";
+            s.el.style.animation = "none";
+            void s.el.offsetHeight;
+            s.el.style.animation = "";
+            if (s.t) clearTimeout(s.t);
+            s.t = setTimeout(() => {
+              s.el.style.display = "none";
+              s.busy = false;
+              s.t = null;
+            }, 500);
+            return;
+          }
+        }
+
+        /* ═══════════ STAR SCORING ═══════════ */
+        function genIdealStar(sz) {
+          const c = document.createElement("canvas");
+          c.width = c.height = sz;
+          const x = c.getContext("2d");
+          const cx = sz / 2,
+            cy = sz / 2,
+            oR = sz * 0.45,
+            iR = sz * 0.18;
+          x.beginPath();
+          for (let i = 0; i < 10; i++) {
+            const r = i % 2 === 0 ? oR : iR;
+            const a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
+            const px = cx + Math.cos(a) * r,
+              py = cy + Math.sin(a) * r;
+            i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+          }
+          x.closePath();
+          x.strokeStyle = "#000";
+          x.lineWidth = Math.max(2, sz * 0.05);
+          x.lineCap = "round";
+          x.lineJoin = "round";
+          x.stroke();
+          return x.getImageData(0, 0, sz, sz);
+        }
+
+        function renderStrokes(st, sz) {
+          const c = document.createElement("canvas");
+          c.width = c.height = sz;
+          const x = c.getContext("2d");
+          if (!st.length) return x.getImageData(0, 0, sz, sz);
+          let mX = 1e9,
+            mY = 1e9,
+            MX = -1e9,
+            MY = -1e9;
+          for (const s of st)
+            for (const p of s) {
+              if (p.x < mX) mX = p.x;
+              if (p.y < mY) mY = p.y;
+              if (p.x > MX) MX = p.x;
+              if (p.y > MY) MY = p.y;
+            }
+          const w = MX - mX || 1,
+            h = MY - mY || 1;
+          const sc = (sz * 0.85) / Math.max(w, h);
+          const ox = (sz - w * sc) / 2 - mX * sc,
+            oy = (sz - h * sc) / 2 - mY * sc;
+          x.strokeStyle = "#000";
+          x.lineWidth = Math.max(2, sz * 0.05);
+          x.lineCap = "round";
+          x.lineJoin = "round";
+          for (const s of st) {
+            if (s.length < 2) continue;
+            x.beginPath();
+            x.moveTo(s[0].x * sc + ox, s[0].y * sc + oy);
+            for (let i = 1; i < s.length; i++)
+              x.lineTo(s[i].x * sc + ox, s[i].y * sc + oy);
+            x.stroke();
+          }
+          return x.getImageData(0, 0, sz, sz);
+        }
+
+        function dilate(img, rad) {
+          const w = img.width,
+            h = img.height;
+          const src = new Uint8Array(w * h),
+            dst = new Uint8Array(w * h);
+          for (let i = 0; i < w * h; i++)
+            src[i] = img.data[i * 4 + 3] > 30 ? 1 : 0;
+          for (let y = 0; y < h; y++)
+            for (let x = 0; x < w; x++) {
+              let f = 0;
+              for (let dy = -rad; dy <= rad && !f; dy++)
+                for (let dx = -rad; dx <= rad && !f; dx++) {
+                  const nx = x + dx,
+                    ny = y + dy;
+                  if (
+                    nx >= 0 &&
+                    nx < w &&
+                    ny >= 0 &&
+                    ny < h &&
+                    src[ny * w + nx]
+                  )
+                    f = 1;
+                }
+              dst[y * w + x] = f;
+            }
+          return dst;
+        }
+
+        function scoreDrawing(st) {
+          if (!st.length) return 0;
+          let tp = 0;
+          for (const s of st) tp += s.length;
+          if (tp < 10) return 0;
+          const SZ = 64;
+          const id = genIdealStar(SZ),
+            dd = renderStrokes(st, SZ);
+          const iD = dilate(id, 3),
+            dD = dilate(dd, 3),
+            dR = dilate(dd, 0),
+            iR = dilate(id, 0);
+          let ip = 0,
+            cp = 0;
+          for (let i = 0; i < SZ * SZ; i++) {
+            if (iR[i]) {
+              ip++;
+              if (dD[i]) cp++;
+            }
+          }
+          const cov = ip ? cp / ip : 0;
+          let dp = 0,
+            pp = 0;
+          for (let i = 0; i < SZ * SZ; i++) {
+            if (dR[i]) {
+              dp++;
+              if (iD[i]) pp++;
+            }
+          }
+          const prec = dp ? pp / dp : 0;
+          return Math.min(100, Math.round((cov * 0.55 + prec * 0.45) * 110));
+        }
+
+        /* ═══════════ CANVAS ═══════════ */
+        const cvs = $("draw-canvas"),
+          ctx = cvs.getContext("2d"),
+          wrap = $("canvas-wrap");
+
+        function ghostStar() {
+          const sz = cSize,
+            cx = sz / 2,
+            cy = sz / 2,
+            oR = sz * 0.38,
+            iR = sz * 0.15;
+          ctx.save();
+          ctx.strokeStyle = "rgba(0,0,0,0.07)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 6]);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          for (let i = 0; i < 10; i++) {
+            const r = i % 2 === 0 ? oR : iR;
+            const a = (Math.PI / 2) * 3 + (i * Math.PI) / 5;
+            const x = cx + Math.cos(a) * r,
+              y = cy + Math.sin(a) * r;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        function setupCanvas() {
+          const area = document.querySelector(".draw-canvas-area");
+          if (!area) return;
+          const r = area.getBoundingClientRect();
+          const avail = Math.min(r.width - 16, r.height - 16);
+          cSize = Math.min(Math.max(Math.floor(avail), 160), 400);
+          wrap.style.width = cSize + "px";
+          wrap.style.height = cSize + "px";
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          cvs.width = cSize * dpr;
+          cvs.height = cSize * dpr;
+          cvs.style.width = cSize + "px";
+          cvs.style.height = cSize + "px";
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.scale(dpr, dpr);
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ghostStar();
+        }
+
+        function getPos(e) {
+          const r = cvs.getBoundingClientRect();
+          return {
+            x: (e.touches?.[0]?.clientX ?? e.clientX) - r.left,
+            y: (e.touches?.[0]?.clientY ?? e.clientY) - r.top,
+          };
+        }
+
+        cvs.addEventListener("pointerdown", (e) => {
+          if (appState !== "drawing") return;
+          e.preventDefault();
+          drawing = true;
+          const p = getPos(e);
+          curStroke = [p];
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          hapticN_ = 0;
+        });
+
+        cvs.addEventListener("pointermove", (e) => {
+          if (!drawing || !curStroke) return;
+          e.preventDefault();
+          if (curStroke.length >= 2000) return;
+          const p = getPos(e);
+          curStroke.push(p);
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 3;
+          ctx.setLineDash([]);
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          hapticN_++;
+          if (hapticN_ % 3 === 0) haptic("light");
+          if (!hasDrawn) {
+            hasDrawn = true;
+            $("btn-submit").disabled = false;
+            $("btn-submit").classList.add("pulse");
+          }
+        });
+
+        function endStroke() {
+          if (!drawing || !curStroke) return;
+          drawing = false;
+          if (curStroke.length > 1) strokes.push(curStroke);
+          curStroke = null;
+        }
+
+        cvs.addEventListener("pointerup", endStroke);
+        cvs.addEventListener("pointercancel", endStroke);
+        cvs.addEventListener("pointerleave", endStroke);
+
+        function clearCanvas() {
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, cvs.width, cvs.height);
+          ctx.scale(dpr, dpr);
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.setLineDash([]);
+          strokes = [];
+          curStroke = null;
+          hasDrawn = false;
+          $("btn-submit").disabled = true;
+          $("btn-submit").classList.remove("pulse");
+          $("score-val").style.opacity = "0";
+          $("score-hint").style.opacity = "0";
+          wrap.classList.remove("ok", "fail");
+          ghostStar();
+        }
+
+        $("btn-reset").addEventListener("click", () => {
+          if (appState !== "drawing") return;
+          clearCanvas();
+          haptic("medium");
+        });
+
+        /* ═══════════ SUBMIT ═══════════ */
+        $("btn-submit").addEventListener("click", async () => {
+          if (appState !== "drawing") return;
+          appState = "evaluating";
+          endStroke();
+          const btn = $("btn-submit");
+          btn.disabled = true;
+          btn.classList.remove("pulse");
+          haptic("medium");
+
+          const score = scoreDrawing(strokes);
+          const sv = $("score-val"),
+            sh = $("score-hint");
+          const o = { v: 0 };
+
+          gsap.to(o, {
+            v: score,
+            duration: 0.8,
+            ease: "power2.out",
+            onUpdate() {
+              sv.textContent = Math.round(o.v) + "%";
+            },
+          });
+          gsap.set(sv, { scale: 0.5 });
+          gsap.to(sv, {
+            opacity: 1,
+            scale: 1,
+            duration: 0.4,
+            ease: "back.out(2)",
+          });
+
+          await sleep(900);
+
+          if (score >= THRESHOLD) {
+            sv.style.color = "#4CAF50";
+            sh.textContent = "Отлично!";
+            sh.style.color = "#4CAF50";
+            gsap.to(sh, { opacity: 1, duration: 0.3 });
+            wrap.classList.add("ok");
+            hapticNotif("success");
+            wonPrize = Math.random() < 0.5 ? PRIZES.stars : PRIZES.premium;
+            api("check-subscription", {
+              action: "save_roll",
+              prize_key: wonPrize.key,
+              prize_name: wonPrize.name,
+            }).catch(() => {});
+            await sleep(800);
+            appState = "transforming";
+            await doTransform();
+          } else {
+            sv.style.color = "#FF4757";
+            sh.textContent = "Попробуйте ещё раз";
+            sh.style.color = "#FF4757";
+            gsap.to(sh, { opacity: 1, duration: 0.3 });
+            wrap.classList.add("fail");
+            hapticNotif("error");
+            attemptN++;
+            $("draw-attempts").textContent = "Попытка " + (attemptN + 1);
+            await sleep(1500);
+            clearCanvas();
+            appState = "drawing";
+          }
+        });
+
+        /* ═══════════ TRANSFORM → TAP ═══════════ */
+        async function doTransform() {
+          const wrapR = wrap.getBoundingClientRect();
+          const cx = wrapR.left + wrapR.width / 2;
+          const cy = wrapR.top + wrapR.height / 2;
+
+          gsap.to([".draw-submit", "#btn-reset", ".draw-score"], {
+            opacity: 0,
+            duration: 0.3,
+          });
+
+          // Shake canvas
+          let amp = 0,
+            run = true;
+          const shake = () => {
+            if (!run) return;
+            cvs.style.transform = `translate(${(Math.random() - 0.5) * amp * 2}px,${(Math.random() - 0.5) * amp * 2}px)`;
+            requestAnimationFrame(shake);
+          };
+          amp = 2;
+          shake();
+          gsap.to(
+            { v: 2 },
+            {
+              v: 12,
+              duration: 1,
+              ease: "power2.in",
+              onUpdate() {
+                amp = this.targets()[0].v;
+              },
+            },
+          );
+          for (let i = 0; i < 6; i++) {
+            await sleep(150);
+            haptic("light");
+          }
+
+          haptic("heavy");
+          megaBurst(cx, cy);
+          gsap.to(cvs, {
+            scale: 0,
+            opacity: 0,
+            rotation: 90,
+            duration: 0.35,
+            ease: "power3.in",
+          });
+          run = false;
+          amp = 0;
+          cvs.style.transform = "";
+          await sleep(400);
+
+          // Setup tap scene
+          const sticker = $("tap-sticker"),
+            emoji = $("tap-emoji"),
+            bottom = $("tap-bottom");
+          const startSz = Math.round(cSize * 0.35);
+          sticker.style.width = startSz + "px";
+          sticker.style.height = startSz + "px";
+          emoji.textContent = "❓";
+          emoji.style.display = "";
+          bottom.style.opacity = "0";
+          $("tap-fill").style.width = "0%";
+          $("tap-fill").className = "tap-fill";
+          $("tap-count").textContent = "0 / " + MAX_TAPS;
+
+          showScene("tap", true);
+          gsap.from(sticker, { scale: 0, duration: 0.3, ease: "back.out(2)" });
+          await sleep(200);
+
+          // Drumroll
+          const emojis = [
+            "❓",
+            "🎁",
+            "⭐",
+            "💎",
+            "✨",
+            "🎁",
+            "❓",
+            "💫",
+            "⭐",
+            "💎",
+          ];
+          let idx = 0,
+            spd = 280,
+            dAmp = 0,
+            dRun = true;
+          const dShake = () => {
+            if (!dRun) return;
+            $("scene-tap").style.transform =
+              `translate(${(Math.random() - 0.5) * dAmp * 2}px,${(Math.random() - 0.5) * dAmp * 2}px)`;
+            requestAnimationFrame(dShake);
+          };
+          dAmp = 1;
+          dShake();
+          gsap.to(
+            { v: 1 },
+            {
+              v: 10,
+              duration: 2.5,
+              ease: "power2.in",
+              onUpdate() {
+                dAmp = this.targets()[0].v;
+              },
+            },
+          );
+
+          for (let r = 0; r < 18; r++) {
+            emoji.textContent = emojis[idx++ % emojis.length];
+            gsap.fromTo(
+              emoji,
+              { scale: 1.3, opacity: 0.6 },
+              { scale: 1, opacity: 1, duration: Math.min(spd / 1000, 0.15) },
+            );
+            haptic("light");
+            await sleep(spd);
+            spd = Math.max(50, spd - 14);
+          }
+
+          dRun = false;
+          dAmp = 0;
+          $("scene-tap").style.transform = "";
+
+          // Flash reveal
+          const flash = $("flash");
+          flash.style.transition = "opacity .08s";
+          flash.style.opacity = "1";
+          haptic("heavy");
+          hapticNotif("success");
+          await sleep(100);
+
+          // Show prize sticker
+          emoji.style.display = "none";
+          sticker.style.width = Math.round(cSize * 0.3) + "px";
+          sticker.style.height = Math.round(cSize * 0.3) + "px";
+          await loadTGS(wonPrize.tgs);
+          playLottie(sticker, wonPrize.tgs);
+          gsap.fromTo(
+            sticker,
+            { scale: 2, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.8)" },
+          );
+
+          const glow = $("edge-glow");
+          glow.style.setProperty("--glow", wonPrize.glow);
+          glow.classList.add("on");
+
+          confetti({ particleCount: 70, spread: 80, origin: { y: 0.4 } });
+          confetti({
+            particleCount: 35,
+            spread: 120,
+            origin: { y: 0.6, x: 0.15 },
+          });
+          confetti({
+            particleCount: 35,
+            spread: 120,
+            origin: { y: 0.6, x: 0.85 },
+          });
+          megaBurst(cx, cy);
+
+          flash.style.transition = "opacity .6s";
+          flash.style.opacity = "0";
+          await sleep(1000);
+
+          // Show tap UI
+          bottom.style.opacity = "1";
+          gsap.from(bottom, { opacity: 0, y: 10, duration: 0.3 });
+          $("tap-fill").classList.add(wonPrize.fill);
+          appState = "tapping";
+          tapN = 0;
+        }
+
+        /* ═══════════ TAP ═══════════ */
+        $("tap-area").addEventListener("pointerdown", async (e) => {
+          if (appState !== "tapping") return;
+          e.preventDefault();
+          tapN++;
+          haptic("medium");
+
+          const st = $("tap-sticker");
+          const progress = tapN / MAX_TAPS;
+          gsap.to(st, {
+            width: cSize * (0.3 + 0.55 * progress),
+            height: cSize * (0.3 + 0.55 * progress),
+            duration: 0.3,
+            ease: "back.out(1.5)",
+          });
+
+          $("tap-fill").style.width = progress * 100 + "%";
+          $("tap-count").textContent = tapN + " / " + MAX_TAPS;
+          showTapFx(e.clientX, e.clientY);
+          burst(e.clientX, e.clientY, 6);
+
+          if (tapN >= MAX_TAPS) {
+            appState = "revealing";
+            await sleep(300);
+            await doReveal();
+          }
+        });
+
+        async function doReveal() {
+          confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } });
+          hapticNotif("success");
+          await sleep(600);
+          gsap.to($("tap-bottom"), { opacity: 0, duration: 0.2 });
+          await sleep(300);
+          showPrize();
+        }
+
+        /* ═══════════ PRIZE SHEET ═══════════ */
+        async function showPrize() {
+          killLotties();
+          $("prize-name").textContent = wonPrize.name;
+          playLottie($("prize-sticker"), wonPrize.modal, false);
+
+          $("btn-claim").disabled = true;
+          $("btn-claim").classList.remove("pulse");
+          $("prize-cd").textContent = "";
+
+          openSheet("sheet-prize");
+          confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+          appState = "prize";
+
+          for (let i = 3; i >= 1; i--) {
+            $("prize-cd").textContent = i;
+            $("prize-cd").style.color = "var(--purple)";
+            gsap.fromTo(
+              $("prize-cd"),
+              { scale: 1.4, opacity: 0 },
+              { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" },
+            );
+            haptic("light");
+            await sleep(1000);
+          }
+
+          $("prize-cd").textContent = "ГОТОВО!";
+          $("prize-cd").style.color = "var(--green)";
+          gsap.fromTo(
+            $("prize-cd"),
+            { scale: 1.4, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2)" },
+          );
+          hapticNotif("success");
+          await sleep(1200);
+
+          $("btn-claim").disabled = false;
+          $("btn-claim").classList.add("pulse");
+        }
+
+        $("btn-claim").addEventListener("click", () => {
+          $("btn-claim").classList.remove("pulse");
+          $("edge-glow").classList.remove("on");
+          closeSheet("sheet-prize", showSub);
+        });
+
+        /* ═══════════ SUBSCRIBE SHEET ═══════════ */
+        function updateSubProg() {
+          const d = document.querySelectorAll(".sub-btn.done").length;
+          $("sub-progress").textContent =
+            `Подписано ${d} из ${CHANNELS.length}`;
+        }
+
+        function showSub() {
+          killLotties();
+          const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
+          $("sub-prize").textContent = pN;
+
+          const tU = wonPrize
+            ? wonPrize.modal
+            : US?.prize_key === "stars"
+              ? TGS.modalS
+              : TGS.modalP;
+          if (tU) playLottie($("sub-sticker"), tU, false);
+
+          const list = $("sub-list");
+          list.innerHTML = "";
+
+          CHANNELS.forEach((ch) => {
+            const isBot = ch.type === "bot";
+            const li = document.createElement("li");
+            li.className = "sub-item";
+
+            const av = document.createElement("div");
+            av.className = "sub-avatar";
+            if (ch.avatar) {
+              const img = document.createElement("img");
+              img.src = ch.avatar;
+              img.loading = "lazy";
+              img.onerror = function () {
+                this.remove();
+                av.textContent = isBot ? "🤖" : "📢";
+              };
+              av.appendChild(img);
+            } else {
+              av.textContent = isBot ? "🤖" : "📢";
+            }
+
+            const info = document.createElement("div");
+            info.className = "sub-info";
+            const nm = document.createElement("div");
+            nm.className = "sub-name";
+            nm.textContent = ch.name;
+            info.appendChild(nm);
+
+            const btn = document.createElement("button");
+            btn.className = "sub-btn";
+            btn.textContent = isBot ? "Открыть" : "Подписаться";
+            btn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              try {
+                if (ch.link && ch.link.includes("t.me/"))
+                  Telegram.WebApp.openTelegramLink(ch.link);
+                else Telegram.WebApp.openLink(ch.link);
+              } catch (err) {
+                window.open(ch.link, "_blank");
+              }
+              if (isBot && !openedBots.has(ch.id)) {
+                openedBots.add(ch.id);
+                btn.textContent = "✓";
+                btn.classList.add("done");
+                updateSubProg();
+                api("check-subscription", {
+                  action: "mark_bot_opened",
+                  bot_id: ch.id,
+                }).catch(() => {});
+              }
+            });
+
+            li.append(av, info, btn);
+            list.appendChild(li);
+          });
+
+          updateSubProg();
+          openSheet("sheet-sub");
+          appState = "subscribe";
+        }
+
+        $("btn-check-sub").addEventListener("click", async () => {
+          if (isChecking) return;
+          isChecking = true;
+          const btn = $("btn-check-sub");
+          btn.disabled = true;
+          btn.querySelector("span").textContent = "Проверяем...";
+
+          try {
+            const res = await api("check-subscription", { action: "check" });
+            if (res.all_subscribed) {
+              document.querySelectorAll(".sub-btn").forEach((b) => {
+                b.textContent = "✓";
+                b.classList.add("done");
+              });
+              updateSubProg();
+              toast("Подписки подтверждены!", "success");
+              refCount = res.referral_count || 0;
+              tSpeed = calcSpeed(refCount);
+              await sleep(800);
+              closeSheet("sheet-sub", goToDone);
+            } else {
+              const items = document.querySelectorAll(".sub-item");
+              CHANNELS.forEach((ch, i) => {
+                const b = items[i]?.querySelector(".sub-btn");
+                if (b) {
+                  const isB = ch.type === "bot";
+                  if (res.results?.[String(ch.id)]) {
+                    b.textContent = "✓";
+                    b.classList.add("done");
+                  } else {
+                    b.textContent = isB ? "Открыть" : "Подписаться";
+                    b.classList.remove("done");
+                  }
+                }
+              });
+              updateSubProg();
+              toast("Подпишитесь на все каналы!");
+              hapticNotif("error");
+            }
+          } catch (e) {
+            toast("Ошибка, попробуйте позже");
+          } finally {
+            btn.disabled = false;
+            btn.querySelector("span").textContent = "Проверить подписку";
+            isChecking = false;
+          }
+        });
+
+        /* ═══════════ DONE SCENE ═══════════ */
+        function setupDoneIcons() {
+          playIcon($("done-check"), TGS.check);
+          playIcon($("pill-lightning"), TGS.lightning);
+          playIcon($("btn-rocket-tgs"), TGS.rocket);
+          playIcon($("btn-star-tgs"), TGS.star);
+        }
+
+        function goToDone() {
+          killLotties();
+
+          const pN = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
+          const dp = $("done-prize");
+          dp.textContent = pN;
+          dp.className =
+            "done-prize" +
+            (wonPrize && wonPrize.shine ? " " + wonPrize.shine : "");
+
+          const tU = wonPrize
+            ? wonPrize.modal
+            : US?.prize_key === "stars"
+              ? TGS.modalS
+              : TGS.modalP;
+          if (tU) playLottie($("done-sticker"), tU, false);
+
+          if (!claimedAt) claimedAt = US?.claimed_at || Date.now() / 1000;
+          refCount = US?.referral_count || refCount || 0;
+          tSpeed = calcSpeed(refCount);
+
+          resetTimerDots();
+          startTimer();
+          setupDoneIcons();
+
+          showScene("done");
+          confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
+          gsap.from(".done-wrap", {
+            y: 40,
+            opacity: 0,
+            duration: 0.5,
+            ease: "back.out(1.5)",
+          });
+          appState = "final";
+        }
+
+        function resetTimerDots() {
+          const tp2 = $("tp2"),
+            tp3 = $("tp3"),
+            tl2 = $("tl2");
+          const tlbl2 = $("tlbl2"),
+            tlbl3 = $("tlbl3");
+          tp2.className = "tp-dot active";
+          tp2.textContent = "2";
+          tp3.className = "tp-dot pending";
+          tp3.textContent = "3";
+          tl2.className = "tp-line active";
+          tlbl2.className = "tp-label active-l";
+          tlbl2.textContent = "Обработка";
+          tlbl3.className = "tp-label";
+          tlbl3.textContent = "Выдача";
+        }
+
+        /* ═══════════ TIMER ═══════════ */
+        function startTimer() {
+          if (tInt) clearInterval(tInt);
+          updTimer();
+          tInt = setInterval(updTimer, 500);
+        }
+
+        function updTimer() {
+          if (!claimedAt) return;
+          const rem = Math.max(
+            0,
+            T_SEC - (Date.now() / 1000 - claimedAt) * tSpeed,
+          );
+          const t = fmtTime(rem);
+          const te = $("timer-time"),
+            sp = $("timer-speed");
+          const pill = $("timer-pill"),
+            dot = $("timer-dot"),
+            st = $("timer-text");
+
+          if (sp) sp.textContent = "x" + tSpeed;
+          if (pill) {
+            tSpeed > 1
+              ? pill.classList.add("fast")
+              : pill.classList.remove("fast");
+          }
+
+          if (!t) {
+            if (te) {
+              te.textContent = "Готово!";
+              te.classList.add("done");
+            }
+            if (dot) dot.classList.add("done");
+            if (st) st.textContent = "Приз готов к выдаче!";
+            const tp2 = $("tp2"),
+              tp3 = $("tp3"),
+              tl2 = $("tl2");
+            const tlbl2 = $("tlbl2"),
+              tlbl3 = $("tlbl3");
+            if (tp2) {
+              tp2.className = "tp-dot done";
+              tp2.textContent = "✓";
+            }
+            if (tp3) {
+              tp3.className = "tp-dot done";
+              tp3.textContent = "✓";
+            }
+            if (tl2) tl2.className = "tp-line done";
+            if (tlbl2) {
+              tlbl2.className = "tp-label done-l";
+              tlbl2.textContent = "Готово";
+            }
+            if (tlbl3) {
+              tlbl3.className = "tp-label done-l";
+              tlbl3.textContent = "Выдан";
+            }
+            if (pill) pill.style.display = "none";
+            clearInterval(tInt);
+            return;
+          }
+
+          if (te) {
+            te.textContent = t;
+            te.classList.remove("done");
+          }
+          if (dot) dot.classList.remove("done");
+          if (st) st.textContent = "Подготавливаем приз...";
+        }
+
+        /* ═══════════ SPEEDUP ═══════════ */
+        $("btn-speedup").addEventListener("click", () => {
+          $("su-refs").textContent = refCount;
+          $("su-speed").textContent = "x" + tSpeed;
+          [2, 4, 6, 8].forEach((n) => {
+            const ms = $("ms" + n);
+            if (ms) {
+              refCount >= n
+                ? ms.classList.add("on")
+                : ms.classList.remove("on");
+            }
+          });
+          $("ref-fill").style.width = Math.min(100, (refCount / 8) * 100) + "%";
+          playIcon($("su-rocket-tgs"), TGS.rocket);
+          playIcon($("share-invite-tgs"), TGS.invite);
+          openSheet("sheet-speed");
+        });
+
+        $("btn-back-speed").addEventListener("click", () =>
+          closeSheet("sheet-speed"),
+        );
+
+        $("btn-share").addEventListener("click", () => {
+          const uid = US?.telegram_id || "";
+          const link = `https://t.me/${BOT}?start=ref_${uid}`;
+          const text = "🎁 Нарисуй звезду и получи приз!";
+          const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+          try {
+            Telegram.WebApp.openTelegramLink(url);
+          } catch (e) {
+            window.open(url, "_blank");
+          }
+        });
+
+        /* ═══════════ STARS MODAL ═══════════ */
+        $("btn-earn-stars").addEventListener("click", async () => {
+          $("modal-stars").classList.remove("hidden");
+          updateBackBtn();
+          playIcon($("modal-star-tgs"), TGS.star);
+
+          const c = $("stars-content");
+          if (!c.innerHTML) {
+            try {
+              const res = await api("get-page", { key: "stars" });
+              if (res.ok && res.content) c.textContent = res.content;
+              else c.textContent = "Контент загружается...";
+            } catch (e) {
+              c.textContent = "Ошибка загрузки";
+            }
+          }
+
+          if (isAdmin) $("btn-edit-stars").classList.remove("hidden");
+        });
+
+        $("btn-close-stars").addEventListener("click", () => {
+          $("modal-stars").classList.add("hidden");
+          $("stars-edit").classList.add("hidden");
+          $("stars-content").classList.remove("hidden");
+          updateBackBtn();
+        });
+
+        $("btn-edit-stars").addEventListener("click", () => {
+          $("stars-ta").value = $("stars-content").innerText || "";
+          $("stars-content").classList.add("hidden");
+          $("stars-edit").classList.remove("hidden");
+        });
+
+        $("btn-cancel-edit").addEventListener("click", () => {
+          $("stars-edit").classList.add("hidden");
+          $("stars-content").classList.remove("hidden");
+        });
+
+        $("btn-save-stars").addEventListener("click", async () => {
+          const t = $("stars-ta").value;
+          try {
+            await api("save-page", { key: "stars", content: t });
+            $("stars-content").textContent = t;
+            toast("Сохранено!", "success");
+          } catch (e) {
+            toast("Ошибка");
+          }
+          $("stars-edit").classList.add("hidden");
+          $("stars-content").classList.remove("hidden");
+        });
+
+        /* ═══════════ CLEANUP ═══════════ */
+        function cleanup() {
+          if (tInt) clearInterval(tInt);
+          killLotties();
+          killIcons();
+          PP.forEach((p) => {
+            if (p.t) clearTimeout(p.t);
+          });
+          TPP.forEach((p) => {
+            if (p.t) clearTimeout(p.t);
+          });
+        }
+        window.addEventListener("beforeunload", cleanup);
+
+        /* ═══════════ INIT ═══════════ */
+        async function init() {
+          try {
+            Telegram.WebApp.expand();
+            Telegram.WebApp.disableVerticalSwipes();
+            Telegram.WebApp.setHeaderColor("#ffffff");
+            Telegram.WebApp.setBackgroundColor("#ffffff");
+          } catch (e) {}
+
+          // Load all TGS in parallel
+          const allTgs = Object.values(TGS).map((u) => loadTGS(u));
+
+          try {
+            const res = await api("get-user");
+            if (res.ok) {
+              US = res.user;
+              CHANNELS = res.channels || [];
+              isAdmin = res.user.is_admin || false;
+              refCount = res.user.referral_count || 0;
+              tSpeed = calcSpeed(refCount);
+              if (res.user.claimed_at) claimedAt = res.user.claimed_at;
+            }
+          } catch (e) {}
+
+          await Promise.all(allTgs);
+
+          // Hide loading
+          $("scene-loading").style.opacity = "0";
+          await sleep(300);
+          try {
+            Telegram.WebApp.ready();
+          } catch (e) {}
+
+          // ── Route based on user state ──
+
+          if (US?.state === "claimed") {
+            wonPrize = US.prize_key === "stars" ? PRIZES.stars : PRIZES.premium;
+            showScene("done", true);
+            const dp = $("done-prize");
+            dp.textContent = wonPrize.name;
+            dp.className =
+              "done-prize" + (wonPrize.shine ? " " + wonPrize.shine : "");
+            playLottie($("done-sticker"), wonPrize.modal, false);
+            if (!claimedAt) claimedAt = US.claimed_at || Date.now() / 1000;
+            resetTimerDots();
+            startTimer();
+            setupDoneIcons();
+            gsap.from(".done-wrap", {
+              y: 30,
+              opacity: 0,
+              duration: 0.5,
+              delay: 0.1,
+            });
+            appState = "final";
+            return;
+          }
+
+          if (US?.state === "rolled") {
+            wonPrize = US.prize_key === "stars" ? PRIZES.stars : PRIZES.premium;
+            showScene("done", true);
+            const dp = $("done-prize");
+            dp.textContent = wonPrize.name;
+            dp.className =
+              "done-prize" + (wonPrize.shine ? " " + wonPrize.shine : "");
+            playLottie($("done-sticker"), wonPrize.modal, false);
+            resetTimerDots();
+            setupDoneIcons();
+            appState = "subscribe";
+            setTimeout(() => showSub(), 400);
+            return;
+          }
+
+          // ── Default: draw scene ──
+          showScene("draw", true);
+          // Wait two frames for layout to fully settle before measuring canvas
+          await new Promise((r) =>
+            requestAnimationFrame(() => requestAnimationFrame(r)),
+          );
+          setupCanvas();
+          playIcon($("title-star-tgs"), TGS.star);
+          appState = "drawing";
+
+          gsap.from(".draw-header", { y: 20, opacity: 0, duration: 0.4 });
+          gsap.from("#canvas-wrap", {
+            y: 20,
+            opacity: 0,
+            duration: 0.5,
+            delay: 0.15,
+            ease: "back.out(1.5)",
+          });
+          gsap.from(".draw-submit", {
+            y: 20,
+            opacity: 0,
+            duration: 0.3,
+            delay: 0.3,
+          });
+        }
+
+        init();
+      }
+    </script>
+  </body>
+</html>
