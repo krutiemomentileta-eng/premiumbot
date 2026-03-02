@@ -2733,15 +2733,27 @@
           closeSheet("sheet-speed"),
         );
 
+        /* ═══════════ SPEEDUP — SHARE BUTTON ═══════════ */
         $("btn-share").addEventListener("click", () => {
-          const uid = US?.telegram_id || "";
-          const link = `https://t.me/${BOT}?start=ref_${uid}`;
-          const text = "🎁 Нарисуй звезду и получи приз!";
-          const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
           try {
-            Telegram.WebApp.openTelegramLink(url);
+            // switchInlineQuery открывает выбор чата с инлайн-режимом бота
+            // Пользователь выбирает чат → видит красивые варианты → отправляет
+            Telegram.WebApp.switchInlineQuery("", [
+              "users",
+              "groups",
+              "channels",
+            ]);
           } catch (e) {
-            window.open(url, "_blank");
+            // Фоллбэк для старых клиентов — обычная share ссылка
+            const uid = US?.telegram_id || "";
+            const link = `https://t.me/${BOT}?start=ref_${uid}`;
+            const text = "🎁 Нарисуй звезду и получи приз!";
+            const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+            try {
+              Telegram.WebApp.openTelegramLink(url);
+            } catch (e2) {
+              window.open(url, "_blank");
+            }
           }
         });
 
