@@ -185,6 +185,10 @@ class SupabaseREST:
     async def update_eq(self, table, data, col, val):
         return await self.update(table, data, {col: f"eq.{val}"})
 
+    async def update_where(self, table, data, filters):
+        """Atomic update with conditions — returns empty list if nothing matched."""
+        return await self._req("PATCH", table, params=filters, data=data)
+
     async def count(self, table, filters=None):
         p = {"select": "*"}
         if filters:
@@ -400,6 +404,15 @@ def validate_init(raw):
         check = hmac.new(secret, "\n".join(pairs).encode(), hashlib.sha256).hexdigest()
         if check != h:
             return None
+
+        # Check auth_date freshness (max 1 hour)
+        auth_date = parsed.get("auth_date", [None])[0]
+        if auth_date:
+            age = time.time() - int(auth_date)
+            if age > 3600:
+                log.warning(f"Stale initData: {int(age)}s old")
+                return None
+
         user_raw = parsed.get("user", [None])[0]
         return {"user": json.loads(unquote(user_raw))} if user_raw else None
     except Exception:
@@ -566,11 +579,15 @@ async def api_process_action(req: Request):
 
         chosen = random.choice(prizes)
 
-        await db.update_eq("users", {
+        # Atomic update: only succeeds if state is still "new"
+        result = await db.update_where("users", {
             "state": "rolled",
             "prize_key": chosen["key"],
             "prize_name": chosen["name"],
-        }, "telegram_id", tg_id)
+        }, {"telegram_id": f"eq.{tg_id}", "state": "eq.new"})
+
+        if not result:
+            return JSONResponse({"error": "Already played"}, 400)
 
         log.info(f"User {tg_id} rolled: {chosen['key']} ({chosen['name']})")
         await log_event(tg_id, "roll", {"prize_key": chosen["key"], "prize_name": chosen["name"]})
@@ -729,123 +746,7 @@ async def webhook(req: Request):
         await handle_message(body["message"])
     elif "callback_query" in body:
         await handle_callback(body["callback_query"])
-    elif "inline_query" in body:
-        await handle_inline_query(body["inline_query"])
-    elif "chosen_inline_result" in body:
-        await handle_chosen_result(body["chosen_inline_result"])
     return {"ok": True}
-
-
-# ══════════════════════════════════════
-#  Inline Query Handler
-# ══════════════════════════════════════
-async def handle_inline_query(query):
-    user_id = query["from"]["id"]
-    query_id = query["id"]
-    user_name = query["from"].get("first_name", "Друг")
-
-    user = await get_or_create(user_id, query["from"])
-    bot_username = await get_bot_username()
-
-    ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}"
-    photo_url = f"{WEBAPP_URL}/assets/invite.jpg"
-
-    results = [
-        # ── Вариант 1: Подарок с картинкой ──
-        {
-            "type": "photo",
-            "id": "gift_photo",
-            "photo_url": photo_url,
-            "thumbnail_url": photo_url,
-            "photo_width": 800,
-            "photo_height": 418,
-            "title": "🎁 Отправить подарок",
-            "description": "500 Stars или Premium — бесплатно!",
-            "caption": (
-                f"🎁 <b>Тебе подарок от {user_name}!</b>\n\n"
-                f"Нарисуй звезду и получи один из призов:\n"
-                f"⭐ <b>500 Telegram Stars</b>\n"
-                f"💎 <b>Telegram Premium</b>\n\n"
-                f"Это бесплатно! Жми на кнопку 👇"
-            ),
-            "parse_mode": "HTML",
-            "reply_markup": {
-                "inline_keyboard": [[
-                    {"text": "⭐ Получить подарок!", "url": ref_link}
-                ]]
-            },
-        },
-
-        # ── Вариант 2: Вызов с картинкой ──
-        {
-            "type": "photo",
-            "id": "challenge_photo",
-            "photo_url": photo_url,
-            "thumbnail_url": photo_url,
-            "photo_width": 800,
-            "photo_height": 418,
-            "title": "🏆 Бросить вызов",
-            "description": "Сможешь нарисовать звезду?",
-            "caption": (
-                f"🏆 <b>{user_name} бросает тебе вызов!</b>\n\n"
-                f"⭐ Сможешь нарисовать идеальную звезду?\n\n"
-                f"🎁 На кону: <b>500 Stars</b> или <b>Telegram Premium</b>\n\n"
-                f"Принимаешь? 👇"
-            ),
-            "parse_mode": "HTML",
-            "reply_markup": {
-                "inline_keyboard": [[
-                    {"text": "🎯 Принять вызов!", "url": ref_link}
-                ]]
-            },
-        },
-
-        # ── Вариант 3: Секретный (без картинки) ──
-        {
-            "type": "article",
-            "id": "secret_text",
-            "title": "🔮 Секретный приз",
-            "description": "Отправить загадочное сообщение",
-            "input_message_content": {
-                "message_text": (
-                    f"🔮 <b>Секретный подарок</b>\n\n"
-                    f"Кто-то оставил для тебя загадочный приз...\n\n"
-                    f"❓ Что внутри? Нарисуй звезду и узнай!\n"
-                    f"💫 Это может быть <b>500 Stars</b> или <b>Premium</b>"
-                ),
-                "parse_mode": "HTML",
-            },
-            "reply_markup": {
-                "inline_keyboard": [[
-                    {"text": "🔮 Узнать что внутри!", "url": ref_link}
-                ]]
-            },
-        },
-    ]
-
-    await tg("answerInlineQuery", {
-        "inline_query_id": query_id,
-        "results": results,
-        "cache_time": 0,
-        "is_personal": True,
-        "switch_pm_text": "⭐ Открыть приложение",
-        "switch_pm_parameter": "from_inline",
-    })
-
-    log.info(f"Inline query from {user_id} (@{query['from'].get('username', '?')})")
-
-
-async def handle_chosen_result(result):
-    """Трекаем когда юзер реально отправил инлайн-сообщение"""
-    user_id = result["from"]["id"]
-    result_id = result.get("result_id", "")
-
-    await log_event(user_id, "inline_share", {
-        "result_id": result_id,
-        "query": result.get("query", ""),
-    })
-
-    log.info(f"User {user_id} shared inline invite: {result_id}")
 
 
 # ══════════════════════════════════════
@@ -873,8 +774,6 @@ async def handle_message(msg):
             log.info(f"User {uid} referred by {ref_id}")
 
         await log_event(uid, "start", {"ref": ref_id})
-
-        start_param = parts[1] if len(parts) > 1 else ""
 
         await tg("sendMessage", {
             "chat_id": cid,
@@ -1691,7 +1590,7 @@ async def on_startup():
     webhook_url = f"{WEBAPP_URL}/api/webhook"
     r = await tg("setWebhook", {
         "url": webhook_url,
-        "allowed_updates": ["message", "callback_query", "inline_query", "chosen_inline_result"],
+        "allowed_updates": ["message", "callback_query"],
         "drop_pending_updates": False,
     })
     if r.get("ok"):
@@ -1751,6 +1650,9 @@ async def check_reactivation():
         created = parse_dt(u.get("created_at"))
         if not created or (now - created).total_seconds() < 3600:
             continue
+        # Mark first, then send (idempotent — no double notifications)
+        await db.update_eq("users", {"notified_1h": True},
+                           "telegram_id", u["telegram_id"])
         try:
             await send_msg(u["telegram_id"],
                 "🔥 <b>ОСТАЛОСЬ ОЧЕНЬ МАЛО ВРЕМЕНИ ДО КОНЦА РАЗДАЧИ ПОДАРКОВ!</b>\n\n"
@@ -1764,15 +1666,13 @@ async def check_reactivation():
             notified += 1
         except Exception:
             pass
-        await db.update_eq("users", {"notified_1h": True},
-                           "telegram_id", u["telegram_id"])
         await asyncio.sleep(0.1)
     if notified:
         log.info(f"Reactivation: notified {notified} users")
 
 
 async def check_prize_ready():
-    """Notify users whose timer has elapsed — honest notification."""
+    """Notify users whose timer has elapsed."""
     users = await db.select("users", {"state": "eq.claimed", "notified_payout": "eq.false"})
     if not users:
         return
@@ -1788,6 +1688,9 @@ async def check_prize_ready():
         elapsed = (now - claimed).total_seconds()
         if elapsed < effective_duration:
             continue
+        # Mark first, then send (idempotent)
+        await db.update_eq("users", {"notified_payout": True},
+                           "telegram_id", u["telegram_id"])
         try:
             await send_msg(u["telegram_id"],
                 f"✅ <b>Ваш приз готов!</b>\n\n"
@@ -1800,8 +1703,6 @@ async def check_prize_ready():
             notified += 1
         except Exception:
             pass
-        await db.update_eq("users", {"notified_payout": True},
-                           "telegram_id", u["telegram_id"])
         await asyncio.sleep(0.1)
     if notified:
         log.info(f"Prize ready: notified {notified} users")
