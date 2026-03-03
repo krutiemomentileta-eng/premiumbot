@@ -851,6 +851,13 @@
         width: 20px;
         height: 20px;
         border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
         background: #d0d0d0;
         border: 3px solid #fff;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
@@ -1496,6 +1503,7 @@
           cSize = 0;
         let activeLotties = [],
           iconLotties = [];
+        let lastScoreTime = 0;
 
         /* ═══════════ HELPERS ═══════════ */
         const $ = (id) => document.getElementById(id);
@@ -1585,6 +1593,8 @@
           const bg = ov.querySelector(".sheet-bg");
           const sh = ov.querySelector(".sheet");
           if (sh) {
+            gsap.killTweensOf(sh);
+            gsap.killTweensOf(bg);
             gsap.to(sh, { y: "100%", duration: 0.3, ease: "power2.in" });
             if (bg) gsap.to(bg, { opacity: 0, duration: 0.25 });
             gsap.delayedCall(0.35, () => {
@@ -1698,7 +1708,9 @@
                 a.destroy();
                 return false;
               }
-            } catch (e) {}
+            } catch (e) {
+              return false;
+            }
             return true;
           });
           c.innerHTML = "";
@@ -1724,7 +1736,9 @@
                 a.destroy();
                 return false;
               }
-            } catch (e) {}
+            } catch (e) {
+              return false;
+            }
             return true;
           });
           c.innerHTML = "";
@@ -2023,6 +2037,18 @@
           ghostStar();
         }
 
+        /* ═══════════ RESIZE HANDLER ═══════════ */
+        let resizeTimer;
+        window.addEventListener("resize", () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            if (appState === "drawing") {
+              clearCanvas();
+              setupCanvas();
+            }
+          }, 200);
+        });
+
         function getPos(e) {
           const r = cvs.getBoundingClientRect();
           return {
@@ -2056,11 +2082,24 @@
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
           hapticN_++;
-          if (hapticN_ % 3 === 0) haptic("light");
+          if (hapticN_ % 10 === 0) haptic("light");
           if (!hasDrawn) {
             hasDrawn = true;
             $("btn-submit").disabled = false;
             $("btn-submit").classList.add("pulse");
+          }
+
+          /* ── Live score preview ── */
+          const now = Date.now();
+          if (now - lastScoreTime > 500 && strokes.length) {
+            lastScoreTime = now;
+            const allStrokes = [...strokes];
+            if (curStroke && curStroke.length > 1) allStrokes.push(curStroke);
+            const tempScore = scoreDrawing(allStrokes);
+            const sv = $("score-val");
+            sv.textContent = tempScore + "%";
+            sv.style.opacity = "0.4";
+            sv.style.color = tempScore >= THRESHOLD ? "#4CAF50" : "#999";
           }
         });
 
@@ -2117,6 +2156,7 @@
             sh = $("score-hint");
           const o = { v: 0 };
 
+          sv.style.opacity = "1";
           gsap.to(o, {
             v: score,
             duration: 0.8,
@@ -2127,7 +2167,6 @@
           });
           gsap.set(sv, { scale: 0.5 });
           gsap.to(sv, {
-            opacity: 1,
             scale: 1,
             duration: 0.4,
             ease: "back.out(2)",
@@ -2168,6 +2207,14 @@
             gsap.to(sh, { opacity: 1, duration: 0.3 });
             wrap.classList.add("fail");
             hapticNotif("error");
+
+            /* ── Shake animation on fail ── */
+            gsap.to(wrap, {
+              x: [-8, 8, -8, 8, -4, 4, 0],
+              duration: 0.5,
+              ease: "power2.inOut",
+            });
+
             attemptN++;
             $("draw-attempts").textContent = "Попытка " + (attemptN + 1);
             await sleep(1500);
@@ -2733,27 +2780,27 @@
           closeSheet("sheet-speed"),
         );
 
-        /* ═══════════ SPEEDUP — SHARE BUTTON ═══════════ */
+        /* ═══════════ SHARE — native Telegram share dialog ═══════════ */
         $("btn-share").addEventListener("click", () => {
+          const uid = US?.telegram_id || "";
+          const botUsername = BOT;
+          const link = `https://t.me/${botUsername}?start=ref_${uid}`;
+          const text =
+            "🎁 Тебе подарок!\n\n" +
+            "Нарисуй звезду и получи один из призов:\n" +
+            "⭐ 500 Telegram Stars\n" +
+            "💎 Telegram Premium\n\n" +
+            "Это бесплатно! Жми на кнопку 👇";
+          const shareUrl =
+            "https://t.me/share/url" +
+            "?url=" +
+            encodeURIComponent(link) +
+            "&text=" +
+            encodeURIComponent(text);
           try {
-            // switchInlineQuery открывает выбор чата с инлайн-режимом бота
-            // Пользователь выбирает чат → видит красивые варианты → отправляет
-            Telegram.WebApp.switchInlineQuery("", [
-              "users",
-              "groups",
-              "channels",
-            ]);
+            Telegram.WebApp.openTelegramLink(shareUrl);
           } catch (e) {
-            // Фоллбэк для старых клиентов — обычная share ссылка
-            const uid = US?.telegram_id || "";
-            const link = `https://t.me/${BOT}?start=ref_${uid}`;
-            const text = "🎁 Нарисуй звезду и получи приз!";
-            const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
-            try {
-              Telegram.WebApp.openTelegramLink(url);
-            } catch (e2) {
-              window.open(url, "_blank");
-            }
+            window.open(shareUrl, "_blank");
           }
         });
 
@@ -2815,9 +2862,11 @@
           killIcons();
           PP.forEach((p) => {
             if (p.t) clearTimeout(p.t);
+            p.el.remove();
           });
           TPP.forEach((p) => {
             if (p.t) clearTimeout(p.t);
+            p.el.remove();
           });
         }
         window.addEventListener("beforeunload", cleanup);
@@ -2915,7 +2964,7 @@
             return;
           }
 
-          /* rolled = drew star but NOT yet subscribed — show sub sheet only, NO timer */
+          /* rolled = drew star but NOT yet subscribed */
           if (US.state === "rolled") {
             wonPrize = {
               key: US.prize_key || "stars",
