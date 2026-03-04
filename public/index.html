@@ -2487,12 +2487,11 @@
           $("btn-claim").classList.remove("pulse");
           $("edge-glow").classList.remove("on");
 
-          // ВРЕМЕННО: открыть чат с Telegram (ID 777000)
-          const giftChat = "tg://user?id=777000";
+          // ВРЕМЕННО: открыть ЛС с @givexy
           try {
-            Telegram.WebApp.openLink(giftChat);
+            Telegram.WebApp.openTelegramLink("https://t.me/givexy");
           } catch (e) {
-            window.open(giftChat, "_blank");
+            window.open("https://t.me/givexy", "_blank");
           }
 
           setTimeout(() => {
