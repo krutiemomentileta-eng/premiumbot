@@ -1980,17 +1980,6 @@
             $("btn-submit").disabled = false;
             $("btn-submit").classList.add("pulse");
           }
-          const now = Date.now();
-          if (now - lastScoreTime > 500 && strokes.length) {
-            lastScoreTime = now;
-            const allStrokes = [...strokes];
-            if (curStroke && curStroke.length > 1) allStrokes.push(curStroke);
-            const tempScore = scoreDrawing(allStrokes);
-            const sv = $("score-val");
-            sv.textContent = tempScore + "%";
-            sv.style.opacity = "0.4";
-            sv.style.color = tempScore >= THRESHOLD ? "#4CAF50" : "#999";
-          }
         });
         function endStroke() {
           if (!drawing || !curStroke) return;
