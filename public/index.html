@@ -2073,6 +2073,9 @@
               x: [-8, 8, -8, 8, -4, 4, 0],
               duration: 0.5,
               ease: "power2.inOut",
+              onComplete: () => {
+                gsap.set(wrap, { x: 0 });
+              },
             });
             attemptN++;
             $("draw-attempts").textContent = "Попытка " + (attemptN + 1);
