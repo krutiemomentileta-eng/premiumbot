@@ -2486,19 +2486,7 @@
         $("btn-claim").addEventListener("click", () => {
           $("btn-claim").classList.remove("pulse");
           $("edge-glow").classList.remove("on");
-
-          // ВРЕМЕННО: открыть ЛС с @givexy
-          try {
-            Telegram.WebApp.openTelegramLink("https://t.me/givexy");
-          } catch (e) {
-            window.open("https://t.me/givexy", "_blank");
-          }
-
-          setTimeout(() => {
-            try {
-              Telegram.WebApp.close();
-            } catch (e) {}
-          }, 500);
+          closeSheet("sheet-prize", showSub);
         });
 
         function updateSubProg() {
