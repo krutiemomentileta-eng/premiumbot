@@ -904,9 +904,14 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
+        transition: transform 0.1s;
       }
       .btn-share:active {
         transform: scale(0.95);
+      }
+      .btn-share:disabled {
+        opacity: 0.5;
+        pointer-events: none;
       }
       .share-tgs {
         width: 20px;
@@ -1170,10 +1175,6 @@
     </style>
   </head>
   <body>
-    <!-- ═══════════════════════════════════════ -->
-    <!--              SCENES                     -->
-    <!-- ═══════════════════════════════════════ -->
-
     <div id="scene-loading" class="scene active">
       <div class="loader"></div>
       <p class="loader-text">Загрузка...</p>
@@ -1272,10 +1273,6 @@
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!--              SHEETS                     -->
-    <!-- ═══════════════════════════════════════ -->
-
     <div id="sheet-prize" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
@@ -1360,7 +1357,7 @@
         </div>
         <button id="btn-share" class="btn-share">
           <span class="share-tgs" id="share-invite-tgs"></span>
-          <span>Пригласить друга</span>
+          <span id="btn-share-text">Пригласить друга</span>
         </button>
         <p class="ref-hint">
           Ваша реферальная ссылка будет прикреплена автоматически
@@ -1368,10 +1365,6 @@
         <button id="btn-back-speed" class="btn-back">← Назад</button>
       </div>
     </div>
-
-    <!-- ═══════════════════════════════════════ -->
-    <!--           STARS MODAL                   -->
-    <!-- ═══════════════════════════════════════ -->
 
     <div id="modal-stars" class="modal-fs hidden">
       <div class="modal-fs-header">
@@ -1397,17 +1390,9 @@
       <button id="btn-edit-stars" class="btn-admin-edit hidden">✏️</button>
     </div>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!--            UTILITIES                    -->
-    <!-- ═══════════════════════════════════════ -->
-
     <div id="flash"></div>
     <div id="edge-glow"></div>
     <div id="toast" class="toast"></div>
-
-    <!-- ═══════════════════════════════════════ -->
-    <!--          EXTERNAL SCRIPTS               -->
-    <!-- ═══════════════════════════════════════ -->
 
     <script
       defer
@@ -1426,10 +1411,6 @@
       src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"
     ></script>
 
-    <!-- ═══════════════════════════════════════ -->
-    <!--          APPLICATION SCRIPT             -->
-    <!-- ═══════════════════════════════════════ -->
-
     <script>
       window.addEventListener("load", () => {
         const ck = setInterval(() => {
@@ -1446,8 +1427,7 @@
       });
 
       function startApp() {
-        /* ═══════════ CONFIG ═══════════ */
-        const BOT = "fawtfbot";
+        const BOT = "premkarobot";
         const MAX_TAPS = 10;
         const T_SEC = 86400;
         const THRESHOLD = 80;
@@ -1481,7 +1461,6 @@
           },
         };
 
-        /* ═══════════ STATE ═══════════ */
         let CHANNELS = [],
           US = null,
           isAdmin = false,
@@ -1504,8 +1483,8 @@
         let activeLotties = [],
           iconLotties = [];
         let lastScoreTime = 0;
+        let isSharing = false;
 
-        /* ═══════════ HELPERS ═══════════ */
         const $ = (id) => document.getElementById(id);
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         const haptic = (t) => {
@@ -1548,7 +1527,6 @@
           return PRIZE_META[key] || PRIZE_META.stars;
         }
 
-        /* ═══════════ SCENE MANAGER ═══════════ */
         function showScene(id, instant = false) {
           document.querySelectorAll(".scene").forEach((s) => {
             if (instant) {
@@ -1571,7 +1549,6 @@
           }
         }
 
-        /* ═══════════ SHEET MANAGER ═══════════ */
         function openSheet(id) {
           const ov = $(id);
           const bg = ov.querySelector(".sheet-bg");
@@ -1609,7 +1586,6 @@
           }
         }
 
-        /* ═══════════ BACK BUTTON ═══════════ */
         function updateBackBtn() {
           try {
             const stars = !$("modal-stars").classList.contains("hidden");
@@ -1628,7 +1604,6 @@
           });
         } catch (e) {}
 
-        /* ═══════════ OFFLINE ═══════════ */
         window.addEventListener("offline", () =>
           toast("Нет интернета", "error", 5000),
         );
@@ -1636,7 +1611,6 @@
           toast("Соединение восстановлено", "success"),
         );
 
-        /* ═══════════ API ═══════════ */
         function gID() {
           try {
             return Telegram.WebApp.initData;
@@ -1674,7 +1648,6 @@
           return { ok: false };
         }
 
-        /* ═══════════ TGS / LOTTIE ═══════════ */
         const tgsC = {},
           tgsS = {};
         try {
@@ -1774,7 +1747,6 @@
           iconLotties = [];
         }
 
-        /* ═══════════ PARTICLES ═══════════ */
         const PP = [],
           PC = [
             "#6B93FF",
@@ -1862,7 +1834,6 @@
           }
         }
 
-        /* ═══════════ STAR SCORING ═══════════ */
         function genIdealStar(sz) {
           const c = document.createElement("canvas");
           c.width = c.height = sz;
@@ -1985,7 +1956,6 @@
           return Math.min(100, Math.round((cov * 0.55 + prec * 0.45) * 110));
         }
 
-        /* ═══════════ CANVAS ═══════════ */
         const cvs = $("draw-canvas"),
           ctx = cvs.getContext("2d"),
           wrap = $("canvas-wrap");
@@ -2037,7 +2007,6 @@
           ghostStar();
         }
 
-        /* ═══════════ RESIZE HANDLER ═══════════ */
         let resizeTimer;
         window.addEventListener("resize", () => {
           clearTimeout(resizeTimer);
@@ -2088,8 +2057,6 @@
             $("btn-submit").disabled = false;
             $("btn-submit").classList.add("pulse");
           }
-
-          /* ── Live score preview ── */
           const now = Date.now();
           if (now - lastScoreTime > 500 && strokes.length) {
             lastScoreTime = now;
@@ -2141,7 +2108,6 @@
           haptic("medium");
         });
 
-        /* ═══════════ SUBMIT ═══════════ */
         $("btn-submit").addEventListener("click", async () => {
           if (appState !== "drawing") return;
           appState = "evaluating";
@@ -2166,11 +2132,7 @@
             },
           });
           gsap.set(sv, { scale: 0.5 });
-          gsap.to(sv, {
-            scale: 1,
-            duration: 0.4,
-            ease: "back.out(2)",
-          });
+          gsap.to(sv, { scale: 1, duration: 0.4, ease: "back.out(2)" });
 
           await sleep(900);
 
@@ -2182,7 +2144,6 @@
             wrap.classList.add("ok");
             hapticNotif("success");
 
-            /* SERVER determines the prize */
             const res = await api("process-action", {
               action: "complete_draw",
             });
@@ -2207,14 +2168,11 @@
             gsap.to(sh, { opacity: 1, duration: 0.3 });
             wrap.classList.add("fail");
             hapticNotif("error");
-
-            /* ── Shake animation on fail ── */
             gsap.to(wrap, {
               x: [-8, 8, -8, 8, -4, 4, 0],
               duration: 0.5,
               ease: "power2.inOut",
             });
-
             attemptN++;
             $("draw-attempts").textContent = "Попытка " + (attemptN + 1);
             await sleep(1500);
@@ -2223,7 +2181,6 @@
           }
         });
 
-        /* ═══════════ TRANSFORM → TAP ═══════════ */
         async function doTransform() {
           const meta = getMeta(wonPrize.key);
           const wrapR = wrap.getBoundingClientRect();
@@ -2235,7 +2192,6 @@
             duration: 0.3,
           });
 
-          // Shake canvas
           let amp = 0,
             run = true;
           const shake = () => {
@@ -2275,7 +2231,6 @@
           cvs.style.transform = "";
           await sleep(400);
 
-          // Setup tap scene
           const sticker = $("tap-sticker"),
             emoji = $("tap-emoji"),
             bottom = $("tap-bottom");
@@ -2293,7 +2248,6 @@
           gsap.from(sticker, { scale: 0, duration: 0.3, ease: "back.out(2)" });
           await sleep(200);
 
-          // Drumroll
           const emojis = [
             "❓",
             "🎁",
@@ -2346,7 +2300,6 @@
           dAmp = 0;
           $("scene-tap").style.transform = "";
 
-          // Flash reveal
           const flash = $("flash");
           flash.style.transition = "opacity .08s";
           flash.style.opacity = "1";
@@ -2354,7 +2307,6 @@
           hapticNotif("success");
           await sleep(100);
 
-          // Show prize sticker
           emoji.style.display = "none";
           sticker.style.width = Math.round(cSize * 0.3) + "px";
           sticker.style.height = Math.round(cSize * 0.3) + "px";
@@ -2382,7 +2334,6 @@
           flash.style.opacity = "0";
           await sleep(1000);
 
-          // Show tap UI
           bottom.style.opacity = "1";
           gsap.from(bottom, { opacity: 0, y: 10, duration: 0.3 });
           $("tap-fill").classList.add(meta.fill);
@@ -2390,7 +2341,6 @@
           tapN = 0;
         }
 
-        /* ═══════════ TAP ═══════════ */
         $("tap-area").addEventListener("pointerdown", async (e) => {
           if (appState !== "tapping") return;
           e.preventDefault();
@@ -2427,7 +2377,6 @@
           showPrize();
         }
 
-        /* ═══════════ PRIZE SHEET ═══════════ */
         async function showPrize() {
           killLotties();
           const meta = getMeta(wonPrize.key);
@@ -2474,7 +2423,6 @@
           closeSheet("sheet-prize", showSub);
         });
 
-        /* ═══════════ SUBSCRIBE SHEET ═══════════ */
         function updateSubProg() {
           const d = document.querySelectorAll(".sub-btn.done").length;
           $("sub-progress").textContent =
@@ -2607,7 +2555,6 @@
           }
         });
 
-        /* ═══════════ DONE SCENE ═══════════ */
         function setupDoneIcons() {
           playIcon($("done-check"), TGS.check);
           playIcon($("pill-lightning"), TGS.lightning);
@@ -2661,7 +2608,6 @@
           appState = "final";
         }
 
-        /* ═══════════ TIMER ═══════════ */
         function startTimer() {
           if (tInt) clearInterval(tInt);
           updTimer();
@@ -2732,7 +2678,6 @@
           if (st) st.textContent = "Подготавливаем приз...";
         }
 
-        /* ═══════════ FINALIZE ═══════════ */
         $("btn-finalize").addEventListener("click", async () => {
           const btn = $("btn-finalize");
           btn.disabled = true;
@@ -2758,7 +2703,6 @@
           }
         });
 
-        /* ═══════════ SPEEDUP ═══════════ */
         $("btn-speedup").addEventListener("click", () => {
           $("su-refs").textContent = refCount;
           $("su-speed").textContent = "x" + tSpeed;
@@ -2780,11 +2724,48 @@
           closeSheet("sheet-speed"),
         );
 
-        /* ═══════════ SHARE — native Telegram share dialog ═══════════ */
-        $("btn-share").addEventListener("click", () => {
+        /* ═══════════ SHARE — native shareMessage (Bot API 8.0+) ═══════════ */
+        $("btn-share").addEventListener("click", async () => {
+          if (isSharing) return;
+          isSharing = true;
+          const btn = $("btn-share");
+          const btnText = $("btn-share-text");
+          btn.disabled = true;
+          btnText.textContent = "Подготовка...";
+
+          try {
+            const res = await api("prepare-share");
+
+            if (
+              res.ok &&
+              res.prepared_message_id &&
+              Telegram.WebApp.shareMessage
+            ) {
+              Telegram.WebApp.shareMessage(
+                res.prepared_message_id,
+                function (sent) {
+                  if (sent) {
+                    toast("Приглашение отправлено! 🎉", "success");
+                    hapticNotif("success");
+                  }
+                },
+              );
+            } else {
+              // Fallback: старый способ через share URL
+              shareFallback();
+            }
+          } catch (e) {
+            shareFallback();
+          } finally {
+            btn.disabled = false;
+            btnText.textContent = "Пригласить друга";
+            isSharing = false;
+          }
+        });
+
+        function shareFallback() {
           const uid = US?.telegram_id || "";
-          const botUsername = BOT;
-          const link = `https://t.me/${botUsername}?start=ref_${uid}`;
+          const link = `https://t.me/${BOT}?start=ref_${uid}`;
           const text =
             "🎁 Тебе подарок!\n\n" +
             "Нарисуй звезду и получи один из призов:\n" +
@@ -2802,9 +2783,8 @@
           } catch (e) {
             window.open(shareUrl, "_blank");
           }
-        });
+        }
 
-        /* ═══════════ STARS MODAL ═══════════ */
         $("btn-earn-stars").addEventListener("click", async () => {
           $("modal-stars").classList.remove("hidden");
           updateBackBtn();
@@ -2855,7 +2835,6 @@
           $("stars-content").classList.remove("hidden");
         });
 
-        /* ═══════════ CLEANUP ═══════════ */
         function cleanup() {
           if (tInt) clearInterval(tInt);
           killLotties();
@@ -2871,7 +2850,6 @@
         }
         window.addEventListener("beforeunload", cleanup);
 
-        /* ═══════════ INIT ═══════════ */
         async function init() {
           try {
             Telegram.WebApp.expand();
@@ -2880,7 +2858,6 @@
             Telegram.WebApp.setBackgroundColor("#ffffff");
           } catch (e) {}
 
-          // Load all TGS in parallel
           const allTgs = Object.values(TGS).map((u) => loadTGS(u));
 
           try {
@@ -2897,7 +2874,6 @@
 
           await Promise.all(allTgs);
 
-          // Hide loading
           $("scene-loading").style.opacity = "0";
           await sleep(300);
           try {
@@ -2909,9 +2885,6 @@
             return;
           }
 
-          // ══════ SECURE STATE ROUTING ══════
-
-          /* completed = prize already fully received */
           if (US.state === "completed") {
             const meta = getMeta(US.prize_key || "stars");
             showScene("done", true);
@@ -2954,7 +2927,6 @@
             return;
           }
 
-          /* claimed = subscribed, timer running */
           if (US.state === "claimed") {
             wonPrize = {
               key: US.prize_key || "stars",
@@ -2964,7 +2936,6 @@
             return;
           }
 
-          /* rolled = drew star but NOT yet subscribed */
           if (US.state === "rolled") {
             wonPrize = {
               key: US.prize_key || "stars",
@@ -2976,7 +2947,6 @@
             return;
           }
 
-          // ── Default: new user, draw scene ──
           showScene("draw", true);
           await new Promise((r) =>
             requestAnimationFrame(() => requestAnimationFrame(r)),

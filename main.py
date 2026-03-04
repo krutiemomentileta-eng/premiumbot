@@ -25,17 +25,20 @@ load_dotenv()
 # ══════════════════════════════════════
 #  Config & validation
 # ══════════════════════════════════════
-BOT_TOKEN    = os.getenv("BOT_TOKEN", "")
-WEBAPP_URL   = os.getenv("WEBAPP_URL", "")
-ADMIN_ID     = int(os.getenv("ADMIN_ID", "0"))
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+BOT_TOKEN        = os.getenv("BOT_TOKEN", "")
+WEBAPP_URL       = os.getenv("WEBAPP_URL", "")
+ADMIN_ID         = int(os.getenv("ADMIN_ID", "0"))
+SUPABASE_URL     = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY     = os.getenv("SUPABASE_KEY", "")
+INVITE_PHOTO_ID  = os.getenv("INVITE_PHOTO_ID", "")
 
 def validate_env():
     required = ["BOT_TOKEN", "WEBAPP_URL", "ADMIN_ID", "SUPABASE_URL", "SUPABASE_KEY"]
     missing = [k for k in required if not os.getenv(k)]
     if missing:
         raise RuntimeError(f"Missing env vars: {', '.join(missing)}")
+    if not INVITE_PHOTO_ID:
+        logging.warning("INVITE_PHOTO_ID not set — shareMessage will use text-only fallback")
 
 validate_env()
 
@@ -712,6 +715,88 @@ async def notify_referrer(referrer_id):
         log.error(f"notify_referrer error: {e}")
 
 
+# ══════════════════════════════════════
+#  Prepare Share (Bot API 8.0+)
+# ══════════════════════════════════════
+@app.post("/api/prepare-share")
+async def api_prepare_share(req: Request):
+    """
+    Prepare an inline message for Telegram.WebApp.shareMessage().
+    Uses Bot API savePreparedInlineMessage method.
+    """
+    body = await req.json()
+    v = validate_init(body.get("initData", ""))
+    if not v:
+        return JSONResponse({"error": "Invalid initData"}, 401)
+
+    tg_id = v["user"]["id"]
+    if not check_rate_limit(tg_id):
+        return JSONResponse({"error": "Too many requests"}, 429)
+
+    user_name = v["user"].get("first_name", "Друг")
+    bot_username = await get_bot_username()
+    ref_link = f"https://t.me/{bot_username}?start=ref_{tg_id}"
+
+    caption = (
+        f"🎁 <b>Тебе подарок от {user_name}!</b>\n\n"
+        f"Нарисуй звезду и получи один из призов:\n"
+        f"⭐ <b>500 Telegram Stars</b>\n"
+        f"💎 <b>Telegram Premium</b>\n\n"
+        f"Это бесплатно! Жми на кнопку 👇"
+    )
+
+    reply_markup = {
+        "inline_keyboard": [[
+            {"text": "⭐ Получить подарок!", "url": ref_link}
+        ]]
+    }
+
+    # Build inline query result
+    if INVITE_PHOTO_ID:
+        inline_result = {
+            "type": "photo",
+            "id": f"share_{tg_id}_{int(time.time())}",
+            "photo_file_id": INVITE_PHOTO_ID,
+            "title": "🎁 Подарок для тебя!",
+            "description": "500 Stars или Premium — бесплатно!",
+            "caption": caption,
+            "parse_mode": "HTML",
+            "reply_markup": reply_markup,
+        }
+    else:
+        inline_result = {
+            "type": "article",
+            "id": f"share_{tg_id}_{int(time.time())}",
+            "title": "🎁 Подарок для тебя!",
+            "description": "Нарисуй звезду и получи приз!",
+            "input_message_content": {
+                "message_text": caption,
+                "parse_mode": "HTML",
+            },
+            "reply_markup": reply_markup,
+        }
+
+    # Call Bot API savePreparedInlineMessage
+    r = await tg("savePreparedInlineMessage", {
+        "user_id": tg_id,
+        "result": inline_result,
+        "allow_user_chats": True,
+        "allow_bot_chats": False,
+        "allow_group_chats": True,
+        "allow_channel_chats": True,
+    })
+
+    if r.get("ok") and r.get("result", {}).get("id"):
+        prepared_id = r["result"]["id"]
+        log.info(f"Prepared share for {tg_id}: {prepared_id}")
+        await log_event(tg_id, "prepare_share", {"prepared_id": prepared_id})
+        return {"ok": True, "prepared_message_id": prepared_id}
+    else:
+        desc = r.get("description", "Unknown error")
+        log.error(f"savePreparedInlineMessage failed for {tg_id}: {desc}")
+        return JSONResponse({"ok": False, "error": desc}, 400)
+
+
 @app.post("/api/get-page")
 async def api_get_page(req: Request):
     body = await req.json()
@@ -757,13 +842,14 @@ async def handle_message(msg):
     cid = msg["chat"]["id"]
     text = msg.get("text", "").strip()
 
+    # ── Admin: get file_id from photo ──
     if msg.get("photo") and uid == ADMIN_ID:
         file_id = msg["photo"][-1]["file_id"]
         await send_msg(cid,
             f"📸 <b>file_id:</b>\n\n<code>{file_id}</code>\n\n"
             f"Скопируйте и вставьте в .env как INVITE_PHOTO_ID")
         return
-    
+
     if text.startswith("/start"):
         parts = text.split()
         ref_id = None
@@ -1657,7 +1743,7 @@ async def check_reactivation():
         created = parse_dt(u.get("created_at"))
         if not created or (now - created).total_seconds() < 3600:
             continue
-        # Mark first, then send (idempotent — no double notifications)
+        # Mark first, then send (idempotent)
         await db.update_eq("users", {"notified_1h": True},
                            "telegram_id", u["telegram_id"])
         try:
