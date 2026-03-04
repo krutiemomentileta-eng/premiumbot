@@ -2266,59 +2266,81 @@
 
         /* ═══════════ REVEAL — 3D flying sticker effect ═══════════ */
         async function doReveal() {
-          const st = $("tap-sticker");
-          const stRect = st.getBoundingClientRect();
-          const startX = stRect.left + stRect.width / 2;
-          const startY = stRect.top + stRect.height / 2;
-
-          /* ── Phase 1: Star explosion ── */
-          gsap.to(st, { scale: 1.6, duration: 0.2, ease: "power2.out" });
-          haptic("medium");
-          await sleep(200);
-
-          haptic("heavy");
-          hapticNotif("success");
-          megaBurst(startX, startY);
-          megaBurst(startX, startY);
-          confetti({
-            particleCount: 120,
-            spread: 100,
-            origin: { x: startX / innerWidth, y: startY / innerHeight },
-          });
-          confetti({
-            particleCount: 60,
-            spread: 140,
-            origin: { x: startX / innerWidth, y: startY / innerHeight },
-          });
-
-          const flash = $("flash");
-          flash.style.transition = "opacity 0.06s";
-          flash.style.opacity = "1";
-
-          gsap.set(st, { scale: 0, opacity: 0 });
-          gsap.set($("tap-bottom"), { opacity: 0 });
-          $("edge-glow").classList.remove("on");
-
-          await sleep(80);
-
-          /* ── Phase 2: Spawn flying sticker at center ── */
+          console.log("[doReveal] START, wonPrize:", wonPrize);
           const meta = getMeta(wonPrize.key);
+          console.log("[doReveal] meta:", meta.modal);
 
-          const flyer = document.createElement("div");
-          flyer.style.cssText =
-            "position:fixed;z-index:250;pointer-events:none;width:130px;height:130px;";
-          document.body.appendChild(flyer);
-          gsap.set(flyer, {
-            left: startX,
-            top: startY,
-            xPercent: -50,
-            yPercent: -50,
-            scale: 0,
-          });
+          try {
+            const st = $("tap-sticker");
+            const stRect = st.getBoundingClientRect();
+            const startX = stRect.left + stRect.width / 2;
+            const startY = stRect.top + stRect.height / 2;
+            console.log(
+              "[doReveal] star position:",
+              startX,
+              startY,
+              "size:",
+              stRect.width,
+              stRect.height,
+            );
 
-          await loadTGS(meta.modal);
-          const flyData = cloneTGS(meta.modal);
-          if (flyData) {
+            if (stRect.width === 0 || stRect.height === 0) {
+              console.warn("[doReveal] sticker has zero size, fallback");
+              throw new Error("zero size sticker");
+            }
+
+            /* Phase 1: Star explosion */
+            gsap.to(st, { scale: 1.6, duration: 0.2, ease: "power2.out" });
+            haptic("medium");
+            await sleep(200);
+
+            haptic("heavy");
+            hapticNotif("success");
+            megaBurst(startX, startY);
+            megaBurst(startX, startY);
+            confetti({
+              particleCount: 120,
+              spread: 100,
+              origin: { x: startX / innerWidth, y: startY / innerHeight },
+            });
+            confetti({
+              particleCount: 60,
+              spread: 140,
+              origin: { x: startX / innerWidth, y: startY / innerHeight },
+            });
+
+            const flash = $("flash");
+            flash.style.transition = "opacity 0.06s";
+            flash.style.opacity = "1";
+
+            gsap.set(st, { scale: 0, opacity: 0 });
+            gsap.set($("tap-bottom"), { opacity: 0 });
+            $("edge-glow").classList.remove("on");
+
+            await sleep(80);
+
+            /* Phase 2: Spawn flying sticker */
+            console.log("[doReveal] loading TGS:", meta.modal);
+            await loadTGS(meta.modal);
+            const flyData = cloneTGS(meta.modal);
+            console.log("[doReveal] flyData:", !!flyData);
+
+            if (!flyData) {
+              throw new Error("TGS not loaded: " + meta.modal);
+            }
+
+            const flyer = document.createElement("div");
+            flyer.style.cssText =
+              "position:fixed;z-index:250;pointer-events:none;width:130px;height:130px;";
+            document.body.appendChild(flyer);
+            gsap.set(flyer, {
+              left: startX,
+              top: startY,
+              xPercent: -50,
+              yPercent: -50,
+              scale: 0,
+            });
+
             lottie.loadAnimation({
               container: flyer,
               renderer: "svg",
@@ -2326,59 +2348,82 @@
               autoplay: true,
               animationData: flyData,
             });
+
+            flash.style.transition = "opacity 0.6s";
+            flash.style.opacity = "0";
+
+            /* Phase 2a: Fly UP */
+            console.log("[doReveal] flying UP");
+            gsap.to(flyer, {
+              top: innerHeight * 0.3,
+              left: innerWidth / 2,
+              scale: 1.3,
+              duration: 0.4,
+              ease: "back.out(1.5)",
+            });
+
+            await sleep(250);
+
+            /* Phase 3: Open sheet + fly DOWN */
+            console.log("[doReveal] opening sheet");
+            killLotties();
+            $("prize-name").textContent = wonPrize.name;
+            $("btn-claim").disabled = true;
+            $("btn-claim").classList.remove("pulse");
+            $("prize-cd").textContent = "";
+            $("prize-sticker").style.visibility = "hidden";
+
+            openSheet("sheet-prize");
+
+            await sleep(250);
+
+            const targetRect = $("prize-sticker").getBoundingClientRect();
+            const targetX = targetRect.left + targetRect.width / 2;
+            const targetY = targetRect.top + targetRect.height / 2;
+            console.log("[doReveal] target position:", targetX, targetY);
+
+            gsap.to(flyer, {
+              left: targetX,
+              top: targetY,
+              scale: 1,
+              duration: 0.4,
+              ease: "power3.inOut",
+            });
+
+            await sleep(400);
+
+            /* Phase 4: Land */
+            console.log("[doReveal] LANDING");
+            flyer.remove();
+            $("prize-sticker").style.visibility = "visible";
+            playLottie($("prize-sticker"), meta.modal, false);
+
+            haptic("medium");
+            confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+          } catch (err) {
+            console.error("[doReveal] ERROR:", err);
+
+            $("edge-glow").classList.remove("on");
+            const flash = $("flash");
+            flash.style.transition = "opacity 0.3s";
+            flash.style.opacity = "0";
+            gsap.set($("tap-bottom"), { opacity: 0 });
+
+            killLotties();
+            $("prize-name").textContent = wonPrize.name;
+            $("btn-claim").disabled = true;
+            $("btn-claim").classList.remove("pulse");
+            $("prize-cd").textContent = "";
+            $("prize-sticker").style.visibility = "visible";
+            playLottie($("prize-sticker"), meta.modal, false);
+
+            openSheet("sheet-prize");
+            confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           }
 
-          /* Flash cross-fades out → sheet-bg will provide darkening */
-          flash.style.transition = "opacity 0.6s";
-          flash.style.opacity = "0";
-
-          /* ── Phase 2a: Fly UP from center ── */
-          gsap.to(flyer, {
-            top: innerHeight * 0.3,
-            left: innerWidth / 2,
-            scale: 1.3,
-            duration: 0.4,
-            ease: "back.out(1.5)",
-          });
-
-          await sleep(250);
-
-          /* ── Phase 3: Open sheet (sticker hidden) + fly DOWN ── */
-          killLotties();
-          $("prize-name").textContent = wonPrize.name;
-          $("btn-claim").disabled = true;
-          $("btn-claim").classList.remove("pulse");
-          $("prize-cd").textContent = "";
-          $("prize-sticker").style.visibility = "hidden";
-
-          openSheet("sheet-prize");
-
-          await sleep(250); /* Sheet partially visible */
-
-          const targetRect = $("prize-sticker").getBoundingClientRect();
-          const targetX = targetRect.left + targetRect.width / 2;
-          const targetY = targetRect.top + targetRect.height / 2;
-
-          gsap.to(flyer, {
-            left: targetX,
-            top: targetY,
-            scale: 1,
-            duration: 0.4,
-            ease: "power3.inOut",
-          });
-
-          await sleep(400);
-
-          /* ── Phase 4: Land! ── */
-          flyer.remove();
-          $("prize-sticker").style.visibility = "visible";
-          playLottie($("prize-sticker"), meta.modal, false);
-
-          haptic("medium");
-          confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           appState = "prize";
+          console.log("[doReveal] starting countdown");
 
-          /* ── Countdown ── */
           for (let i = 3; i >= 1; i--) {
             $("prize-cd").textContent = i;
             $("prize-cd").style.color = "var(--purple)";
@@ -2403,6 +2448,7 @@
 
           $("btn-claim").disabled = false;
           $("btn-claim").classList.add("pulse");
+          console.log("[doReveal] DONE");
         }
 
         /* ═══════════ CLAIM → SUB ═══════════ */
