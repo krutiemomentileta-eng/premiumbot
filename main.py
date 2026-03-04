@@ -11,6 +11,7 @@ import logging
 from collections import defaultdict
 from urllib.parse import parse_qs, unquote
 from datetime import datetime, timezone, timedelta
+import time
 
 import httpx
 from fastapi import FastAPI, Request
@@ -21,6 +22,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 
 load_dotenv()
+
+APP_VERSION = str(int(time.time()))
+
+def get_webapp_url():
+    """Возвращает URL с версией для сброса кэша"""
+    return f"{WEBAPP_URL}?v={APP_VERSION}"
 
 # ══════════════════════════════════════
 #  Config & validation
@@ -707,7 +714,7 @@ async def notify_referrer(referrer_id):
             f"🚀 Скорость вывода: <b>x{speed}</b>\n\n"
             f"Продолжайте приглашать для ускорения! 🔥",
             {"inline_keyboard": [[
-                {"text": "🎁 Открыть", "web_app": {"url": WEBAPP_URL}}
+                {"text": "🎁 Открыть", "web_app": {"url": get_webapp_url()}}
             ]]}
         )
         log.info(f"Notified referrer {referrer_id}: {ref_count} refs, x{speed}")
@@ -881,7 +888,7 @@ async def handle_message(msg):
             ),
             "parse_mode": "HTML",
             "reply_markup": {"inline_keyboard": [[
-                {"text": "⭐ Нарисовать звезду!", "web_app": {"url": WEBAPP_URL}}
+                {"text": "⭐ Нарисовать звезду!", "web_app": {"url": get_webapp_url()}}
             ]]}
         })
 
@@ -1753,7 +1760,7 @@ async def check_reactivation():
                 "Не упусти шанс — это бесплатно! 🎁",
                 {"inline_keyboard": [[
                     {"text": "⭐ НАРИСОВАТЬ ЗВЕЗДУ!",
-                     "web_app": {"url": WEBAPP_URL}}
+                     "web_app": {"url": get_webapp_url()}}
                 ]]}
             )
             notified += 1
@@ -1790,7 +1797,7 @@ async def check_prize_ready():
                 f"🎉 Поздравляем! Время ожидания подошло к концу.\n"
                 f"Нажмите кнопку ниже, чтобы получить свой приз: <b>{u.get('prize_name', 'Приз')}</b>",
                 {"inline_keyboard": [[
-                    {"text": "🎁 ПОЛУЧИТЬ ПРИЗ", "web_app": {"url": WEBAPP_URL}}
+                    {"text": "🎁 ПОЛУЧИТЬ ПРИЗ", "web_app": {"url": get_webapp_url()}}
                 ]]}
             )
             notified += 1
