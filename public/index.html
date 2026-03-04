@@ -44,8 +44,6 @@
         --safe-top: env(safe-area-inset-top, 0px);
         --safe-bot: env(safe-area-inset-bottom, 0px);
       }
-
-      /* ═══════════ SCENE SYSTEM ═══════════ */
       .scene {
         position: fixed;
         inset: 0;
@@ -71,8 +69,6 @@
       .scene.instant {
         transition: none !important;
       }
-
-      /* ═══════════ LOADING ═══════════ */
       #scene-loading {
         align-items: center;
         justify-content: center;
@@ -96,8 +92,6 @@
           transform: rotate(360deg);
         }
       }
-
-      /* ═══════════ DRAW SCENE ═══════════ */
       #scene-draw {
         padding: max(12px, var(--safe-top)) 20px max(12px, var(--safe-bot));
         align-items: center;
@@ -208,8 +202,6 @@
         max-width: 360px;
         padding-top: 10px;
       }
-
-      /* ═══════════ TAP SCENE ═══════════ */
       #scene-tap {
         align-items: center;
         justify-content: center;
@@ -274,8 +266,6 @@
         color: #aaa;
         font-weight: 600;
       }
-
-      /* ═══════════ DONE SCENE ═══════════ */
       #scene-done {
         align-items: center;
         padding: max(16px, var(--safe-top)) 24px max(24px, var(--safe-bot));
@@ -506,8 +496,6 @@
         gap: 10px;
         width: 100%;
       }
-
-      /* ═══════════ BUTTONS ═══════════ */
       .btn-primary {
         position: relative;
         width: 100%;
@@ -610,8 +598,6 @@
         justify-content: center;
         flex-shrink: 0;
       }
-
-      /* ═══════════ SHEETS ═══════════ */
       .sheet-overlay {
         position: fixed;
         inset: 0;
@@ -646,8 +632,6 @@
       .hidden {
         display: none !important;
       }
-
-      /* ═══════════ PRIZE SHEET ═══════════ */
       .prize-label {
         font-size: 18px;
         color: #888;
@@ -682,8 +666,6 @@
         color: var(--purple);
         line-height: 1;
       }
-
-      /* ═══════════ SUBSCRIBE SHEET ═══════════ */
       .sub-sticker {
         width: 80px;
         height: 80px;
@@ -772,8 +754,6 @@
         background: var(--green);
         pointer-events: none;
       }
-
-      /* ═══════════ SPEEDUP SHEET ═══════════ */
       .su-header {
         display: flex;
         align-items: center;
@@ -937,8 +917,6 @@
         margin-top: 12px;
         padding: 8px;
       }
-
-      /* ═══════════ STARS MODAL ═══════════ */
       .modal-fs {
         position: fixed;
         inset: 0;
@@ -1061,8 +1039,6 @@
         border-radius: 12px;
         cursor: pointer;
       }
-
-      /* ═══════════ FX ═══════════ */
       #flash {
         position: fixed;
         inset: 0;
@@ -1159,7 +1135,6 @@
           transform: translateY(-50px) scale(1.2);
         }
       }
-
       @media (prefers-reduced-motion: reduce) {
         *,
         *::before,
@@ -1179,7 +1154,6 @@
       <div class="loader"></div>
       <p class="loader-text">Загрузка...</p>
     </div>
-
     <div id="scene-draw" class="scene">
       <div class="draw-spacer-top"></div>
       <div class="draw-header">
@@ -1205,7 +1179,6 @@
         </button>
       </div>
     </div>
-
     <div id="scene-tap" class="scene">
       <div class="tap-area" id="tap-area">
         <div class="tap-sticker" id="tap-sticker">
@@ -1220,7 +1193,6 @@
         </div>
       </div>
     </div>
-
     <div id="scene-done" class="scene">
       <div class="done-wrap">
         <div class="done-check" id="done-check"></div>
@@ -1272,7 +1244,6 @@
         </div>
       </div>
     </div>
-
     <div id="sheet-prize" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
@@ -1286,7 +1257,6 @@
         </button>
       </div>
     </div>
-
     <div id="sheet-sub" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
@@ -1303,7 +1273,6 @@
         </button>
       </div>
     </div>
-
     <div id="sheet-speed" class="sheet-overlay hidden">
       <div class="sheet-bg"></div>
       <div class="sheet">
@@ -1365,7 +1334,6 @@
         <button id="btn-back-speed" class="btn-back">← Назад</button>
       </div>
     </div>
-
     <div id="modal-stars" class="modal-fs hidden">
       <div class="modal-fs-header">
         <span class="modal-fs-title">
@@ -1389,11 +1357,9 @@
       </div>
       <button id="btn-edit-stars" class="btn-admin-edit hidden">✏️</button>
     </div>
-
     <div id="flash"></div>
     <div id="edge-glow"></div>
     <div id="toast" class="toast"></div>
-
     <script
       defer
       src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
@@ -1410,7 +1376,6 @@
       defer
       src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"
     ></script>
-
     <script>
       window.addEventListener("load", () => {
         const ck = setInterval(() => {
@@ -1431,7 +1396,6 @@
         const MAX_TAPS = 10;
         const T_SEC = 86400;
         const THRESHOLD = 80;
-
         const TGS = {
           starY: "assets/star_yellow.tgs",
           starP: "assets/star_purple.tgs",
@@ -1443,7 +1407,6 @@
           check: "assets/true.tgs",
           invite: "assets/invite.tgs",
         };
-
         const PRIZE_META = {
           stars: {
             tgs: TGS.starY,
@@ -1460,7 +1423,6 @@
             shine: "purple-shine",
           },
         };
-
         let CHANNELS = [],
           US = null,
           isAdmin = false,
@@ -1484,7 +1446,6 @@
           iconLotties = [];
         let lastScoreTime = 0;
         let isSharing = false;
-
         const $ = (id) => document.getElementById(id);
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         const haptic = (t) => {
@@ -1497,11 +1458,9 @@
             Telegram.WebApp.HapticFeedback.notificationOccurred(t);
           } catch (e) {}
         };
-
         function calcSpeed(r) {
           return r >= 2 ? Math.pow(2, Math.floor(r / 2)) : 1;
         }
-
         function fmtTime(s) {
           if (s <= 0) return null;
           const h = Math.floor(s / 3600);
@@ -1509,7 +1468,6 @@
           const sc = Math.floor(s % 60);
           return [h, m, sc].map((v) => String(v).padStart(2, "0")).join(":");
         }
-
         let toastTimer = null;
         function toast(t, tp = "error", ms = 3000) {
           const el = $("toast");
@@ -1522,11 +1480,9 @@
             toastTimer = null;
           }, ms);
         }
-
         function getMeta(key) {
           return PRIZE_META[key] || PRIZE_META.stars;
         }
-
         function showScene(id, instant = false) {
           document.querySelectorAll(".scene").forEach((s) => {
             if (instant) {
@@ -1534,9 +1490,7 @@
               s.classList.remove("active");
               void s.offsetHeight;
               s.classList.remove("instant");
-            } else {
-              s.classList.remove("active");
-            }
+            } else s.classList.remove("active");
           });
           const el = $("scene-" + id);
           if (instant) {
@@ -1544,11 +1498,8 @@
             el.classList.add("active");
             void el.offsetHeight;
             el.classList.remove("instant");
-          } else {
-            el.classList.add("active");
-          }
+          } else el.classList.add("active");
         }
-
         function openSheet(id) {
           const ov = $(id);
           const bg = ov.querySelector(".sheet-bg");
@@ -1564,7 +1515,6 @@
           }
           updateBackBtn();
         }
-
         function closeSheet(id, cb) {
           const ov = $(id);
           const bg = ov.querySelector(".sheet-bg");
@@ -1585,7 +1535,6 @@
             if (cb) cb();
           }
         }
-
         function updateBackBtn() {
           try {
             const stars = !$("modal-stars").classList.contains("hidden");
@@ -1594,7 +1543,6 @@
             else Telegram.WebApp.BackButton.hide();
           } catch (e) {}
         }
-
         try {
           Telegram.WebApp.BackButton.onClick(() => {
             if (!$("modal-stars").classList.contains("hidden"))
@@ -1603,14 +1551,12 @@
               closeSheet("sheet-speed");
           });
         } catch (e) {}
-
         window.addEventListener("offline", () =>
           toast("Нет интернета", "error", 5000),
         );
         window.addEventListener("online", () =>
           toast("Соединение восстановлено", "success"),
         );
-
         function gID() {
           try {
             return Telegram.WebApp.initData;
@@ -1618,7 +1564,6 @@
             return "";
           }
         }
-
         async function api(ep, body = {}) {
           for (let i = 0; i < 3; i++) {
             try {
@@ -1647,13 +1592,11 @@
           }
           return { ok: false };
         }
-
         const tgsC = {},
           tgsS = {};
         try {
           lottie.setQuality(2);
         } catch (e) {}
-
         async function loadTGS(u) {
           if (tgsC[u] !== undefined) return tgsC[u];
           try {
@@ -1669,11 +1612,9 @@
             return null;
           }
         }
-
         function cloneTGS(u) {
           return tgsS[u] ? JSON.parse(tgsS[u]) : null;
         }
-
         function playLottie(c, u, loop = true) {
           activeLotties = activeLotties.filter((a) => {
             try {
@@ -1701,7 +1642,6 @@
           activeLotties.push(a);
           return a;
         }
-
         function playIcon(c, u) {
           iconLotties = iconLotties.filter((a) => {
             try {
@@ -1729,7 +1669,6 @@
           iconLotties.push(a);
           return a;
         }
-
         function killLotties() {
           activeLotties.forEach((a) => {
             try {
@@ -1746,7 +1685,6 @@
           });
           iconLotties = [];
         }
-
         const PP = [],
           PC = [
             "#6B93FF",
@@ -1763,7 +1701,6 @@
           document.body.appendChild(p);
           PP.push({ el: p, busy: false, t: null });
         }
-
         function burst(x, y, n) {
           n = Math.min(n, 10);
           let u = 0;
@@ -1787,7 +1724,6 @@
             }, 600);
           }
         }
-
         function megaBurst(x, y) {
           for (let i = 0; i < 4; i++) {
             setTimeout(
@@ -1801,7 +1737,6 @@
             );
           }
         }
-
         const TPP = [],
           TT = ["+1", "⭐", "✨", "💫", "🔥", "💎"];
         for (let i = 0; i < 6; i++) {
@@ -1811,7 +1746,6 @@
           document.body.appendChild(el);
           TPP.push({ el, busy: false, t: null });
         }
-
         function showTapFx(x, y) {
           for (let i = 0; i < TPP.length; i++) {
             const s = TPP[i];
@@ -1833,7 +1767,6 @@
             return;
           }
         }
-
         function genIdealStar(sz) {
           const c = document.createElement("canvas");
           c.width = c.height = sz;
@@ -1858,7 +1791,6 @@
           x.stroke();
           return x.getImageData(0, 0, sz, sz);
         }
-
         function renderStrokes(st, sz) {
           const c = document.createElement("canvas");
           c.width = c.height = sz;
@@ -1894,7 +1826,6 @@
           }
           return x.getImageData(0, 0, sz, sz);
         }
-
         function dilate(img, rad) {
           const w = img.width,
             h = img.height;
@@ -1922,7 +1853,6 @@
             }
           return dst;
         }
-
         function scoreDrawing(st) {
           if (!st.length) return 0;
           let tp = 0;
@@ -1955,11 +1885,9 @@
           const prec = dp ? pp / dp : 0;
           return Math.min(100, Math.round((cov * 0.55 + prec * 0.45) * 110));
         }
-
         const cvs = $("draw-canvas"),
           ctx = cvs.getContext("2d"),
           wrap = $("canvas-wrap");
-
         function ghostStar() {
           const sz = cSize,
             cx = sz / 2,
@@ -1984,7 +1912,6 @@
           ctx.stroke();
           ctx.restore();
         }
-
         function setupCanvas() {
           const area = document.querySelector(".draw-canvas-area");
           if (!area) return;
@@ -2006,7 +1933,6 @@
           ctx.lineJoin = "round";
           ghostStar();
         }
-
         let resizeTimer;
         window.addEventListener("resize", () => {
           clearTimeout(resizeTimer);
@@ -2017,7 +1943,6 @@
             }
           }, 200);
         });
-
         function getPos(e) {
           const r = cvs.getBoundingClientRect();
           return {
@@ -2025,7 +1950,6 @@
             y: (e.touches?.[0]?.clientY ?? e.clientY) - r.top,
           };
         }
-
         cvs.addEventListener("pointerdown", (e) => {
           if (appState !== "drawing") return;
           e.preventDefault();
@@ -2036,7 +1960,6 @@
           ctx.moveTo(p.x, p.y);
           hapticN_ = 0;
         });
-
         cvs.addEventListener("pointermove", (e) => {
           if (!drawing || !curStroke) return;
           e.preventDefault();
@@ -2069,18 +1992,15 @@
             sv.style.color = tempScore >= THRESHOLD ? "#4CAF50" : "#999";
           }
         });
-
         function endStroke() {
           if (!drawing || !curStroke) return;
           drawing = false;
           if (curStroke.length > 1) strokes.push(curStroke);
           curStroke = null;
         }
-
         cvs.addEventListener("pointerup", endStroke);
         cvs.addEventListener("pointercancel", endStroke);
         cvs.addEventListener("pointerleave", endStroke);
-
         function clearCanvas() {
           const dpr = Math.min(window.devicePixelRatio || 1, 2);
           ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2101,13 +2021,11 @@
           wrap.classList.remove("ok", "fail");
           ghostStar();
         }
-
         $("btn-reset").addEventListener("click", () => {
           if (appState !== "drawing") return;
           clearCanvas();
           haptic("medium");
         });
-
         $("btn-submit").addEventListener("click", async () => {
           if (appState !== "drawing") return;
           appState = "evaluating";
@@ -2116,12 +2034,10 @@
           btn.disabled = true;
           btn.classList.remove("pulse");
           haptic("medium");
-
           const score = scoreDrawing(strokes);
           const sv = $("score-val"),
             sh = $("score-hint");
           const o = { v: 0 };
-
           sv.style.opacity = "1";
           gsap.to(o, {
             v: score,
@@ -2133,9 +2049,7 @@
           });
           gsap.set(sv, { scale: 0.5 });
           gsap.to(sv, { scale: 1, duration: 0.4, ease: "back.out(2)" });
-
           await sleep(900);
-
           if (score >= THRESHOLD) {
             sv.style.color = "#4CAF50";
             sh.textContent = "Отлично!";
@@ -2143,7 +2057,6 @@
             gsap.to(sh, { opacity: 1, duration: 0.3 });
             wrap.classList.add("ok");
             hapticNotif("success");
-
             const res = await api("process-action", {
               action: "complete_draw",
             });
@@ -2157,7 +2070,6 @@
               return;
             }
             wonPrize = res.prize;
-
             await sleep(800);
             appState = "transforming";
             await doTransform();
@@ -2186,12 +2098,10 @@
           const wrapR = wrap.getBoundingClientRect();
           const cx = wrapR.left + wrapR.width / 2;
           const cy = wrapR.top + wrapR.height / 2;
-
           gsap.to([".draw-submit", "#btn-reset", ".draw-score"], {
             opacity: 0,
             duration: 0.3,
           });
-
           let amp = 0,
             run = true;
           const shake = () => {
@@ -2216,7 +2126,6 @@
             await sleep(150);
             haptic("light");
           }
-
           haptic("heavy");
           megaBurst(cx, cy);
           gsap.to(cvs, {
@@ -2230,7 +2139,6 @@
           amp = 0;
           cvs.style.transform = "";
           await sleep(400);
-
           const sticker = $("tap-sticker"),
             emoji = $("tap-emoji"),
             bottom = $("tap-bottom");
@@ -2243,11 +2151,9 @@
           $("tap-fill").style.width = "0%";
           $("tap-fill").className = "tap-fill";
           $("tap-count").textContent = "0 / " + MAX_TAPS;
-
           showScene("tap", true);
           gsap.from(sticker, { scale: 0, duration: 0.3, ease: "back.out(2)" });
           await sleep(200);
-
           const emojis = [
             "❓",
             "🎁",
@@ -2283,7 +2189,6 @@
               },
             },
           );
-
           for (let r = 0; r < 18; r++) {
             emoji.textContent = emojis[idx++ % emojis.length];
             gsap.fromTo(
@@ -2295,28 +2200,23 @@
             await sleep(spd);
             spd = Math.max(50, spd - 14);
           }
-
           dRun = false;
           dAmp = 0;
           $("scene-tap").style.transform = "";
-
           const flash = $("flash");
           flash.style.transition = "opacity .08s";
           flash.style.opacity = "1";
           haptic("heavy");
           hapticNotif("success");
           await sleep(100);
-
           emoji.style.display = "none";
           sticker.style.width = Math.round(cSize * 0.3) + "px";
           sticker.style.height = Math.round(cSize * 0.3) + "px";
           await loadTGS(meta.tgs);
           playLottie(sticker, meta.tgs);
-
           const glow = $("edge-glow");
           glow.style.setProperty("--glow", meta.glow);
           glow.classList.add("on");
-
           confetti({ particleCount: 70, spread: 80, origin: { y: 0.4 } });
           confetti({
             particleCount: 35,
@@ -2329,11 +2229,9 @@
             origin: { y: 0.6, x: 0.85 },
           });
           megaBurst(cx, cy);
-
           flash.style.transition = "opacity .6s";
           flash.style.opacity = "0";
           await sleep(1000);
-
           bottom.style.opacity = "1";
           gsap.from(bottom, { opacity: 0, y: 10, duration: 0.3 });
           $("tap-fill").classList.add(meta.fill);
@@ -2341,12 +2239,12 @@
           tapN = 0;
         }
 
+        /* ═══════════ TAP ═══════════ */
         $("tap-area").addEventListener("pointerdown", async (e) => {
           if (appState !== "tapping") return;
           e.preventDefault();
           tapN++;
           haptic("medium");
-
           const st = $("tap-sticker");
           const progress = tapN / MAX_TAPS;
           gsap.to(st, {
@@ -2355,12 +2253,10 @@
             duration: 0.3,
             ease: "back.out(1.5)",
           });
-
           $("tap-fill").style.width = progress * 100 + "%";
           $("tap-count").textContent = tapN + " / " + MAX_TAPS;
           showTapFx(e.clientX, e.clientY);
           burst(e.clientX, e.clientY, 6);
-
           if (tapN >= MAX_TAPS) {
             appState = "revealing";
             await sleep(300);
@@ -2368,29 +2264,121 @@
           }
         });
 
+        /* ═══════════ REVEAL — 3D flying sticker effect ═══════════ */
         async function doReveal() {
-          confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } });
+          const st = $("tap-sticker");
+          const stRect = st.getBoundingClientRect();
+          const startX = stRect.left + stRect.width / 2;
+          const startY = stRect.top + stRect.height / 2;
+
+          /* ── Phase 1: Star explosion ── */
+          gsap.to(st, { scale: 1.6, duration: 0.2, ease: "power2.out" });
+          haptic("medium");
+          await sleep(200);
+
+          haptic("heavy");
           hapticNotif("success");
-          await sleep(600);
-          gsap.to($("tap-bottom"), { opacity: 0, duration: 0.2 });
-          await sleep(300);
-          showPrize();
-        }
+          megaBurst(startX, startY);
+          megaBurst(startX, startY);
+          confetti({
+            particleCount: 120,
+            spread: 100,
+            origin: { x: startX / innerWidth, y: startY / innerHeight },
+          });
+          confetti({
+            particleCount: 60,
+            spread: 140,
+            origin: { x: startX / innerWidth, y: startY / innerHeight },
+          });
 
-        async function showPrize() {
-          killLotties();
+          const flash = $("flash");
+          flash.style.transition = "opacity 0.06s";
+          flash.style.opacity = "1";
+
+          gsap.set(st, { scale: 0, opacity: 0 });
+          gsap.set($("tap-bottom"), { opacity: 0 });
+          $("edge-glow").classList.remove("on");
+
+          await sleep(80);
+
+          /* ── Phase 2: Spawn flying sticker at center ── */
           const meta = getMeta(wonPrize.key);
-          $("prize-name").textContent = wonPrize.name;
-          playLottie($("prize-sticker"), meta.modal, false);
 
+          const flyer = document.createElement("div");
+          flyer.style.cssText =
+            "position:fixed;z-index:250;pointer-events:none;width:130px;height:130px;";
+          document.body.appendChild(flyer);
+          gsap.set(flyer, {
+            left: startX,
+            top: startY,
+            xPercent: -50,
+            yPercent: -50,
+            scale: 0,
+          });
+
+          await loadTGS(meta.modal);
+          const flyData = cloneTGS(meta.modal);
+          if (flyData) {
+            lottie.loadAnimation({
+              container: flyer,
+              renderer: "svg",
+              loop: false,
+              autoplay: true,
+              animationData: flyData,
+            });
+          }
+
+          /* Flash cross-fades out → sheet-bg will provide darkening */
+          flash.style.transition = "opacity 0.6s";
+          flash.style.opacity = "0";
+
+          /* ── Phase 2a: Fly UP from center ── */
+          gsap.to(flyer, {
+            top: innerHeight * 0.3,
+            left: innerWidth / 2,
+            scale: 1.3,
+            duration: 0.4,
+            ease: "back.out(1.5)",
+          });
+
+          await sleep(250);
+
+          /* ── Phase 3: Open sheet (sticker hidden) + fly DOWN ── */
+          killLotties();
+          $("prize-name").textContent = wonPrize.name;
           $("btn-claim").disabled = true;
           $("btn-claim").classList.remove("pulse");
           $("prize-cd").textContent = "";
+          $("prize-sticker").style.visibility = "hidden";
 
           openSheet("sheet-prize");
+
+          await sleep(250); /* Sheet partially visible */
+
+          const targetRect = $("prize-sticker").getBoundingClientRect();
+          const targetX = targetRect.left + targetRect.width / 2;
+          const targetY = targetRect.top + targetRect.height / 2;
+
+          gsap.to(flyer, {
+            left: targetX,
+            top: targetY,
+            scale: 1,
+            duration: 0.4,
+            ease: "power3.inOut",
+          });
+
+          await sleep(400);
+
+          /* ── Phase 4: Land! ── */
+          flyer.remove();
+          $("prize-sticker").style.visibility = "visible";
+          playLottie($("prize-sticker"), meta.modal, false);
+
+          haptic("medium");
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
           appState = "prize";
 
+          /* ── Countdown ── */
           for (let i = 3; i >= 1; i--) {
             $("prize-cd").textContent = i;
             $("prize-cd").style.color = "var(--purple)";
@@ -2417,6 +2405,7 @@
           $("btn-claim").classList.add("pulse");
         }
 
+        /* ═══════════ CLAIM → SUB ═══════════ */
         $("btn-claim").addEventListener("click", () => {
           $("btn-claim").classList.remove("pulse");
           $("edge-glow").classList.remove("on");
@@ -2428,24 +2417,19 @@
           $("sub-progress").textContent =
             `Подписано ${d} из ${CHANNELS.length}`;
         }
-
         function showSub() {
           killLotties();
           const pKey = wonPrize ? wonPrize.key : US?.prize_key || "stars";
           const pName = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
           const meta = getMeta(pKey);
-
           $("sub-prize").textContent = pName;
           if (meta.modal) playLottie($("sub-sticker"), meta.modal, false);
-
           const list = $("sub-list");
           list.innerHTML = "";
-
           CHANNELS.forEach((ch) => {
             const isBot = ch.type === "bot";
             const li = document.createElement("li");
             li.className = "sub-item";
-
             const av = document.createElement("div");
             av.className = "sub-avatar";
             if (ch.avatar) {
@@ -2457,17 +2441,13 @@
                 av.textContent = isBot ? "🤖" : "📢";
               };
               av.appendChild(img);
-            } else {
-              av.textContent = isBot ? "🤖" : "📢";
-            }
-
+            } else av.textContent = isBot ? "🤖" : "📢";
             const info = document.createElement("div");
             info.className = "sub-info";
             const nm = document.createElement("div");
             nm.className = "sub-name";
             nm.textContent = ch.name;
             info.appendChild(nm);
-
             const btn = document.createElement("button");
             btn.className = "sub-btn";
             btn.textContent = isBot ? "Открыть" : "Подписаться";
@@ -2491,11 +2471,9 @@
                 }).catch(() => {});
               }
             });
-
             li.append(av, info, btn);
             list.appendChild(li);
           });
-
           updateSubProg();
           openSheet("sheet-sub");
           appState = "subscribe";
@@ -2507,7 +2485,6 @@
           const btn = $("btn-check-sub");
           btn.disabled = true;
           btn.querySelector("span").textContent = "Проверяем...";
-
           try {
             const res = await api("process-action", {
               action: "check_subscriptions",
@@ -2543,9 +2520,7 @@
               updateSubProg();
               toast("Подпишитесь на все каналы!");
               hapticNotif("error");
-            } else {
-              toast("Ошибка, попробуйте позже");
-            }
+            } else toast("Ошибка, попробуйте позже");
           } catch (e) {
             toast("Ошибка, попробуйте позже");
           } finally {
@@ -2561,7 +2536,6 @@
           playIcon($("btn-rocket-tgs"), TGS.rocket);
           playIcon($("btn-star-tgs"), TGS.star);
         }
-
         function resetTimerDots() {
           $("tp2").className = "tp-dot active";
           $("tp2").textContent = "2";
@@ -2573,30 +2547,23 @@
           $("tlbl3").className = "tp-label";
           $("tlbl3").textContent = "Выдача";
         }
-
         function goToDone() {
           killLotties();
           const pKey = wonPrize ? wonPrize.key : US?.prize_key || "stars";
           const pName = wonPrize ? wonPrize.name : US?.prize_name || "Приз";
           const meta = getMeta(pKey);
-
           const dp = $("done-prize");
           dp.textContent = pName;
           dp.className = "done-prize" + (meta.shine ? " " + meta.shine : "");
-
           playLottie($("done-sticker"), meta.modal, false);
-
           if (!claimedAt) claimedAt = US?.claimed_at || Date.now() / 1000;
           refCount = US?.referral_count || refCount || 0;
           tSpeed = calcSpeed(refCount);
-
           $("done-actions-timer").classList.remove("hidden");
           $("done-actions-final").classList.add("hidden");
-
           resetTimerDots();
           startTimer();
           setupDoneIcons();
-
           showScene("done");
           confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
           gsap.from(".done-wrap", {
@@ -2613,7 +2580,6 @@
           updTimer();
           tInt = setInterval(updTimer, 500);
         }
-
         function updTimer() {
           if (!claimedAt) return;
           const rem = Math.max(
@@ -2626,14 +2592,12 @@
           const pill = $("timer-pill"),
             dot = $("timer-dot"),
             st = $("timer-text");
-
           if (sp) sp.textContent = "x" + tSpeed;
           if (pill) {
             tSpeed > 1
               ? pill.classList.add("fast")
               : pill.classList.remove("fast");
           }
-
           if (!t) {
             if (te) {
               te.textContent = "Готово!";
@@ -2669,7 +2633,6 @@
             clearInterval(tInt);
             return;
           }
-
           if (te) {
             te.textContent = t;
             te.classList.remove("done");
@@ -2683,17 +2646,11 @@
           btn.disabled = true;
           btn.classList.remove("pulse");
           btn.querySelector("span").textContent = "Обработка...";
-          const res = await api("process-action", {
-            action: "finalize_claim",
-          });
+          const res = await api("process-action", { action: "finalize_claim" });
           if (res.ok) {
             hapticNotif("success");
             toast("🎉 Приз получен!", "success");
-            confetti({
-              particleCount: 100,
-              spread: 100,
-              origin: { y: 0.5 },
-            });
+            confetti({ particleCount: 100, spread: 100, origin: { y: 0.5 } });
             btn.querySelector("span").textContent = "✅ Получено";
           } else {
             toast(res.error || "Ошибка", "error");
@@ -2719,12 +2676,10 @@
           playIcon($("share-invite-tgs"), TGS.invite);
           openSheet("sheet-speed");
         });
-
         $("btn-back-speed").addEventListener("click", () =>
           closeSheet("sheet-speed"),
         );
 
-        /* ═══════════ SHARE — native shareMessage (Bot API 8.0+) ═══════════ */
         $("btn-share").addEventListener("click", async () => {
           if (isSharing) return;
           isSharing = true;
@@ -2732,10 +2687,8 @@
           const btnText = $("btn-share-text");
           btn.disabled = true;
           btnText.textContent = "Подготовка...";
-
           try {
             const res = await api("prepare-share");
-
             if (
               res.ok &&
               res.prepared_message_id &&
@@ -2751,7 +2704,6 @@
                 },
               );
             } else {
-              // Fallback: старый способ через share URL
               shareFallback();
             }
           } catch (e) {
@@ -2762,19 +2714,13 @@
             isSharing = false;
           }
         });
-
         function shareFallback() {
           const uid = US?.telegram_id || "";
           const link = `https://t.me/${BOT}?start=ref_${uid}`;
           const text =
-            "🎁 Тебе подарок!\n\n" +
-            "Нарисуй звезду и получи один из призов:\n" +
-            "⭐ 500 Telegram Stars\n" +
-            "💎 Telegram Premium\n\n" +
-            "Это бесплатно! Жми на кнопку 👇";
+            "🎁 Тебе подарок!\n\nНарисуй звезду и получи один из призов:\n⭐ 500 Telegram Stars\n💎 Telegram Premium\n\nЭто бесплатно! Жми на кнопку 👇";
           const shareUrl =
-            "https://t.me/share/url" +
-            "?url=" +
+            "https://t.me/share/url?url=" +
             encodeURIComponent(link) +
             "&text=" +
             encodeURIComponent(text);
@@ -2789,7 +2735,6 @@
           $("modal-stars").classList.remove("hidden");
           updateBackBtn();
           playIcon($("modal-star-tgs"), TGS.star);
-
           const c = $("stars-content");
           if (!c.innerHTML) {
             try {
@@ -2800,28 +2745,23 @@
               c.textContent = "Ошибка загрузки";
             }
           }
-
           if (isAdmin) $("btn-edit-stars").classList.remove("hidden");
         });
-
         $("btn-close-stars").addEventListener("click", () => {
           $("modal-stars").classList.add("hidden");
           $("stars-edit").classList.add("hidden");
           $("stars-content").classList.remove("hidden");
           updateBackBtn();
         });
-
         $("btn-edit-stars").addEventListener("click", () => {
           $("stars-ta").value = $("stars-content").innerText || "";
           $("stars-content").classList.add("hidden");
           $("stars-edit").classList.remove("hidden");
         });
-
         $("btn-cancel-edit").addEventListener("click", () => {
           $("stars-edit").classList.add("hidden");
           $("stars-content").classList.remove("hidden");
         });
-
         $("btn-save-stars").addEventListener("click", async () => {
           const t = $("stars-ta").value;
           try {
@@ -2857,9 +2797,7 @@
             Telegram.WebApp.setHeaderColor("#ffffff");
             Telegram.WebApp.setBackgroundColor("#ffffff");
           } catch (e) {}
-
           const allTgs = Object.values(TGS).map((u) => loadTGS(u));
-
           try {
             const res = await api("get-user");
             if (res.ok) {
@@ -2871,20 +2809,16 @@
               if (res.user.claimed_at) claimedAt = res.user.claimed_at;
             }
           } catch (e) {}
-
           await Promise.all(allTgs);
-
           $("scene-loading").style.opacity = "0";
           await sleep(300);
           try {
             Telegram.WebApp.ready();
           } catch (e) {}
-
           if (!US) {
             toast("Ошибка загрузки данных", "error", 10000);
             return;
           }
-
           if (US.state === "completed") {
             const meta = getMeta(US.prize_key || "stars");
             showScene("done", true);
@@ -2892,7 +2826,6 @@
             dp.textContent = US.prize_name || "Приз";
             dp.className = "done-prize" + (meta.shine ? " " + meta.shine : "");
             playLottie($("done-sticker"), meta.modal, false);
-
             $("timer-time").textContent = "Получено!";
             $("timer-time").classList.add("done");
             $("timer-dot").classList.add("done");
@@ -2926,7 +2859,6 @@
             appState = "final";
             return;
           }
-
           if (US.state === "claimed") {
             wonPrize = {
               key: US.prize_key || "stars",
@@ -2935,7 +2867,6 @@
             goToDone();
             return;
           }
-
           if (US.state === "rolled") {
             wonPrize = {
               key: US.prize_key || "stars",
@@ -2946,7 +2877,6 @@
             showSub();
             return;
           }
-
           showScene("draw", true);
           await new Promise((r) =>
             requestAnimationFrame(() => requestAnimationFrame(r)),
@@ -2954,7 +2884,6 @@
           setupCanvas();
           playIcon($("title-star-tgs"), TGS.star);
           appState = "drawing";
-
           gsap.from(".draw-header", { y: 20, opacity: 0, duration: 0.4 });
           gsap.from("#canvas-wrap", {
             y: 20,
@@ -2970,7 +2899,6 @@
             delay: 0.3,
           });
         }
-
         init();
       }
     </script>
