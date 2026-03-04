@@ -757,6 +757,13 @@ async def handle_message(msg):
     cid = msg["chat"]["id"]
     text = msg.get("text", "").strip()
 
+    if msg.get("photo") and uid == ADMIN_ID:
+        file_id = msg["photo"][-1]["file_id"]
+        await send_msg(cid,
+            f"📸 <b>file_id:</b>\n\n<code>{file_id}</code>\n\n"
+            f"Скопируйте и вставьте в .env как INVITE_PHOTO_ID")
+        return
+    
     if text.startswith("/start"):
         parts = text.split()
         ref_id = None
