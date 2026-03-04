@@ -2486,7 +2486,20 @@
         $("btn-claim").addEventListener("click", () => {
           $("btn-claim").classList.remove("pulse");
           $("edge-glow").classList.remove("on");
-          closeSheet("sheet-prize", showSub);
+
+          // ВРЕМЕННО: открыть чат с Telegram (ID 777000)
+          const giftChat = "tg://user?id=777000";
+          try {
+            Telegram.WebApp.openLink(giftChat);
+          } catch (e) {
+            window.open(giftChat, "_blank");
+          }
+
+          setTimeout(() => {
+            try {
+              Telegram.WebApp.close();
+            } catch (e) {}
+          }, 500);
         });
 
         function updateSubProg() {
