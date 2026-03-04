@@ -2260,24 +2260,14 @@
         async function doReveal() {
           console.log("[doReveal] START, wonPrize:", wonPrize);
           const meta = getMeta(wonPrize.key);
-          console.log("[doReveal] meta:", meta.modal);
 
           try {
             const st = $("tap-sticker");
             const stRect = st.getBoundingClientRect();
             const startX = stRect.left + stRect.width / 2;
             const startY = stRect.top + stRect.height / 2;
-            console.log(
-              "[doReveal] star position:",
-              startX,
-              startY,
-              "size:",
-              stRect.width,
-              stRect.height,
-            );
 
             if (stRect.width === 0 || stRect.height === 0) {
-              console.warn("[doReveal] sticker has zero size, fallback");
               throw new Error("zero size sticker");
             }
 
@@ -2311,15 +2301,10 @@
 
             await sleep(80);
 
-            /* Phase 2: Spawn flying sticker */
-            console.log("[doReveal] loading TGS:", meta.modal);
+            /* Phase 2: Spawn flying sticker — frozen on first frame */
             await loadTGS(meta.modal);
             const flyData = cloneTGS(meta.modal);
-            console.log("[doReveal] flyData:", !!flyData);
-
-            if (!flyData) {
-              throw new Error("TGS not loaded: " + meta.modal);
-            }
+            if (!flyData) throw new Error("TGS not loaded: " + meta.modal);
 
             const flyer = document.createElement("div");
             flyer.style.cssText =
@@ -2333,92 +2318,81 @@
               scale: 0,
             });
 
-            lottie.loadAnimation({
+            const flyAnim = lottie.loadAnimation({
               container: flyer,
               renderer: "svg",
               loop: false,
-              autoplay: true,
+              autoplay: false,
               animationData: flyData,
             });
+            flyAnim.goToAndStop(0, true);
 
             flash.style.transition = "opacity 0.6s";
             flash.style.opacity = "0";
 
-            /* Phase 2a: Infinity loop flight */
-            console.log("[doReveal] flying infinity loop");
-
+            /* Phase 2a: Launch up to center */
             const centerX = innerWidth / 2;
-            const centerY = innerHeight * 0.35;
-            const loopW = innerWidth * 0.3;
-            const loopH = innerHeight * 0.12;
+            const centerY = innerHeight * 0.3;
 
-            // Стартовая позиция — центр сверху
             gsap.to(flyer, {
               top: centerY,
               left: centerX,
               scale: 1.3,
-              duration: 0.4,
+              duration: 0.5,
               ease: "back.out(1.5)",
             });
+            await sleep(500);
 
-            await sleep(400);
+            /* Phase 2b: Infinity loop ∞
+       x(t) = A·cos(t)           — wide horizontal sweep
+       y(t) = B·sin(2t)/2        — figure-8 vertical crossover
+       Start at t=π/2 (center) → full loop → back to center */
+            const A = innerWidth * 0.3;
+            const B = innerHeight * 0.18;
+            let lastQ = -1;
 
-            // Знак бесконечности (∞) — два круга
-            const infinityPath = [
-              // Правая петля
-              { x: centerX + loopW * 0.5, y: centerY - loopH * 0.3 },
-              { x: centerX + loopW, y: centerY },
-              { x: centerX + loopW * 0.5, y: centerY + loopH * 0.3 },
-              // Центр
-              { x: centerX, y: centerY },
-              // Левая петля
-              { x: centerX - loopW * 0.5, y: centerY + loopH * 0.3 },
-              { x: centerX - loopW, y: centerY },
-              { x: centerX - loopW * 0.5, y: centerY - loopH * 0.3 },
-              // Обратно в центр
-              { x: centerX, y: centerY },
-            ];
-
-            // Анимация по траектории ∞
-            for (let i = 0; i < infinityPath.length; i++) {
-              const point = infinityPath[i];
-              const isEdge = i === 2 || i === 5;
-
-              gsap.to(flyer, {
-                left: point.x,
-                top: point.y,
-                scale: isEdge ? 1.5 : 1.3,
-                rotation: isEdge ? (i === 2 ? 15 : -15) : 0,
-                duration: 0.22,
+            await new Promise((resolve) => {
+              const inf = { t: Math.PI / 2 };
+              gsap.to(inf, {
+                t: Math.PI / 2 + Math.PI * 2,
+                duration: 2,
                 ease: "sine.inOut",
+                onUpdate() {
+                  const x = centerX + A * Math.cos(inf.t);
+                  const y = centerY + (B * Math.sin(2 * inf.t)) / 2;
+                  const s = 1.3 + 0.15 * Math.abs(Math.cos(inf.t));
+                  const r = Math.cos(inf.t) * 18;
+                  gsap.set(flyer, { left: x, top: y, scale: s, rotation: r });
+
+                  const progress = (inf.t - Math.PI / 2) / (Math.PI * 2);
+                  const q = Math.floor(progress * 4);
+                  if (q > lastQ && q > 0) {
+                    lastQ = q;
+                    burst(x, y, 6);
+                    haptic("light");
+                  }
+                },
+                onComplete: resolve,
               });
+            });
 
-              await sleep(200);
-
-              if (i === 3) {
-                // Искры в центре
-                burst(point.x, point.y, 6);
-                haptic("light");
-              }
-            }
-
-            // Финальный "вау" перед спуском
+            /* Dramatic pause at center */
+            burst(centerX, centerY, 10);
+            haptic("heavy");
             gsap.to(flyer, {
               scale: 1.6,
-              duration: 0.15,
+              rotation: 0,
+              duration: 0.25,
               ease: "power2.out",
             });
-            haptic("medium");
             confetti({
-              particleCount: 30,
-              spread: 60,
-              origin: { x: 0.5, y: 0.35 },
+              particleCount: 50,
+              spread: 80,
+              origin: { x: 0.5, y: centerY / innerHeight },
             });
+            await sleep(350);
 
-            await sleep(200);
-
-            /* Phase 3: Open sheet + fly DOWN */
-            console.log("[doReveal] opening sheet");
+            /* Phase 3: Open sheet + fly down */
             killLotties();
             $("prize-name").textContent = wonPrize.name;
             $("btn-claim").disabled = true;
@@ -2427,35 +2401,39 @@
             $("prize-sticker").style.visibility = "hidden";
 
             openSheet("sheet-prize");
-
-            await sleep(250);
+            await sleep(300);
 
             const targetRect = $("prize-sticker").getBoundingClientRect();
             const targetX = targetRect.left + targetRect.width / 2;
             const targetY = targetRect.top + targetRect.height / 2;
-            console.log("[doReveal] target position:", targetX, targetY);
 
             gsap.to(flyer, {
               left: targetX,
               top: targetY,
               scale: 1,
-              duration: 0.4,
+              rotation: 0,
+              duration: 0.5,
               ease: "power3.inOut",
             });
+            await sleep(500);
 
-            await sleep(400);
-
-            /* Phase 4: Land */
-            console.log("[doReveal] LANDING");
+            /* Phase 4: Land — play sticker once, freeze on last frame */
             flyer.remove();
             $("prize-sticker").style.visibility = "visible";
-            playLottie($("prize-sticker"), meta.modal, false);
 
+            const landAnim = playLottie($("prize-sticker"), meta.modal, false);
             haptic("medium");
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+
+            if (landAnim) {
+              await new Promise((resolve) => {
+                landAnim.addEventListener("complete", resolve);
+                setTimeout(resolve, 3000);
+              });
+            }
+            await sleep(300);
           } catch (err) {
             console.error("[doReveal] ERROR:", err);
-
             $("edge-glow").classList.remove("on");
             const flash = $("flash");
             flash.style.transition = "opacity 0.3s";
@@ -2475,8 +2453,8 @@
           }
 
           appState = "prize";
-          console.log("[doReveal] starting countdown");
 
+          /* Countdown 3-2-1 */
           for (let i = 3; i >= 1; i--) {
             $("prize-cd").textContent = i;
             $("prize-cd").style.color = "var(--purple)";
